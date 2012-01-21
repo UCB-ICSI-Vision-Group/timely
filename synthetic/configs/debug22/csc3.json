@@ -1,0 +1,11 @@
+{
+  "suffix": "nov23",
+  "detector": "ext",
+  "class_priors_mode": "fixed_order",
+  "gist": 0,
+  "dets_suffixes": ["csc_default"],
+  "bounds": [0,30],
+  "with_entropy": 0,
+  "with_times": 0,
+  "learn_policy": "slope"
+}

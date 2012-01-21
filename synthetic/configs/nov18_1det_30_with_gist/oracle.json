@@ -1,0 +1,11 @@
+{
+  "suffix": "nov18",
+  "detector": "ext",
+  "class_priors_mode": "oracle",
+  "bounds": [0,30],
+  "gist": 1,
+  "dets_suffixes": ["csc_default"],
+  "with_entropy": 0,
+  "with_times": 0,
+  "learn_policy": "manual"
+}
