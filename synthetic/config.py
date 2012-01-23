@@ -11,7 +11,7 @@ class Config:
   # CODE AND MISC DATA PATHS 
   ##################
   if exists('/home/tobibaum'):
-    repo_dir = '/home/tobibaum/Documents/Vision/timey/'
+    repo_dir = '/home/tobibaum/Documents/Vision/timely/'
     save_dir = '/home/tobibaum/Documents/Vision/data/'
   elif exists('/Users/sergeyk/'):
     repo_dir = '/Users/sergeyk/research/timely/'
