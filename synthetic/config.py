@@ -11,20 +11,20 @@ class Config:
   # CODE AND MISC DATA PATHS 
   ##################
   if exists('/home/tobibaum'):
-    repo_dir = '/home/tobibaum/Documents/Vision/object_detection/'
+    repo_dir = '/home/tobibaum/Documents/Vision/timely/'
     save_dir = '/home/tobibaum/Documents/Vision/data/'
   elif exists('/Users/sergeyk/'):
-    repo_dir = '/Users/sergeyk/research/object_detection/'
-    save_dir = '/Users/sergeyk/research/object_detection/synthetic/temp_data/'
+    repo_dir = '/Users/sergeyk/research/timely/'
+    save_dir = '/Users/sergeyk/research/timely/synthetic/temp_data/'
   # ICSI:
   elif exists('/u/vis/'):
     user = getpass.getuser()
     if user=='tobibaum':
-      repo_dir = '/u/tobibaum/object_detection/'
+      repo_dir = '/u/tobibaum/timely/'
       save_dir = '/u/vis/x1/tobibaum/data/'
     if user=='sergeyk':
-      repo_dir = '/u/sergeyk/research/object_detection/'
-      save_dir = '/tscratch/tmp/sergeyk/object_detection/synthetic/'
+      repo_dir = '/u/sergeyk/research/timely/'
+      save_dir = '/tscratch/tmp/sergeyk/timely/synthetic/'
   else:
     raise RuntimeError("Can't set paths correctly")
   script_dir = join(repo_dir, 'synthetic')
