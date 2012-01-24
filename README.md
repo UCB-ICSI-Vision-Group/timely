@@ -53,7 +53,6 @@ Tasks
   - include scene context action
 
 ### jumping windows
-  - figure out why jumping window performance is crappy @tobi
   - is VQ performance adequate? should be pretty fast
   - use some kind of fast soft quantization instead of k-means
 
