@@ -523,9 +523,7 @@ class SlidingWindows:
         # Assemble univariate KDEs--downsampled for large-data classes
         num_points = scale.size
         max_points = 500
-        rand_ind = range(num_points)
-        if num_points > max_points:
-          rand_ind = np.random.permutation(num_points)[:max_points]
+        rand_ind = ut.random_subset_up_to_N(num_points, max_points)
         kde = st.gaussian_kde(log_ratio_expanded[rand_ind])
         results['%s_%s_kde'%(cls,'log_ratio')] = kde
         kde = st.gaussian_kde(y_frac_expanded[rand_ind])

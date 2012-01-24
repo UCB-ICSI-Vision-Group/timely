@@ -128,9 +128,7 @@ class Image:
     Return at most num_windows of random windows generated according to params.
     """
     windows = self.get_windows(window_params)
-    if windows.shape[0] > num_windows:
-      windows = windows[np.random.permutation(windows.shape[0])[:num_windows],:]
-    return windows
+    return windows[ut.random_subset_up_to_N(windows.shape[0],num_windows),:]
 
   def get_windows(self,window_params,with_time=False,just_num=False):
     """

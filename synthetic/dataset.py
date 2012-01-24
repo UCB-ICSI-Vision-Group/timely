@@ -172,8 +172,7 @@ class Dataset:
     max_num = len(image_inds)
     inds = image_inds
     if max_num_images:
-      max_num = min(max_num_images,len(image_inds))
-      inds = np.random.permutation(image_inds)[:max_num]
+      inds = ut.random_subset(image_inds, max_num_images)
     num_per_image = round(1.*num / max_num)
     for ind in inds:
       image = self.images[ind]
@@ -182,7 +181,7 @@ class Dataset:
       for gt in gts.arr:
         overlaps = BoundingBox.get_overlap(windows[:,:4],gt[:4])
         windows = windows[overlaps <= max_overlap,:]
-      ind_to_take = np.random.permutation(windows.shape[0])[:num_per_image]
+      ind_to_take = ut.random_subset_up_to_N(windows.shape[0], num_per_image]
       all_windows.append(np.hstack(
         (windows[ind_to_take,:],np.tile(ind, (ind_to_take.shape[0],1)))))
     all_windows = np.concatenate(all_windows,0)
@@ -205,11 +204,8 @@ class Dataset:
     """
     pos_indices = self.get_pos_samples_for_class(cls,include_diff,include_trun)
     neg_indices = np.setdiff1d(np.arange(len(self.images)),pos_indices,assume_unique=True)
-    if not number:
-      number = len(neg_indices)
-    num = min(number, len(neg_indices))
-    perm = np.random.permutation(np.arange(len(neg_indices)))
-    return np.sort(neg_indices[perm[:num]])
+    # TODO tobi: why do these have to be ordered?
+    return ut.random_subset(neg_indices, number, ordered=True)
   
   def load_from_json(self, filename):
     """Load all parameters of the dataset from a JSON file."""
