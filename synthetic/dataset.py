@@ -204,11 +204,8 @@ class Dataset:
     """
     pos_indices = self.get_pos_samples_for_class(cls,include_diff,include_trun)
     neg_indices = np.setdiff1d(np.arange(len(self.images)),pos_indices,assume_unique=True)
-    if number:
-      num = min(number, len(neg_indices))
-      perm = np.random.permutation(np.arange(len(neg_indices)))
-      neg_indices = np.sort(neg_indices[perm[:num]])
-    return neg_indices
+    # TODO tobi: why do these have to be ordered?
+    return ut.random_subset(neg_indices, number, ordered=True)
   
   def load_from_json(self, filename):
     """Load all parameters of the dataset from a JSON file."""
