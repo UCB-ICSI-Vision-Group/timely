@@ -89,6 +89,7 @@ class Table:
     """Return Table with only the specified col_names."""
     return Table(arr=self.subset_arr(col_names), cols=col_names)
 
+
   def subset_arr(self,col_names):
     """Return self.arr for only the columns that are specified."""
     if not isinstance(col_names, types.ListType):
@@ -124,6 +125,39 @@ class Table:
     cols = list(self.cols)
     cols.remove(ind_name)
     return Table(arr,cols)
+
+def random_subset_up_to_N(N, max_num=None):
+  """
+  Return a random subset of size min(N,max_num) of non-negative integers
+  up to N, in permuted order.
+  If max_num >= N, order of integers 0..N is not permuted.
+  N and max_num must be positive.
+  If max_num is not given, max_num=N.
+  """
+  if max_num == None:
+    max_num = N
+  if N <= 0 or max_num <= 0:
+    raise ValueError("Can't deal with N or max_num <= 0")
+  if max_num >= N:
+    return range(0,N)
+  return np.random.permutation(N)[:max_num]
+
+def random_subset(vals, max_num=None, ordered=False):
+  """
+  Return a random subset of size min(len(vals),max_num) of a list of
+  values, in permuted order (unless ordered=True). If max_num is not given,
+  max_num=len(vals).
+  If max_num >= N, order is not permuted.
+  NOTE: returns a list, not an array
+  """
+  if max_num == None:
+    max_num = len(vals)
+  if max_num >= len(vals) and ordered:
+    return vals
+  arr = np.array(vals)[random_subset_up_to_N(len(vals),max_num)]
+  if ordered:
+    arr = np.sort(arr)
+  return arr.tolist()
 
 def append_index_column(arr, index):
   """ Take an m x n array, and appends a column containing index. """

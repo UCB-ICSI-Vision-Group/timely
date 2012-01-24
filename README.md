@@ -42,7 +42,6 @@ Tasks
 ---
 ### misc
   - check code with pylint
-  - abstract all random.permutation calls to some util.py method
   - make running experiments specifiable with one json file instead of several @sergey
   - write tests for all classes @sergey @tobi
   	- convert ngram_experiment.py to test suite for ngram marginal and conditional probabilities @sergey
