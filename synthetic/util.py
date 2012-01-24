@@ -89,6 +89,7 @@ class Table:
     """Return Table with only the specified col_names."""
     return Table(arr=self.subset_arr(col_names), cols=col_names)
 
+
   def subset_arr(self,col_names):
     """Return self.arr for only the columns that are specified."""
     if not isinstance(col_names, types.ListType):
@@ -124,6 +125,22 @@ class Table:
     cols = list(self.cols)
     cols.remove(ind_name)
     return Table(arr,cols)
+
+def random_subset_up_to_N(N, max_num):
+  """
+  Returns a random subset of size min(N,max_num) of non-negative integers
+  up to N, in permuted order.
+  """
+  return np.random.permutation(N)[:min(max_num,N)]
+
+def random_subset(vals, max_num, permuted=True):
+  """
+  Returns a random subset of size min(len(vals),max_num) of a list of
+  values, in permuted order (inless permuted=False).
+  """
+  if max_num >= len(vals) and not permuted:
+    return vals
+  return np.array(vals)[random_subset_up_to_N(vals,max_num)].tolist()
 
 def append_index_column(arr, index):
   """ Take an m x n array, and appends a column containing index. """
