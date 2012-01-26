@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os as os 
 import time
-from synthetic.config import Config
+import synthetic.config as config
 import synthetic.util as ut
 import cPickle
 from string import atof
@@ -107,7 +107,7 @@ class PriorsJT():
       
       
   def get_cls_counts(self, d, dataset):
-    count_dir = os.path.join(Config.save_dir, 'cls_counts/')
+    count_dir = os.path.join(config.save_dir, 'cls_counts/')
     ut.makedirs(count_dir)
     count_file = os.path.join(count_dir, dataset)
     if not os.path.isfile(count_file):

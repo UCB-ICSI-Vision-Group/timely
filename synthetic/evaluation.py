@@ -1,20 +1,14 @@
-import operator,time,os
-import numpy as np
+import operator
 import matplotlib.pyplot as plt
 from mako.template import Template
-import types
-import itertools
+
+from common_mpi import *
+from common_imports import *
 
 from synthetic.dataset import Dataset
 from synthetic.image import BoundingBox
-from synthetic.config import Config
-import synthetic.util as ut
+import synthetic.config as config
 from synthetic.safebarrier import safebarrier
-
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-comm_rank = comm.Get_rank()
-comm_size = comm.Get_size()
 
 class Evaluation:
   """
@@ -44,9 +38,9 @@ class Evaluation:
     self.min_overlap = Evaluation.MIN_OVERLAP
 
     # Determine filenames and create directories
-    self.template_filename = os.path.join(Config.script_dir, 'evaluation_support/dashboard_template.html')
+    self.template_filename = os.path.join(config.script_dir, 'evaluation_support/dashboard_template.html')
 
-    self.results_path = Config.get_evals_dp_dir(self.dataset_policy)
+    self.results_path = config.get_evals_dp_dir(self.dataset_policy)
 
     # wholeset evaluations
     self.dashboard_filename = os.path.join(self.results_path, 'dashboard_%s.html')

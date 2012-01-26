@@ -20,7 +20,7 @@ from numpy.numarray.numerictypes import Int
 from numpy.ma.core import ceil
 from scipy import io
 
-import synthetic.config as cfg
+import synthetic.config as config
 from synthetic.extractor import Extractor
 from synthetic.dataset import Dataset
 from synthetic.pyramid import *
@@ -39,16 +39,16 @@ def save_to_mat(filename, X, Y, testX):
   print X
   print Y
   testX = testX.astype('float64')
-  io.savemat(Config.repo_dir + 'fast-additive-svms/tmp/' + filename,{'X':X,'Y':Y,'testX':testX})
+  io.savemat(config.repo_dir + 'fast-additive-svms/tmp/' + filename,{'X':X,'Y':Y,'testX':testX})
   
 def load_from_mat(filename, value):
   mdict = {}
-  io.loadmat(Config.repo_dir +'fast-additive-svms/tmp/'+ filename, mdict)
+  io.loadmat(config.repo_dir +'fast-additive-svms/tmp/'+ filename, mdict)
   return mdict[value]
 
 def mat_train_test_svm(filename):
-  ut.run_matlab_script(Config.repo_dir + 'fast-additive-svms/', \
-         'train_test_svm(\'' +Config.repo_dir +'fast-additive-svms/tmp/'+ filename + '\')')  
+  ut.run_matlab_script(config.repo_dir + 'fast-additive-svms/', \
+         'train_test_svm(\'' +config.repo_dir +'fast-additive-svms/tmp/'+ filename + '\')')  
 
 def chi_square_kernel(x, y):
   """
@@ -189,9 +189,9 @@ def train_with_hard_negatives(d, dtest,cbwords, cbsamps, codebook, cls, pos_tabl
   
   classification = np.asarray([1]*pos_table.arr.shape[0] + [-1]*neg_table.arr.shape[0])
   
-  filename = Config.save_dir + 'features/' + feature_type + '/svms/' + kernel + \
+  filename = config.save_dir + 'features/' + feature_type + '/svms/' + kernel + \
         '/'+ cls
-  ut.makedirs(Config.save_dir + 'features/' + feature_type + '/svms/' + kernel)
+  ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/' + kernel)
   
     
   # with that we now determined our whole dataset D  
@@ -271,7 +271,7 @@ def train_with_hard_negatives(d, dtest,cbwords, cbsamps, codebook, cls, pos_tabl
   
 
 if __name__=='__main__':
-  #ut.run_matlab_script(  Config.repo_dir + 'fast-additive-svms/','demo')
+  #ut.run_matlab_script(  config.repo_dir + 'fast-additive-svms/','demo')
  
 #  x = np.matrix([[0,2],[0,4],[2,2],[2,4]])
 #  x = np.concatenate((np.random.random((250,5)),\
@@ -304,7 +304,7 @@ if __name__=='__main__':
   
   e = Extractor()
   
-  classes = Config.pascal_classes  
+  classes = config.pascal_classes  
   num_words = 3000
   iters = 10
   feature_type = 'dsift'
@@ -323,9 +323,9 @@ if __name__=='__main__':
 #  num_pos = 1
 
   if mpi_rank == 0:
-    ut.makedirs(Config.save_dir + 'features/' + feature_type + '/times/')
-    ut.makedirs(Config.save_dir + 'features/' + feature_type + '/codebooks/times/')
-    ut.makedirs(Config.save_dir + 'features/' + feature_type + '/svms/train_times/')
+    ut.makedirs(config.save_dir + 'features/' + feature_type + '/times/')
+    ut.makedirs(config.save_dir + 'features/' + feature_type + '/codebooks/times/')
+    ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/train_times/')
     
   for cls_idx in range(mpi_rank, len(classes), mpi_size): 
   #for cls in classes:
@@ -358,7 +358,7 @@ if __name__=='__main__':
 #      for row in set_vis:
 #        image_idx = row[pos_table.cols.index('img_ind')]
 #        image = d.images[image_idx]
-#        filename = Config.VOC_dir + 'JPEGImages/' + image.name
+#        filename = config.VOC_dir + 'JPEGImages/' + image.name
 #        os.system('convert ' + filename + ' bbox_tmp_img.png')
 #        im = Image.open('bbox_tmp_img.png')
 #        os.remove('bbox_tmp_img.png')

@@ -1,6 +1,4 @@
-import numpy as np
-
-import synthetic.util as ut
+from common_imports import *
 
 class BoundingBox:
   """

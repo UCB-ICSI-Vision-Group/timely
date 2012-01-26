@@ -1,11 +1,10 @@
 from abc import abstractmethod
-import numpy as np
 from scipy.stats import beta
-import time
 
-import util as ut
+from common_imports import *
+
 from synthetic.dataset import Dataset
-from synthetic.config import Config
+import synthetic.config as config
 from synthetic.sliding_windows import WindowParams
 
 class Detector:
@@ -18,7 +17,7 @@ class Detector:
   SlidingWindowDetector(Detector).
   """
   
-  # for use when computing the expected time;
+  # for use when computing the expected time
   AVG_IMAGE_SIZE = (500,375)
 
   DEFAULT_CONFIG = {
@@ -29,11 +28,11 @@ class Detector:
   def get_cols(cls):
     return ['x','y','w','h','score']
 
-  def __init__(self, dataset, cls, sw, detector_config=None):
+  def __init__(self, dataset, cls, sw_generator, detector_config=None):
     self.dataset = dataset
     self.cls = cls
     self.cls_ind = dataset.get_ind(cls)
-    self.sw = sw
+    self.sw = sw_generator
 
     if not detector_config:
       detector_config = Detector.DEFAULT_CONFIG

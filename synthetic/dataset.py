@@ -1,20 +1,11 @@
-import time
-import os
-import numpy as np
 from PIL import Image as PILImage
-import re
-import cPickle
 
+from common_mpi import *
+from common_imports import *
+
+import synthetic.config as config
 from synthetic.image import *
-import util as ut
-from synthetic.config import Config
-from synthetic.class_priors import ClassPriors
 from synthetic.sliding_windows import SlidingWindows
-
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-comm_rank = comm.Get_rank()
-comm_size = comm.Get_size()
 
 class Dataset:
   """
@@ -61,20 +52,19 @@ class Dataset:
     return None
 
   def get_image_filename(self,img_ind):
-    return Config.VOC_dir + 'JPEGImages/' + self.images[img_ind].name
+    return config.VOC_dir + 'JPEGImages/' + self.images[img_ind].name
 
   def __repr__(self):
     return self.get_name()
   
   def __init__(self, name=None, force=False):
-    self.config = Config()
     self.classes = []
     self.images = []
     self.name = name
     if re.search('pascal', name):
       self.load_from_pascal(name,force)
     elif name == 'data1':
-      self.load_from_json(self.config.data1)
+      self.load_from_json(config.data1)
     else:
       print("WARNING: Unknown dataset initialization string, not loading images.")
 
@@ -88,7 +78,7 @@ class Dataset:
     If force is True, does not look for cached data when loading.
     """
     print("Dataset: Loading from PASCAL...")
-    filename = Config.get_cached_dataset_filename(name)
+    filename = config.get_cached_dataset_filename(name)
     if os.path.exists(filename):
       print("...loading from cached dataset")
       with open(filename) as f:
@@ -98,8 +88,8 @@ class Dataset:
         print("...done")
         return
     print("...loading from scratch")
-    filename = Config.pascal_paths[name]
-    self.classes = self.config.pascal_classes 
+    filename = config.pascal_paths[name]
+    self.classes = config.pascal_classes 
     with open(filename) as f:
       imgset = [line.strip() for line in f.readlines()]
     t = time.time()
@@ -109,9 +99,9 @@ class Dataset:
         print("...on image %d/%d"%(i,len(imgset)))
         t = time.time()
       if len(img)>0:
-        xml_filename = os.path.join(self.config.VOC_dir,'Annotations',img+'.xml')
+        xml_filename = os.path.join(config.VOC_dir,'Annotations',img+'.xml')
         self.images.append(Image.load_from_xml(self,xml_filename))
-    filename = Config.get_cached_dataset_filename(name)
+    filename = config.get_cached_dataset_filename(name)
     print("...saving to cache file")
     with open(filename, 'w') as f:
       cPickle.dump(self,f)
@@ -181,7 +171,7 @@ class Dataset:
       for gt in gts.arr:
         overlaps = BoundingBox.get_overlap(windows[:,:4],gt[:4])
         windows = windows[overlaps <= max_overlap,:]
-      ind_to_take = ut.random_subset_up_to_N(windows.shape[0], num_per_image]
+      ind_to_take = ut.random_subset_up_to_N(windows.shape[0], num_per_image)
       all_windows.append(np.hstack(
         (windows[ind_to_take,:],np.tile(ind, (ind_to_take.shape[0],1)))))
     all_windows = np.concatenate(all_windows,0)

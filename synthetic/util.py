@@ -1,8 +1,5 @@
 import subprocess
-import time, types, os, operator
-import numpy as np
-import scipy.stats as st
-from IPython.parallel import Client
+from common_imports import *
 
 class Table:
   """An ndarray with associated column names."""
@@ -201,12 +198,13 @@ def collect_with_index_column(seq, func, cols=None):
   return collect(seq,func,cols,with_index=True)
 
 def makedirs(dirname):
-  """Does what mkdir -p does."""
+  """Does what mkdir -p does, and returns dirname."""
   if not os.path.exists(dirname):
     try:
       os.makedirs(dirname)
     except:
       print("Exception on os.makedirs--what else is new?")
+  return dirname
 
 def sort_by_column(arr,ind,mode='ascend'):
   """Return the array row-sorted by column at ind."""

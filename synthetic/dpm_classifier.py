@@ -4,21 +4,12 @@ Created on Nov 16, 2011
 @author: Tobias Baumgartner
 '''
 
-
-from mpi4py import MPI
-import itertools
-import numpy as np
-from os.path import join
+from common_imports import *
 
 from synthetic.classifier import Classifier
-from synthetic.config import Config
+import synthetic.config as config
 from synthetic.training import load_svm
 from synthetic.dataset import Dataset
-
-
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
 
 class DPMClassifier(Classifier):
   def __init__(self):
@@ -38,13 +29,12 @@ class DPMClassifier(Classifier):
     vector[0,0:-1] = hist
     vector[0,-1] = img_dpm.shape()[0]
     return vector
- 
   
 if __name__=='__main__':
   train_set = 'full_pascal_train'
   train_dataset = Dataset(train_set)  
-  dpm_dir = join(Config.res_dir, 'dpm_dets')
-  filename = join(dpm_dir, train_set + '_dets_all_may25_DP.npy')
+  dpm_dir = os.path.join(config.res_dir, 'dpm_dets')
+  filename = os.path.join(dpm_dir, train_set + '_dets_all_may25_DP.npy')
   dpm_train = np.load(filename)
   dpm_train = dpm_train[()]  
   dpm_train = dpm_train.subset(['score', 'cls_ind', 'img_ind'])
@@ -53,8 +43,8 @@ if __name__=='__main__':
   
   val_set = 'full_pascal_val'
   test_dataset = Dataset(val_set)  
-  dpm_test_dir = join(Config.res_dir, 'dpm_dets')
-  filename = join(dpm_dir, val_set + '_dets_all_may25_DP.npy')
+  dpm_test_dir = os.path.join(config.res_dir, 'dpm_dets')
+  filename = os.path.join(dpm_dir, val_set + '_dets_all_may25_DP.npy')
   dpm_test = np.load(filename)
   dpm_test = dpm_test[()]  
   dpm_test = dpm_test.subset(['score', 'cls_ind', 'img_ind'])
@@ -69,7 +59,7 @@ if __name__=='__main__':
   list_of_parameters = [lowers, uppers, kernels, intervallss, clss, Cs]
   product_of_parameters = list(itertools.product(*list_of_parameters))
   
-  for params_idx in range(mpi_rank, len(product_of_parameters), mpi_size):
+  for params_idx in range(comm_rank, len(product_of_parameters), comm_size):
     params = product_of_parameters[params_idx] 
     lower = params[0]
     upper = params[1]

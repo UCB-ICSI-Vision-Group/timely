@@ -1,10 +1,9 @@
-import numpy as np
-import os
 import json
 
+from common_imports import *
+
 from synthetic.detector import Detector
-from synthetic.config import Config
-import synthetic.util as ut
+import synthetic.config as config
 from synthetic.csc_classifier import CSCClassifier
 
 class ExternalDetector(Detector):
@@ -20,7 +19,7 @@ class ExternalDetector(Detector):
     same class.
     """
     # Check if configs exist and look up the correct config for this detname and cls
-    filename = os.path.join(Config.dets_configs_dir,detname+'.txt')
+    filename = os.path.join(config.dets_configs_dir,detname+'.txt')
     if os.path.exists(filename):
       with open(filename) as f:
         configs = json.load(f)
@@ -36,8 +35,8 @@ class ExternalDetector(Detector):
     suffix = detname[4:]
     self.csc_classif = CSCClassifier(suffix)    
     self.svm = self.csc_classif.load_svm(cls)
-    setting_table = ut.Table.load(os.path.join(Config.res_dir,'csc_svm_'+suffix,'best_table'))
-    settings = setting_table.arr[Config.pascal_classes.index(cls),:]
+    setting_table = ut.Table.load(os.path.join(config.res_dir,'csc_svm_'+suffix,'best_table'))
+    settings = setting_table.arr[config.pascal_classes.index(cls),:]
     self.intervalls = settings[setting_table.cols.index('bins')]
     self.lower = settings[setting_table.cols.index('lower')]
     self.upper = settings[setting_table.cols.index('upper')]
@@ -70,6 +69,6 @@ class ExternalDetector(Detector):
     if oracle:
       return Detector.compute_posterior(self, image, dets, oracle)
     img = self.dataset.get_img_ind(image)
-    cls = Config.pascal_classes.index(self.cls)
+    cls = config.pascal_classes.index(self.cls)
     return self.csc_classif.classify_image(self.svm,dets,cls,img, self.intervalls, self.lower, self.upper)
 

@@ -18,7 +18,7 @@ from synthetic.evaluation import Evaluation
 from synthetic.util import Table
 from synthetic.extractor import Extractor
 from synthetic.dataset import Dataset
-from synthetic.config import Config
+import synthetic.config as config
 from synthetic.detector import Detector
 from numpy.ma.core import floor
 from synthetic.bounding_box import BoundingBox
@@ -42,16 +42,16 @@ class JumpingWindowsDetectorGrid(Detector):
     self.K = K
     self.lookupTables = {}
     self.e = Extractor()
-    self.all_classes = Config.pascal_classes
+    self.all_classes = config.pascal_classes
     if warmstart:
-      for cls in Config.pascal_classes:
+      for cls in config.pascal_classes:
         self.load_lookup_table(cls)
         
   def add_lookup_table(self, cls, table):
     self.lookupTables[cls] = table
     
   def load_lookup_table(self, cls):
-    filename = Config.save_dir + 'JumpingWindows/' + cls
+    filename = config.save_dir + 'JumpingWindows/' + cls
     t = load_lookup_table(filename)
     t.M = self.M
     t.N = self.N
@@ -128,13 +128,13 @@ class JumpingWindowsDetectorGrid(Detector):
     """Training"""
     d = Dataset(train_set)
     e = Extractor()  
-    ut.makedirs(Config.save_dir + 'JumpingWindows/')
-    ut.makedirs(Config.save_dir + 'JumpingWindows/'+str(self.M)+'/')
+    ut.makedirs(config.save_dir + 'JumpingWindows/')
+    ut.makedirs(config.save_dir + 'JumpingWindows/'+str(self.M)+'/')
     for train_cls in all_classes:
       # Codebook
       codebook_file = e.save_dir + 'dsift/codebooks/codebook' 
          
-      save_table_file = Config.save_dir + 'JumpingWindows/' + train_cls      
+      save_table_file = config.save_dir + 'JumpingWindows/' + train_cls      
       if not os.path.isfile(codebook_file):
         print 'codebook',codebook_file,'does not exist'
         continue
@@ -469,22 +469,22 @@ def train_jumping_windows(all_classes, train_set,use_scale=True,trun=False, diff
   print 'get cb'
   codebook = e.get_codebook(d, 'dsift', force_new=False)
   print 'got cb'
-  ut.makedirs(Config.save_dir + 'JumpingWindows/')
-  ut.makedirs(Config.save_dir + 'JumpingWindows/time/')
+  ut.makedirs(config.save_dir + 'JumpingWindows/')
+  ut.makedirs(config.save_dir + 'JumpingWindows/time/')
   
   if use_scale:
-    ut.makedirs(Config.save_dir + 'JumpingWindows/scale/time/')
+    ut.makedirs(config.save_dir + 'JumpingWindows/scale/time/')
      
   for train_cls in all_classes:
     # Codebook    
     t = LookupTable_withgrid(codebook=codebook,use_scale=use_scale)   
      
     if use_scale:
-      save_table_file = Config.save_dir + 'JumpingWindows/scale/' + train_cls
-      times_filename = Config.save_dir + 'JumpingWindows/scale/time/' + train_cls
+      save_table_file = config.save_dir + 'JumpingWindows/scale/' + train_cls
+      times_filename = config.save_dir + 'JumpingWindows/scale/time/' + train_cls
     else:
-      save_table_file = Config.save_dir + 'JumpingWindows/' + train_cls
-      times_filename = Config.save_dir + 'JumpingWindows/time/' + train_cls
+      save_table_file = config.save_dir + 'JumpingWindows/' + train_cls
+      times_filename = config.save_dir + 'JumpingWindows/time/' + train_cls
     # Suppose we do this on just pos bboxes.
 #    gt = d.get_ground_truth_for_class(train_cls, include_diff=diff,
 #        include_trun=trun)
@@ -524,14 +524,14 @@ def train_jumping_windows(all_classes, train_set,use_scale=True,trun=False, diff
 # in a new image.
 def detect_jumping_windows_for_set(val_set, K, num_pos, all_classes):
   print 'Jumping Window Testing ...'
-  ut.makedirs(Config.save_dir + 'JumpingWindows/')
+  ut.makedirs(config.save_dir + 'JumpingWindows/')
   d = Dataset(val_set)
   
   all_box_list = []  
   jwDect = JumpingWindowsDetectorGrid(warmstart=False, K=K)
   # This is not the cleverest way of parallelizing, but it is one way.
   for cls in all_classes:
-    ut.makedirs(Config.save_dir + 'JumpingWindows/w_'+cls +'/')
+    ut.makedirs(config.save_dir + 'JumpingWindows/w_'+cls +'/')
     print 'Testing class',cls
     pos_images = d.get_pos_samples_for_class(cls)
     if not num_pos == 'max':
@@ -544,7 +544,7 @@ def detect_jumping_windows_for_set(val_set, K, num_pos, all_classes):
       img_idx = pos_images[idx]
       cls_ind = d.get_ind(cls)
       image = d.images[img_idx.astype(Int)]
-      save_file = Config.save_dir + 'JumpingWindows/w_'+cls +'/' + image.name[:-4]
+      save_file = config.save_dir + 'JumpingWindows/w_'+cls +'/' + image.name[:-4]
       if not os.path.isfile(save_file):
         print 'generate windows for',cls, image.name[:-4]
         bboxes_img = jwDect.detect_cls(image, cls, K)      
@@ -580,7 +580,7 @@ def mpi_get_sublist(rank, size, all_classes):
 
 
 if __name__=='__main__':
-  all_classes = Config.pascal_classes
+  all_classes = config.pascal_classes
   val_set = 'full_pascal_test'
   train_set = 'full_pascal_trainval'
   K = 3000
@@ -619,9 +619,9 @@ if __name__=='__main__':
     t = LookupTable_withgrid(codebook=codebook)
     
     if use_scale:
-      t = load_lookup_table(Config.save_dir + 'JumpingWindows/scale/'+cls)
+      t = load_lookup_table(config.save_dir + 'JumpingWindows/scale/'+cls)
     else:
-      t = load_lookup_table(Config.save_dir + 'JumpingWindows/'+cls)
+      t = load_lookup_table(config.save_dir + 'JumpingWindows/'+cls)
     
     test_gt = gt_t.arr
     npos = test_gt.shape[0]
@@ -653,7 +653,7 @@ if __name__=='__main__':
   if just_eval2:
     e = Extractor()
     d = Dataset(val_set)
-    store_table_file = Config.save_dir + 'bbox_table.txt'
+    store_table_file = config.save_dir + 'bbox_table.txt'
     infile = open(store_table_file,'r')
     tic()    
     all_boxes = np.loadtxt(store_table_file)

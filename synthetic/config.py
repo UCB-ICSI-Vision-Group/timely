@@ -1,192 +1,161 @@
+"""
+Set up paths to files and other one-time or platform-dependent settings.
+"""
+
 from os.path import join,exists
-import numpy as np
 import getpass
 
-import synthetic.util as ut
+from synthetic.util import makedirs
 
-class Config:
-  VOCyear = '2007'
+##################
+# VARIABLES
+##################
+VOCyear = '2007'
+kernels = ['linear', 'rbf']
+pascal_classes = ['aeroplane','bicycle', 'bird','boat','bottle','bus','car',
+                  'cat','chair','cow','diningtable','dog', 'horse',
+                  'motorbike','person','pottedplant','sheep','sofa','train',
+                  'tvmonitor']
+dpm_may25_dirname = '/tscratch/tmp/sergeyk/object_detection/dets_may25_DP/'
 
-  ##################
-  # CODE AND MISC DATA PATHS 
-  ##################
-  if exists('/home/tobibaum'):
-    repo_dir = '/home/tobibaum/Documents/Vision/timely/'
-    save_dir = '/home/tobibaum/Documents/Vision/data/'
-  elif exists('/Users/sergeyk/'):
-    repo_dir = '/Users/sergeyk/research/timely/'
-    save_dir = '/Users/sergeyk/research/timely/synthetic/temp_data/'
-  # ICSI:
-  elif exists('/u/vis/'):
-    user = getpass.getuser()
-    if user=='tobibaum':
-      repo_dir = '/u/tobibaum/timely/'
-      save_dir = '/u/vis/x1/tobibaum/data/'
-    if user=='sergeyk':
-      repo_dir = '/u/sergeyk/research/timely/'
-      save_dir = '/tscratch/tmp/sergeyk/timely/synthetic/'
-  else:
-    raise RuntimeError("Can't set paths correctly")
-  script_dir = join(repo_dir, 'synthetic')
+##################
+# CODE PATHS
+# - nothing in data_dir should be tracked by the code repository.
+#   it should be tracked by its own repository
+# - temp_data_dir is for large files and can be on temp filespace
+##################
+# Determine environment
+if exists('/home/tobibaum'):
+  env = 'tobi_home'
+elif exists('/Users/sergeyk'):
+  env = 'sergeyk_home'
+elif exists('/u/vis/'):
+  user = getpass.getuser()
+  if user=='tobibaum':
+    env = 'tobi_icsi'
+  if user=='sergeyk':
+    env = 'sergeyk_icsi'
+else:
+  raise RuntimeError("Can't set paths correctly")
 
-  ##################
-  # INPUT DATA PATHS
-  ##################
-  test_support_dir = join(script_dir, 'test_support')
-  data1 = join(test_support_dir,'data1.json')
-  VOC_dir = join(repo_dir, 'VOCdevkit/%(year)s/VOC%(year)s/')%{'year':VOCyear}
-  pascal_paths = {
-      'test_pascal_train':    join(test_support_dir,'train.txt'),
-      'test_pascal_val':      join(test_support_dir,'val.txt'),
-      'full_pascal_train':    join(VOC_dir,'ImageSets/Main/train.txt'),
-      'full_pascal_val':      join(VOC_dir,'ImageSets/Main/val.txt'),
-      'full_pascal_trainval': join(VOC_dir,'ImageSets/Main/trainval.txt'),
-      'full_pascal_test':     join(VOC_dir,'ImageSets/Main/test.txt')}
-  pascal_classes = ['aeroplane','bicycle', 'bird','boat','bottle','bus','car',
-                    'cat','chair','cow','diningtable','dog', 'horse',
-                    'motorbike','person','pottedplant','sheep','sofa','train',
-                    'tvmonitor']
-  kernels = ['linear', 'rbf']
+# repo_dir, data_dir, temp_data_dir
+paths = {
+  'tobi_home':    ['/home/tobibaum/Documents/Vision/timely/',
+                   '/home/tobibaum/Documents/Vision/data/',
+                   '/home/tobibaum/Documents/Vision/data/temp/'],
+  'tobi_icsi':    ['/u/tobibaum/timely/',
+                   '/u/vis/x1/tobibaum/data/',
+                   '/tscratch/tmp/tobibaum/timely/'],
+  'sergeyk_home': ['/Users/sergeyk/research/timely/',
+                   '/Users/sergeyk/research/timely/data/',
+                   '/Users/sergeyk/research/timely/data/temp/'],
+  'sergeyk_icsi': ['/u/sergeyk/research/timely/',
+                   '/u/sergeyk/research/timely/data',
+                   '/tscratch/tmp/sergeyk/timely/'],                   
+}
+repo_dir, data_dir, temp_data_dir = paths[env]
+makedirs(data_dir)
+makedirs(temp_data_dir)
 
-  ##################
-  # OUTPUT DATA PATHS
-  # Reproducible results should live in own repo.
-  # We do not use the VOCyear in any of the paths currently. If in the future
-  # we run on different years, we'll handle that with a top-level directory
-  # split.
-  ##################
-  # ./results
-  res_dir = join(script_dir, 'results/')
-  if exists('/u/vis/') and getpass.getuser() == 'sergeyk':
-    res_dir = '/u/vis/x1/sergeyk/object_detection/results/'
-  ut.makedirs(res_dir)
+##################
+# DERIVED PATHS
+##################
+# Code
+script_dir = join(repo_dir, 'synthetic')
 
-  temp_res_dir = save_dir
-  ut.makedirs(temp_res_dir)
+# Input data
+test_support_dir = join(data_dir, 'test_support')
+data1 = join(test_support_dir,'data1.json')
+VOC_dir = join(data_dir, 'VOC%(year)s/')%{'year':VOCyear}
+pascal_paths = {
+    'test_pascal_train':    join(test_support_dir,'train.txt'),
+    'test_pascal_val':      join(test_support_dir,'val.txt'),
+    'full_pascal_train':    join(VOC_dir,'ImageSets/Main/train.txt'),
+    'full_pascal_val':      join(VOC_dir,'ImageSets/Main/val.txt'),
+    'full_pascal_trainval': join(VOC_dir,'ImageSets/Main/trainval.txt'),
+    'full_pascal_test':     join(VOC_dir,'ImageSets/Main/test.txt')}
+config_dir = join(script_dir,'configs')
 
-  # ./results/sliding_windows_{dataset}
-  @classmethod
-  def get_sliding_windows_dir(cls, dataset_name):
-    sliding_windows_dir = join(Config.res_dir, 'sliding_windows_%s'%dataset_name)
-    ut.makedirs(sliding_windows_dir)
-    return sliding_windows_dir
+# Result data
+res_dir = makedirs(join(data_dir, 'results'))
+temp_res_dir = makedirs(join(temp_data_dir, 'results'))
+dets_configs_dir = makedirs(join(res_dir,'det_configs'))
 
-  # ./results/sliding_windows_{dataset}/metaparams
-  @classmethod
-  def get_sliding_windows_metaparams_dir(cls, dataset_name):
-    dirname = join(Config.get_sliding_windows_dir(dataset_name), 'metaparams')
-    ut.makedirs(dirname)
-    return dirname 
+# ./results/sliding_windows_{dataset}
+def get_sliding_windows_dir(dataset_name):
+  return makedirs(join(res_dir, 'sliding_windows_%s'%dataset_name))
 
-  # ./results/sliding_windows_{dataset}/stats.pickle
-  @classmethod
-  def get_window_stats_results(cls, dataset_name):
-    return join(Config.get_sliding_windows_dir(dataset_name), 'stats.pickle')
+# ./results/sliding_windows_{dataset}/metaparams
+def get_sliding_windows_metaparams_dir(dataset_name):
+  return makedirs(join(get_sliding_windows_dir(dataset_name), 'metaparams'))
 
-  # ./results/sliding_windows/{stat}/{cls}.png
-  @classmethod
-  def get_window_stats_plot(clas, dataset_name, stat, cls):
-    window_stats_plot_dir = join(Config.get_sliding_windows_dir(dataset_name), stat)
-    ut.makedirs(window_stats_plot_dir)
-    return join(window_stats_plot_dir, '%s.png'%cls)
+# ./results/sliding_windows_{dataset}/stats.pickle
+def get_window_stats_results(dataset_name):
+  return join(get_sliding_windows_dir(dataset_name), 'stats.pickle')
 
-  # ./results/sliding_windows_{dataset}/params
-  # NOTE: in temp_res_dir!
-  @classmethod
-  def get_sliding_windows_cached_dir(cls, dataset_name):
-    sliding_windows_dir = join(Config.temp_res_dir, 'sliding_windows_%s'%dataset_name)
-    sliding_windows_cached_dir = join(sliding_windows_dir, 'cached')
-    ut.makedirs(sliding_windows_cached_dir)
-    return sliding_windows_cached_dir
+# ./results/sliding_windows/{stat}/{cls}.png
+def get_window_stats_plot(dataset_name, stat, cls):
+  window_stats_plot_dir = makedirs(join(get_sliding_windows_dir(dataset_name), stat))
+  return join(window_stats_plot_dir, '%s.png'%cls)
 
-  # ./results/sliding_windows_{dataset}/params
-  @classmethod
-  def get_sliding_windows_params_dir(cls, dataset_name):
-    sliding_windows_params_dir = join(Config.get_sliding_windows_dir(dataset_name), 'params')
-    ut.makedirs(sliding_windows_params_dir)
-    return sliding_windows_params_dir
+# ./results/sliding_windows_{dataset}/params
+# NOTE: in temp_res_dir!
+def get_sliding_windows_cached_dir(dataset_name):
+  sliding_windows_dir = join(temp_res_dir, 'sliding_windows_%s'%dataset_name)
+  return makedirs(join(sliding_windows_dir, 'cached'))
 
-  # ./results/jumping_windows_{dataset}/
-  @classmethod
-  def get_jumping_windows_dir(cls, dataset_name):
-    dirname = join(Config.res_dir, 'jumping_windows_%s'%dataset_name)
-    ut.makedirs(dirname)
-    return dirname 
+# ./results/sliding_windows_{dataset}/params
+def get_sliding_windows_params_dir(dataset_name):
+  return makedirs(join(get_sliding_windows_dir(dataset_name), 'params'))
 
-  @classmethod
-  def get_windows_params_grid(cls, dataset_name):
-    return join(Config.get_sliding_windows_params_dir(dataset_name), 'window_params_grid.csv')
+# ./results/jumping_windows_{dataset}/
+def get_jumping_windows_dir(dataset_name):
+  return makedirs(join(res_dir, 'jumping_windows_%s'%dataset_name))
 
-  @classmethod
-  def get_window_params_json(cls, dataset_name):
-    return join(Config.get_sliding_windows_params_dir(dataset_name), '%s.txt')
+def get_windows_params_grid(dataset_name):
+  return join(get_sliding_windows_params_dir(dataset_name), 'window_params_grid.csv')
 
-  # ./results/evaluations
-  evals_dir = join(res_dir, 'evals')
-  ut.makedirs(evals_dir)
+def get_window_params_json(dataset_name):
+  return join(get_sliding_windows_params_dir(dataset_name), '%s.txt')
 
-  # ./results/evaluations/{dataset_name}
-  @classmethod
-  def get_evals_dir(cls,dataset_name):
-    dirname = join(Config.evals_dir,dataset_name)
-    ut.makedirs(dirname)
-    return dirname
+# ./results/evaluations
+evals_dir = makedirs(join(res_dir, 'evals'))
 
-  # ./results/evaluations/{dataset_name}/{dp_config_name}
-  @classmethod
-  def get_evals_dp_dir(cls,dataset_policy):
-    dirname = Config.get_evals_dir(dataset_policy.dataset.get_name())
-    subdirname = join(dirname, dataset_policy.get_config_name())
-    ut.makedirs(subdirname)
-    return subdirname
+# ./results/evaluations/{dataset_name}
+def get_evals_dir(dataset_name):
+  return makedirs(join(evals_dir,dataset_name))
 
-  # ./results/evaluations/{dataset_name}/{dp_config_name}/cached_dets.npy
-  @classmethod
-  def get_dp_detections_filename(cls,dataset_policy):
-    dirname = Config.get_evals_dp_dir(dataset_policy)
-    return join(dirname, 'cached_dets.npy')
+# ./results/evaluations/{dataset_name}/{dp_config_name}
+def get_evals_dp_dir(dataset_policy):
+  dirname = get_evals_dir(dataset_policy.dataset.get_name())
+  return makedirs(join(dirname, dataset_policy.get_config_name()))
 
-  # ./results/evaluations/{dataset_name}/{dp_config_name}/weights/
-  @classmethod
-  def get_dp_weights_dirname(cls,dataset_policy):
-    dirname = Config.get_evals_dp_dir(dataset_policy)
-    subdirname = join(dirname,'weights')
-    ut.makedirs(subdirname)
-    return subdirname
+# ./results/evaluations/{dataset_name}/{dp_config_name}/cached_dets.npy
+def get_dp_detections_filename(dataset_policy):
+  return join(get_evals_dp_dir(dataset_policy), 'cached_dets.npy')
 
-  @classmethod
-  def get_cached_dataset_filename(cls,name):
-    assert(name in Config.pascal_paths)
-    dirname = join(cls.script_dir,'cached_datasets')
-    ut.makedirs(dirname)
-    filename = join(dirname, str(Config.VOCyear)+'_'+name+'.pickle')
-    return filename
+# ./results/evaluations/{dataset_name}/{dp_config_name}/weights/
+def get_dp_weights_dirname(dataset_policy):
+  dirname = get_evals_dp_dir(dataset_policy)
+  return makedirs(join(dirname,'weights'))
 
-  dpm_may25_dirname = '/tscratch/tmp/sergeyk/object_detection/dets_may25_DP/'
+def get_cached_dataset_filename(name):
+  assert(name in pascal_paths)
+  dirname = makedirs(join(res_dir,'cached_datasets'))
+  return join(dirname, str(VOCyear)+'_'+name+'.pickle')
 
-  config_dir = join(script_dir,'configs')
+# ./res_dir/ext_dets/{dataset}_*.npy
+def get_ext_dets_filename(dataset, suffix):
+  dirname = makedirs(join(res_dir,'ext_dets'))
+  dataset_name = dataset.name # NOTE does not depend on # images
+  return join(dirname, '%s_%s.npy'%(dataset_name,suffix))
 
-  dets_configs_dir = join(res_dir,'det_configs')
-  ut.makedirs(dets_configs_dir)
+# directory for gist features
+gist_dir = makedirs(join(res_dir, 'gist_features'))
 
-  # ./res_dir/ext_dets/{dataset}_*.npy
-  @classmethod
-  def get_ext_dets_filename(cls, dataset, suffix):
-    dataset_name = dataset.name # NOTE does not depend on # images
-    dirname = join(Config.res_dir,'ext_dets')
-    ut.makedirs(dirname)
-    return join(dirname, '%s_%s.npy'%(dataset_name,suffix))
-  
-  # directory for gist features
-  gist_dir = join(res_dir, 'gist_features/')
-  ut.makedirs(gist_dir)
-    
-  @classmethod
-  def get_gist_dict_filename(cls, dataset):
-    return Config.gist_dir + dataset + '.npy'
-  
-  ut.makedirs(join(gist_dir,'svm'))
-  
-  @classmethod
-  def get_gist_svm_filename(cls, for_cls):
-    return join(Config.gist_dir,'svm',for_cls)
+def get_gist_dict_filename(dataset_name):
+  return join(gist_dir, dataset_name + '.npy')
+
+def get_gist_svm_filename(for_cls):
+  dirname = makedirs(join(gist_dir,'svm'))
+  return join(dirname,for_cls)
