@@ -1,9 +1,7 @@
-import time
-import numpy as np
 from xml.dom.minidom import parseString
-import json
 
-import util as ut
+from common_imports import *
+
 from synthetic.bounding_box import BoundingBox
 
 # TODO: find library method

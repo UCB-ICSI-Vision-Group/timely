@@ -5,19 +5,13 @@ Created on Nov 20, 2011
 '''
 
 from abc import abstractmethod
-import math
-import numpy as np
-import os
 import fnmatch
-from mpi4py import MPI
+
+from common_imports import *
+from common_mpi import *
 
 from synthetic.training import train_svm, svm_predict, save_svm, load_svm
-import synthetic.util as ut
-from synthetic.config import Config
-
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
+import synthetic.config as config
 
 class Classifier():
   def __init__(self):
@@ -66,15 +60,15 @@ class Classifier():
       
   def train_for_all_cls(self, train_dataset, feats, intervalls, kernel, lower, upper, cls_idx, C):
     cls = train_dataset.classes[cls_idx]
-    ut.makedirs(Config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls))
-    filename = Config.save_dir + self.name + '_svm_'+self.suffix+'/'+ kernel + '/' + str(intervalls) + '/'+ \
+    ut.makedirs(config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls))
+    filename = config.save_dir + self.name + '_svm_'+self.suffix+'/'+ kernel + '/' + str(intervalls) + '/'+ \
       cls + '_' + str(lower) + '_' + str(upper) + '_' + str(C)
     
     images = train_dataset.images
     pos_images = train_dataset.get_pos_samples_for_class(cls)
     pos = []
     neg = []
-    print mpi_rank, 'trains', cls, intervalls, kernel, lower, upper, C
+    print comm_rank, 'trains', cls, intervalls, kernel, lower, upper, C
     for img in range(len(images)):
       vector = self.create_vector(feats, train_dataset.classes.index(cls), img, intervalls, lower, upper)
       if img in pos_images:
@@ -98,7 +92,7 @@ class Classifier():
     return ret
   
   def load_svm(self, cls):
-    filename = Config.res_dir + self.name + '_svm_'+self.suffix+'/' + cls
+    filename = config.res_dir + self.name + '_svm_'+self.suffix+'/' + cls
     model = load_svm(filename)
     return model
   
@@ -110,7 +104,7 @@ class Classifier():
     pos_images = test_dataset.get_pos_samples_for_class(cls)
     pos = []
     neg = []
-    print mpi_rank, 'evaluates', cls, intervalls, kernel, lower, upper, C
+    print comm_rank, 'evaluates', cls, intervalls, kernel, lower, upper, C
     for img in range(len(images)):
       vector = self.create_vector(feats, test_dataset.classes.index(cls), img, intervalls, lower, upper)
       if img in pos_images:
@@ -125,9 +119,9 @@ class Classifier():
     numneg = neg.shape[0]
     
     if local:
-      filename = Config.res_dir + self.name + '_svm_'+self.suffix +'/' +cls
+      filename = config.res_dir + self.name + '_svm_'+self.suffix +'/' +cls
     else:
-      filename = Config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls) + '/'+ \
+      filename = config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls) + '/'+ \
         cls + '_' + str(lower) + '_' + str(upper) + '_' + str(C)
     model = load_svm(filename)
     evaluation = self.evaluate(pos, neg, model)
@@ -139,7 +133,7 @@ class Classifier():
     tn   = sum(neg_res > 0)
     prec = tp/float(tp+fp)
     rec  = tp/float(tp+fn)
-    eval_file = Config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls) + \
+    eval_file = config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls) + \
       '/'+ 'eval_' + str(lower) + '_' + str(upper) + '_' + str(C)
     acc = (tp/float(numpos)*numneg + tn)/float(2*neg.shape[0])
     if file_out:
@@ -151,14 +145,14 @@ class Classifier():
         
     
   def get_best_svm_choices(self):  
-    classes = Config.pascal_classes
+    classes = config.pascal_classes
     maximas = {}
     for i in range(len(classes)):
       maximas[i] = 0  
     best_settings = {}
-    kernels = Config.kernels
+    kernels = config.kernels
     
-    direct = os.path.join(Config.save_dir + self.name + '_svm_'+self.suffix+'/')
+    direct = os.path.join(config.save_dir + self.name + '_svm_'+self.suffix+'/')
     for root, dirs, files in os.walk(direct):
       _,kernel =  os.path.split(root)    
       for direc in dirs:
@@ -184,7 +178,7 @@ class Classifier():
       best_arr[idx,:] = best_settings[classes[idx]] + [idx]
     
     # Store the best svms in resuslts
-    svm_save_dir = os.path.join(Config.res_dir,self.name)+ '_svm_'+self.suffix+'/'
+    svm_save_dir = os.path.join(config.res_dir,self.name)+ '_svm_'+self.suffix+'/'
     os.system('rm ' + svm_save_dir + '*') 
     ut.makedirs(svm_save_dir)
     score_sum = 0
@@ -193,7 +187,7 @@ class Classifier():
       cls = classes[int(row[6])]
       svm_name = cls + '_' + str(row[2]) + '_' + \
         str(row[3]) + '_' + str(row[4])
-      os.system('cp ' + Config.save_dir + self.name+ '_svm_'+self.suffix+'/' + str(kernels[int(row[0])]) +\
+      os.system('cp ' + config.save_dir + self.name+ '_svm_'+self.suffix+'/' + str(kernels[int(row[0])]) +\
                 '/' + str(int(row[1])) + '/' + svm_name + ' ' + svm_save_dir + cls)
       score = row[5]
       score_sum += score
@@ -204,12 +198,12 @@ class Classifier():
     
     best_table = ut.Table(best_arr, cols)
     best_table.name = 'Best_'+self.name+'_values'
-    save_best_table_name = os.path.join(Config.res_dir,'%s_svm_%s'%(self.name,self.suffix),'best_table') 
+    save_best_table_name = os.path.join(config.res_dir,'%s_svm_%s'%(self.name,self.suffix),'best_table') 
     best_table.save(save_best_table_name)
     print best_table
     
   def get_best_table(self):
-    best_table_name = os.path.join(Config.res_dir,'%s_svm_%s'%(self.name,self.suffix),'best_table') 
+    best_table_name = os.path.join(config.res_dir,'%s_svm_%s'%(self.name,self.suffix),'best_table') 
     return ut.Table.load(best_table_name)
     
     

@@ -1,7 +1,7 @@
 from synthetic.dataset import Dataset
 from synthetic.training import get_codebook
 from mpi4py import MPI
-from synthetic.config import Config 
+import synthetic.config as config 
 
 comm = MPI.COMM_WORLD
 mpi_rank = comm.Get_rank()
@@ -14,7 +14,7 @@ if __name__=='__main__':
   num_words = 3000
   iterations = 8
 
-  all_classes = Config.pascal_classes
+  all_classes = config.pascal_classes
   for cls_idx in range(mpi_rank, len(all_classes), mpi_size): # PARALLEL
   #for cls in all_classes:
     cls = all_classes[cls_idx]

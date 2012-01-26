@@ -11,7 +11,7 @@ import os
 
 from synthetic.dpm_classifier import Classifier
 from synthetic.dataset import Dataset
-from synthetic.config import Config
+import synthetic.config as config
 
 comm = MPI.COMM_WORLD
 mpi_rank = comm.Get_rank()
@@ -42,7 +42,7 @@ def csc_classifier_train():
   train_set = 'full_pascal_train'
   train_dataset = Dataset(train_set)  
   suffix = 'half'
-  filename = Config.get_ext_dets_filename(train_dataset, 'csc_'+suffix)
+  filename = config.get_ext_dets_filename(train_dataset, 'csc_'+suffix)
   csc_train = np.load(filename)
   csc_train = csc_train[()]  
   csc_train = csc_train.subset(['score', 'cls_ind', 'img_ind'])
@@ -52,7 +52,7 @@ def csc_classifier_train():
   
   val_set = 'full_pascal_val'
   val_dataset = Dataset(val_set)  
-  filename = Config.get_ext_dets_filename(val_dataset, 'csc_'+suffix)
+  filename = config.get_ext_dets_filename(val_dataset, 'csc_'+suffix)
   csc_test = np.load(filename)
   csc_test = csc_test[()]  
   csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
@@ -75,8 +75,8 @@ def csc_classifier_train():
     intervalls = params[3]
     cls_idx = params[4]
     C = params[5]
-    cls = Config.pascal_classes[cls_idx]
-    filename = Config.save_dir + csc_classif.name + '_svm_'+csc_classif.suffix+'/'+ kernel + '/' + str(intervalls) + '/'+ \
+    cls = config.pascal_classes[cls_idx]
+    filename = config.save_dir + csc_classif.name + '_svm_'+csc_classif.suffix+'/'+ kernel + '/' + str(intervalls) + '/'+ \
       cls + '_' + str(lower) + '_' + str(upper) + '_' + str(C)
     
     if not os.path.isfile(filename):
@@ -87,7 +87,7 @@ if __name__=='__main__':
   test_set = 'full_pascal_test'
   for suffix in ['half']:#,'default']:
     test_dataset = Dataset(test_set)  
-    filename = Config.get_ext_dets_filename(test_dataset, 'csc_'+suffix)
+    filename = config.get_ext_dets_filename(test_dataset, 'csc_'+suffix)
     csc_test = np.load(filename)
     csc_test = csc_test[()]  
     csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
@@ -95,17 +95,17 @@ if __name__=='__main__':
     csc_classif = CSCClassifier(suffix)
     csc_test.arr = csc_classif.normalize_scores(csc_test.arr)
     
-    classes = Config.pascal_classes
+    classes = config.pascal_classes
     
     best_table = csc_classif.get_best_table()
     
-    svm_save_dir = os.path.join(Config.res_dir,csc_classif.name)+ '_svm_'+csc_classif.suffix+'/'
+    svm_save_dir = os.path.join(config.res_dir,csc_classif.name)+ '_svm_'+csc_classif.suffix+'/'
     score_file = os.path.join(svm_save_dir,'test_accuracy.txt')
                       
     for cls_idx in range(mpi_rank, 20, mpi_size):
       row = best_table.filter_on_column('cls_ind', cls_idx).arr
       intervalls = row[0,best_table.cols.index('bins')]
-      kernel = Config.kernels[int(row[0,best_table.cols.index('kernel')])]
+      kernel = config.kernels[int(row[0,best_table.cols.index('kernel')])]
       lower = row[0,best_table.cols.index('lower')]
       upper = row[0,best_table.cols.index('upper')]
       C = row[0,best_table.cols.index('C')]
