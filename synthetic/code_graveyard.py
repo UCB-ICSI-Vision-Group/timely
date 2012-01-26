@@ -100,15 +100,15 @@ class SyntheticClassifierDetector(Detector):
 class TestSyntheticClassifierDetector:
   def test_init(self):
     dataset = Dataset('test_pascal_val')
-    config = Config.get_default_detector_config()
-    config.update(Config.get_default_good_synthetic_extra())
+    config = config.get_default_detector_config()
+    config.update(config.get_default_good_synthetic_extra())
     d = SyntheticClassifierDetector(dataset,'dog',config)
 
   def test_visualize_distributions(self):
     dataset = Dataset('test_pascal_val')
     # good detector
-    config = Config.get_default_detector_config()
-    config.update(Config.get_default_bad_synthetic_extra())
+    config = config.get_default_detector_config()
+    config.update(config.get_default_bad_synthetic_extra())
     d = SyntheticClassifierDetector(dataset,'dog',config)
     filename = 'good_detector%s.png'
     d.visualize_distributions(filename)
@@ -116,9 +116,9 @@ class TestSyntheticClassifierDetector:
     os.remove(filename)
 
     # bad detector
-    config = Config.get_default_detector_config()
+    config = config.get_default_detector_config()
     config['avg_time_per_image'] = 10 # half the default
-    config.update(Config.get_default_bad_synthetic_extra())
+    config.update(config.get_default_bad_synthetic_extra())
     d = SyntheticClassifierDetector(dataset,'dog',config)
     filename = 'bad_detector%s.png'
     d.visualize_distributions(filename)

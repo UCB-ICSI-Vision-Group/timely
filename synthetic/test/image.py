@@ -2,7 +2,8 @@ import time
 import numpy as np
 
 from synthetic.image import *
-from synthetic.config import Config
+from synthetic.sliding_windows import *
+import synthetic.config as config
 
 class TestImage:
   def test_get_windows(self):
@@ -20,7 +21,7 @@ class TestImage:
          [ 1., 1., 3., 2.],
          [ 2., 1., 2., 2.],
          [ 0., 0., 3., 3.],
-         [0., 0., 5., 3.]])
+         [ 0., 0., 4., 3.]])
     assert(windows.shape[0] > 0)
     print(windows)
     assert(np.all(correct == windows))

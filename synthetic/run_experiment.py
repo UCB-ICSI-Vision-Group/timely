@@ -2,27 +2,21 @@
 """
 Wrapper script for running the final stages of our CVPR12 experiments.
 """
-import os,time,sys,shutil,re,glob
-import json
+import shutil
+import glob
 import argparse
-from pprint import pprint
-import numpy as np
 import matplotlib.pyplot as plt
 import random
 import string
+
+from common_imports import *
+from common_mpi import *
 
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.sliding_windows import SlidingWindows 
 from synthetic.evaluation import Evaluation
-from synthetic.config import Config
-import synthetic.util as ut
-
-from mpi4py import MPI
-from synthetic.safebarrier import safebarrier
-comm = MPI.COMM_WORLD
-comm_rank = comm.Get_rank()
-comm_size = comm.Get_size()
+import synthetic.config as config
 
 def load_configs(args_string):
   """
@@ -42,12 +36,12 @@ def load_configs(args_string):
   config_filenames = args_string.split(',')
   # check if we only have one file and if its a directory
   if len(config_filenames)==1:
-    if os.path.isdir(Config.config_dir+'/'+config_filenames[0]):
+    if os.path.isdir(config.config_dir+'/'+config_filenames[0]):
       dirname = config_filenames[0]
-      config_filenames = glob.glob(Config.config_dir+'/'+dirname+'/*.json')
+      config_filenames = glob.glob(config.config_dir+'/'+dirname+'/*.json')
       return [load_config(filename) for filename in config_filenames]
   # load the json files
-  full_filename = lambda filename: os.path.join(Config.config_dir,filename+'.json')
+  full_filename = lambda filename: os.path.join(config.config_dir,filename+'.json')
   return [load_config(full_filename(filename)) for filename in config_filenames]
 
 def main():
@@ -124,7 +118,7 @@ def main():
 
   # and plot the comparison if multiple config files were given
   if not args.no_apvst and len(configs)>1 and comm_rank==0:
-    dirname = Config.get_evals_dir(dataset.get_name())
+    dirname = config.get_evals_dir(dataset.get_name())
     filename = '-'.join([dp.get_config_name() for dp in dps])
     # TODO: temp cause filename too long or something
     filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(8))

@@ -1,20 +1,15 @@
-import sys,time,os,types
 from IPython.parallel import Client
-import numpy as np
+from string import atof
 import scipy.stats as st
 import matplotlib.pyplot as plt
 from sklearn.cross_validation import KFold
-from mpi4py import MPI
 
-from synthetic.config import Config
+from common_imports import *
+from common_mpi import *
+
+import synthetic.config as config
 from synthetic.sliding_windows import WindowParams
 from synthetic.priorsJT import PriorsJT
-import synthetic.util as ut
-from string import atof
-
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
 
 class ClassPriors:
   """
@@ -88,7 +83,7 @@ class ClassPriors:
         if pred_prob == 0:
           num_unknown += 1
       print("Num unknown: %d/%d"%(num_unknown,val_model.shape()[0]))
-    filename = Config.class_priors_plot%'marginal_prob_error'
+    filename = config.class_priors_plot%'marginal_prob_error'
     title = "Error of predicted vs. true marginal probability for 4-fold validation on the trainval set"
     self.plot_dist(errors,filename,title=title)
 
@@ -135,7 +130,7 @@ class ClassPriors:
       plt.title('Perfect Class Prediction Loss, 4-Fold Cross-Validation')
       plt.xlabel('# actions taken',size='large')
       plt.ylabel('loss (fraction of ground truth correctly covered)',size='large')
-      plt.savefig(os.path.join(Config.res_dir,'cross_val_lam1_lam2/')+'fig_'+str(lam1)+'_'+str(lam2)+'.png')
+      plt.savefig(os.path.join(config.res_dir,'cross_val_lam1_lam2/')+'fig_'+str(lam1)+'_'+str(lam2)+'.png')
     return auc
 
 def predict_rows_split(params):
@@ -378,7 +373,7 @@ if __name__ == '__main__':
   dataset = Dataset('full_pascal_trainval')
   cp = ClassPriors(dataset, 'no_smooth')
   
-  find_best_lam1_lam2(os.path.join(Config.res_dir,'cross_val_lam1_lam2/')+'auc.txt')
+  find_best_lam1_lam2(os.path.join(config.res_dir,'cross_val_lam1_lam2/')+'auc.txt')
 
   #cp.evaluate_marginal_prob_error()
   lams = []
@@ -386,7 +381,7 @@ if __name__ == '__main__':
     for lam2 in np.arange(0,1-lam1,0.05):
       lams.append((lam1,lam2))
   cp.evaluate_method(0.05, 0)
-#  auc_file = open(os.path.join(Config.res_dir,'cross_val_lam1_lam2/')+'auc.txt','a')
+#  auc_file = open(os.path.join(config.res_dir,'cross_val_lam1_lam2/')+'auc.txt','a')
 #  for lamdex in range(mpi_rank, len(lams), mpi_size):
 #    lam = lams[lamdex]
 #    auc = cp.evaluate_method(lam[0], lam[1])

@@ -1,23 +1,19 @@
-from dataset import *
 import numpy as np
-import config as cfg
 import time
 import subprocess as subp
-from multiprocessing import Pool
-import util as ut
-from mpi4py import MPI
 from string import atoi
 from numpy.numarray.numerictypes import Int
 import scipy.cluster.vq as sp
 from sklearn import cluster
 
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
+import util as ut
+import config as cfg
+from dataset import *
+from common_mpi import *
 
 class Extractor():
   def __init__(self):
-    self.save_dir = Config.save_dir + 'features/'   
+    self.save_dir = config.save_dir + 'features/'   
     
     if not os.path.isdir(self.save_dir):
       os.mkdir(self.save_dir)
@@ -56,14 +52,14 @@ class Extractor():
       num_feats = 150000
       
       idx = 0
-      pers_max = num_feats/mpi_size
+      pers_max = num_feats/comm_size
       feat_mat = np.zeros((num_feats,131))
-      for windex in range(mpi_rank, all_wins.shape[0], mpi_size):
+      for windex in range(comm_rank, all_wins.shape[0], comm_size):
         win = all_wins[windex,:]
         img = d.images[win[4].astype(Int)]
         feat = self.get_feature_with_pos(feature_type, img, win[0:4])
         feat = np.random.permutation(feat)[:min(200,pers_max - idx),:]
-        feat_mat[idx+pers_max*mpi_rank:idx+pers_max*mpi_rank+feat.shape[0],:] = feat
+        feat_mat[idx+pers_max*comm_rank:idx+pers_max*comm_rank+feat.shape[0],:] = feat
           
         idx += feat.shape[0]
         if idx >= pers_max:
@@ -75,7 +71,7 @@ class Extractor():
       feature_matrix = np.zeros((num_feats,131))
       comm.Reduce(feat_mat,feature_matrix)
             
-      if not mpi_rank == 0:
+      if not comm_rank == 0:
         return
         
       print feature_matrix.shape
@@ -95,18 +91,18 @@ class Extractor():
       time_filename = self.save_dir + feature_type + '/' + 'codebooks/time' 
   
       print 'start computing codebook...'
-      #if mpi_rank == 0: infile = open(filename, 'w')
+      #if comm_rank == 0: infile = open(filename, 'w')
       t_codebook = time.time()
       codebook = self.create_codebook(feature_matrix, num_words, iterations,\
                                  kmeansBatch=kmeansBatch)        
       t_codebook = time.time() - t_codebook
-      if mpi_rank == 0 or kmeansBatch:
+      if comm_rank == 0 or kmeansBatch:
         print 'saving codebook...' 
         print codebook.shape
         np.savetxt(filename, codebook.view(float))
         print 'stored in', filename
         #infile.close()
-      if mpi_rank == 0 or kmeansBatch:
+      if comm_rank == 0 or kmeansBatch:
         time_file = open(time_filename, 'w')
         time_file.write(str(t_codebook))
         time_file.close() 
@@ -120,7 +116,7 @@ class Extractor():
     #feature_type = np.matrix([feature_list[i][j][4:] for j in arange(len(feature_list[i])) ])
   
     feature_type = sp.whiten(feature_list)
-    print mpi_rank,'starts k-means'
+    print comm_rank,'starts k-means'
     
     
     if kmeansBatch:
@@ -128,17 +124,17 @@ class Extractor():
       kmeaner = cluster.MiniBatchKMeans(means,max_iter=iterations, tol=0.01,chunk_size=means*10)
       codebook = np.matrix(kmeaner.fit(feature_type).cluster_centers_)
     else:
-      print 'k-means with',mpi_size,'nodes and',iterations/mpi_size+1,'iterations each'
-      codebook = sp.kmeans(feature_type, means, iter=iterations/mpi_size+1)  
+      print 'k-means with',comm_size,'nodes and',iterations/comm_size+1,'iterations each'
+      codebook = sp.kmeans(feature_type, means, iter=iterations/comm_size+1)  
       distortion = codebook[1]
-      print mpi_rank, distortion
+      print comm_rank, distortion
       codebook = np.matrix(codebook[0])
       min_codebook = 10
       minimum = comm.allreduce(distortion, min_codebook,op=MPI.MIN)
       codebook = codebook[0]
     
       if distortion == minimum:
-        comm.bcast(codebook[0], root=mpi_rank)
+        comm.bcast(codebook[0], root=comm_rank)
     return codebook
   
   def get_image_feature(self,d , feature_type, img_ind, bound_box):
@@ -164,7 +160,7 @@ class Extractor():
     if not os.path.isfile(filename):
       # extract featues and write to file
       print 'extracting',feature,'for',img.name[0:-4],'...'
-      feature_type = self.dense_extract(cfg.Config.VOC_dir + 'JPEGImages/' + img.name,
+      feature_type = self.dense_extract(cfg.config.VOC_dir + 'JPEGImages/' + img.name,
                       feature, (0, 0, img.size[0], img.size[1]),sizes, step_size)
       if feature[0:4] == 'phog':
         np.savetxt(filename, feature_type.view(float))
@@ -338,7 +334,7 @@ class Extractor():
       for feature in feature_type:#, 'phow', 'cphow', 'phog180', 'phog360']:          
         ut.makedirs(self.save_dir + feature + '/' )
         ut.makedirs(self.save_dir + feature + '/times/')               
-        for img in range(mpi_rank, len(images), mpi_size): # PARALLEL
+        for img in range(comm_rank, len(images), comm_size): # PARALLEL
           image = images[img]
           self.create_image_feature(image, feature, sizes, step_size)
           
@@ -353,7 +349,7 @@ class Extractor():
         codebook = self.get_codebook(d, feature, num_words=3000, iterations=iterations)
         cls_gt = d.get_ground_truth_for_class(cls, True,True)
         img_idx = cls_gt.arr[:,cls_gt.cols.index('img_ind')]
-        for img in range(mpi_rank, len(img_idx), mpi_size): # PARALLEL
+        for img in range(comm_rank, len(img_idx), comm_size): # PARALLEL
           image = images[img_idx[img].astype(Int)]
           pos_bounds = np.matrix([[0,0],[image.size[0],image.size[1]]])
           self.get_assignments(pos_bounds, feature, codebook, cls, image)
@@ -368,14 +364,14 @@ if __name__ == '__main__':
   step_size = 4
   
   #e.extract_all(feature_type,image_sets, sizes, step_size)
-  all_classes = Config.pascal_classes
+  all_classes = config.pascal_classes
 #  all_classes = ['cat']
 #  e.extract_all_assignments('dsift', image_sets, all_classes)
   d = Dataset(image_set)
   codebook = e.get_codebook(d, feature_type)  
   print 'codebook loaded'
   
-  for img_ind in range(mpi_rank,len(d.images),mpi_size):
+  for img_ind in range(comm_rank,len(d.images),comm_size):
     img = d.images[img_ind]
   #for img in d.images:
     e.get_assignments(np.array([0,0,img.size[0],img.size[1]]), feature_type, codebook, img)

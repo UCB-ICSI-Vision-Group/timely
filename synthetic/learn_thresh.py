@@ -9,7 +9,7 @@ from mpi4py import MPI
 import os
 
 from synthetic.dataset import Dataset
-from synthetic.config import Config
+import synthetic.config as config
 from synthetic.classifier import Classifier
 
 comm = MPI.COMM_WORLD
@@ -21,9 +21,9 @@ if __name__=='__main__':
   train_set = 'full_pascal_train'
   train_dataset = Dataset(train_set)  
   images = train_dataset.images
-  classes = Config.pascal_classes
+  classes = config.pascal_classes
   suffix = 'default'
-  filename = Config.get_ext_dets_filename(train_dataset, 'csc_'+suffix)
+  filename = config.get_ext_dets_filename(train_dataset, 'csc_'+suffix)
   csc_train = np.load(filename)
   csc_train = csc_train[()]  
   csc_train = csc_train.subset(['score', 'cls_ind', 'img_ind'])
@@ -35,7 +35,7 @@ if __name__=='__main__':
   
   threshs = np.arange(0,1.01,0.05)
   
-  result_filename = Config.res_dir + 'thresh_classify.txt'
+  result_filename = config.res_dir + 'thresh_classify.txt'
   
   
   result_file = open(result_filename, 'a')

@@ -1,7 +1,7 @@
 import numpy as np
 
 from synthetic.dataset import Dataset
-from synthetic.config import Config
+import synthetic.config as config
 
 class TestDataset:
   def test_load_from_json(self):

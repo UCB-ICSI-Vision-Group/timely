@@ -3,7 +3,7 @@ import scipy
 import numpy as np
 
 import synthetic.util as ut
-from synthetic.config import Config
+import synthetic.config as config
 from synthetic.image import BoundingBox
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
@@ -28,7 +28,7 @@ class TestDatasetPolicy:
     dets = policy.load_ext_detections(self.dataset,'dpm','dpm_may25')
     # load the same thing that I computed in Matlab, to check that my nms works
     # the same
-    filename = os.path.join(Config.test_support_dir, 'val_dets.mat')
+    filename = os.path.join(config.test_support_dir, 'val_dets.mat')
     dets_correct = scipy.io.loadmat(filename)['dets']
     cols = ['x1','y1','x2','y2','dummy','dummy','dummy','dummy','score','cls_ind','img_ind']
     good_ind = [0,1,2,3,8,9,10]

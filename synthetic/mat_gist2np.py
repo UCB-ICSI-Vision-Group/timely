@@ -5,14 +5,14 @@ Created on Nov 17, 2011
 '''
 
 import os
-from synthetic.config import Config
+import synthetic.config as config
 import numpy as np
 import scipy.io
 import synthetic.util as ut
 import cPickle
 
-folder = Config.VOC_dir + 'JPEGImages/gist/'
-gist_save = os.path.join(Config.res_dir,'gist_features/')
+folder = config.VOC_dir + 'JPEGImages/gist/'
+gist_save = os.path.join(config.res_dir,'gist_features/')
 ut.makedirs(gist_save)
 files = os.listdir(folder)
 

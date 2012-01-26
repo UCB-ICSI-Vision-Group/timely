@@ -1,24 +1,12 @@
-import itertools
-import cPickle
-import sys,os,time,types
-import json
-import numpy as np
 import scipy.stats as st
 import matplotlib.pyplot as plt
 from sklearn.cross_validation import KFold
 
+from common_imports import *
+from common_mpi import *
+
 from synthetic.bounding_box import BoundingBox
-from synthetic.config import Config
-import synthetic.util as ut
-from synthetic.safebarrier import safebarrier
-#from synthetic.jumping_windows import LookupTable
-
-import synthetic.kde
-
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-comm_rank = comm.Get_rank()
-comm_size = comm.Get_size()
+import synthetic.config as config
 
 class WindowParams:
   """
@@ -95,7 +83,7 @@ class SlidingWindows:
       cls = 'all'
     key = '%s_%s_%s'%(0.5,mode,cls)
     if key not in self.cached_params:
-      filename = Config.get_window_params_json(self.train_name)%key
+      filename = config.get_window_params_json(self.train_name)%key
       window_params = WindowParams.load_from_json(filename)
       self.cached_params[key] = window_params
     return self.cached_params[key]
@@ -170,7 +158,7 @@ class SlidingWindows:
     priority_vals = [0]
     classes = self.dataset.classes+['all']
 
-    dirname = Config.get_sliding_windows_metaparams_dir(self.train_name)
+    dirname = config.get_sliding_windows_metaparams_dir(self.train_name)
     table_filename = os.path.join(dirname,'table.csv')
     if os.path.exists(table_filename):
       table = ut.Table.load_from_csv(table_filename)
@@ -400,7 +388,7 @@ class SlidingWindows:
     """
     print("SlidingWindows: getting stats of the %s dataset"%dataset.get_name())
     t = time.time()
-    results_file = Config.get_window_stats_results(dataset.get_name())
+    results_file = config.get_window_stats_results(dataset.get_name())
     if os.path.exists(results_file) and not (force or plot):
       with open(results_file) as f:
         results = cPickle.load(f)
@@ -421,7 +409,7 @@ class SlidingWindows:
         scale =  1.*bboxes[:,2] / SlidingWindows.MIN_WIDTH
         scale_expanded = SlidingWindows.expand_dist(scale,bounds=(1,50)) 
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'scale',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'scale',cls)
           SlidingWindows.plot_dist(scale,filename,scale_expanded,
               xlim=[0,55], xlabel='scale',title=cls,force=force)
 
@@ -429,7 +417,7 @@ class SlidingWindows:
         x_scaled = 1.*bboxes[:,0] * scale / image_widths
         x_scaled_expanded = SlidingWindows.expand_dist(x_scaled)
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'x_scaled',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'x_scaled',cls)
           SlidingWindows.plot_dist(x_scaled,filename,x_scaled_expanded,
               xlim=[-2,15], xlabel='x as a fraction of the scaled width',title=cls,force=force)
 
@@ -437,7 +425,7 @@ class SlidingWindows:
         x_frac = 1.*bboxes[:,0] / image_widths
         x_frac_expanded = SlidingWindows.expand_dist(x_frac,bounds=(0,1))
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'x_frac',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'x_frac',cls)
           SlidingWindows.plot_dist(x_frac,filename,x_frac_expanded,
               xlim=[-0.2,1.2],xlabel='x as a fraction of the width',title=cls,force=force)
 
@@ -445,7 +433,7 @@ class SlidingWindows:
         y_scaled = 1.*bboxes[:,1]*bboxes[:,3]/SlidingWindows.MIN_WIDTH/image_heights
         y_scaled_expanded = SlidingWindows.expand_dist(y_scaled)
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'y_scaled',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'y_scaled',cls)
           SlidingWindows.plot_dist(y_scaled,filename,y_scaled_expanded,
               xlim=[-2,15],xlabel='y as a fraction of the scaled height',title=cls,force=force)
 
@@ -453,7 +441,7 @@ class SlidingWindows:
         y_frac = 1.*bboxes[:,1]/image_heights
         y_frac_expanded = SlidingWindows.expand_dist(y_frac,bounds=(0,1))
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'y_frac',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'y_frac',cls)
           SlidingWindows.plot_dist(y_frac,filename,y_frac_expanded,
               xlim=[-0.2,1.2],xlabel='y as a fraction of the frac height',title=cls,force=force)
 
@@ -461,7 +449,7 @@ class SlidingWindows:
         log_ratio = np.log(1.*bboxes[:,3]/bboxes[:,2])
         log_ratio_expanded = SlidingWindows.expand_dist(log_ratio)
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'log_ratio',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'log_ratio',cls)
           SlidingWindows.plot_dist(log_ratio,filename,log_ratio_expanded,
               xlim=[-2.5,2.5],xlabel='log of aspect ratio',title=cls,force=force)
         
@@ -469,7 +457,7 @@ class SlidingWindows:
         dists = np.array((x_scaled,y_scaled))
         expanded_dists = np.array((x_scaled_expanded,y_scaled_expanded))
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'x_scaled_vs_y_scaled',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'x_scaled_vs_y_scaled',cls)
           SlidingWindows.plot_two_dists(dists,filename,expanded_dists,
               xlim=[-2,15],ylim=[-2,15],
               xlabel='x as a fraction of the scaled width',
@@ -480,7 +468,7 @@ class SlidingWindows:
         dists = np.array((x_frac,y_frac))
         expanded_dists = np.array((x_frac_expanded,y_frac_expanded))
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'x_frac_vs_y_frac',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'x_frac_vs_y_frac',cls)
           SlidingWindows.plot_two_dists(dists,filename,expanded_dists,
               xlim=[-0.2,1.2],ylim=[-0.2,1.2],
               xlabel='x as a fraction of the width',
@@ -491,7 +479,7 @@ class SlidingWindows:
         dists = np.array((x_frac,scale))
         expanded_dists = np.array((x_frac_expanded,scale_expanded))
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'x_frac_vs_scale',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'x_frac_vs_scale',cls)
           SlidingWindows.plot_two_dists(dists,filename,expanded_dists,
               xlim=[-0.2,1.2],ylim=[0,55],
               xlabel='x as a fraction of the width',
@@ -502,7 +490,7 @@ class SlidingWindows:
         dists = np.array((x_scaled,scale))
         expanded_dists = np.array((x_scaled_expanded,scale_expanded))
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'x_scaled_vs_scale',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'x_scaled_vs_scale',cls)
           SlidingWindows.plot_two_dists(dists,filename,expanded_dists,
               xlim=[-2,15],ylim=[0,55],
               xlabel='x as a fraction of the scaled width',
@@ -513,7 +501,7 @@ class SlidingWindows:
         dists = np.array((log_ratio,scale))
         expanded_dists = np.array((log_ratio_expanded,scale_expanded))
         if plot:
-          filename = Config.get_window_stats_plot(dataset.get_name(),'log_ratio_vs_scale',cls)
+          filename = config.get_window_stats_plot(dataset.get_name(),'log_ratio_vs_scale',cls)
           SlidingWindows.plot_two_dists(dists,filename,expanded_dists,
               xlim=[-2.5,2.5],ylim=[0,55],
               xlabel='log of aspect ratio',
@@ -670,7 +658,7 @@ class SlidingWindows:
     y_samples = int(img_height/500. * metaparams['samples_per_500px'])
 
     # check for cached windows and return if found
-    dirname = Config.get_sliding_windows_cached_dir(self.train_name)
+    dirname = config.get_sliding_windows_cached_dir(self.train_name)
     filename = '%s_%d_%d_%s_%s_%d_%d_%d.npy'%(
         cls,
         metaparams['samples_per_500px'],
@@ -687,7 +675,6 @@ class SlidingWindows:
       # load the kde for x_scaled,y_scaled,scale,log_ratio
       stats = self.get_stats() 
       kde = stats['%s_kde'%cls]
-      #kde = synthetic.kde.gaussian_kde(kde.dataset)
       x_frac = kde.dataset[0,:]
       y_frac = kde.dataset[1,:]
       scale = kde.dataset[2,:]

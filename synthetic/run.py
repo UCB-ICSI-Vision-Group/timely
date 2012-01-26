@@ -3,29 +3,23 @@
 Wrapper script to execute different functions of our system.
 """
 
-import re
 import shutil
-import os,time,sys
 import argparse
-import numpy as np
 import matplotlib.pyplot as plt
+
+from common_imports import *
+from common_mpi import *
 
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.evaluation import Evaluation
 from synthetic.sliding_windows import SlidingWindows 
-from synthetic.config import Config
-import synthetic.util as ut
+import synthetic.config as config
 from synthetic.extractor import Extractor
 from synthetic.training import *
 from synthetic.jumping_windows import JumpingWindowsDetector,LookupTable,RootWindow
 from synthetic.jumping_windows_with_grid import JumpingWindowsDetectorGrid,\
   LookupTable_withgrid,RootWindow_withgrid
-
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-comm_rank = comm.Get_rank()
-comm_size = comm.Get_size()
 
 def main():
   parser = argparse.ArgumentParser(description='Execute different functions of our system')
@@ -88,9 +82,9 @@ def main():
   sw = SlidingWindows(dataset,train_dataset)
 
   if args.clear_tmp:
-    dirname = Config.get_sliding_windows_cached_dir(train_dataset.get_name())
+    dirname = config.get_sliding_windows_cached_dir(train_dataset.get_name())
     shutil.rmtree(dirname)
-    dirname = Config.get_sliding_windows_cached_dir(dataset.get_name())
+    dirname = config.get_sliding_windows_cached_dir(dataset.get_name())
     shutil.rmtree(dirname)
 
   if args.mode=='assemble_dpm_dets':
@@ -134,7 +128,7 @@ def main():
 
     # If asked to, and did more than one condition, plot comparison as well
     if args.compare_evals and len(args.priors)>1 and comm_rank==0:
-      filename = os.path.join(Config.evals_dir, '%s_%s_%s_%s.png'%(
+      filename = os.path.join(config.evals_dir, '%s_%s_%s_%s.png'%(
             dataset.get_name(),
             '-'.join(args.priors),
             args.detector,
@@ -163,7 +157,7 @@ def main():
     for cls_idx in range(mpi_rank, len(classes), mpi_size):
     #for cls in dataset.classes:
       cls = classes[cls_idx]
-      dirname = Config.get_jumping_windows_dir(dataset.get_name())
+      dirname = config.get_jumping_windows_dir(dataset.get_name())
       filename = os.path.join(dirname,'%s'%cls)
       sw.evaluate_recall(cls, filename, metaparams=None, mode='jw', plot=True)
   
@@ -176,9 +170,9 @@ def main():
     jw = JumpingWindowsDetectorGrid()
     sw.jw = jw
     for cls in dataset.classes:
-      dirname = Config.get_jumping_windows_dir(dataset.get_name())
+      dirname = config.get_jumping_windows_dir(dataset.get_name())
       filename = os.path.join(dirname,'%s'%cls)
-      if os.path.isfile(Config.save_dir + 'JumpingWindows/'+cls):
+      if os.path.isfile(config.save_dir + 'JumpingWindows/'+cls):
         sw.evaluate_recall(cls, filename, metaparams=None, mode='jw', plot=True)
 
   if args.mode=='train_svm':
@@ -187,7 +181,7 @@ def main():
     d = Dataset('full_pascal_train')
     dtest = Dataset('full_pascal_val')  
     e = Extractor()  
-    classes = Config.pascal_classes  
+    classes = config.pascal_classes  
     num_words = 3000
     iters = 5
     feature_type = 'dsift'
@@ -201,9 +195,9 @@ def main():
     kernel = args.kernel
     
     if mpi_rank == 0:
-      ut.makedirs(Config.save_dir + 'features/' + feature_type + '/times/')
-      ut.makedirs(Config.save_dir + 'features/' + feature_type + '/codebooks/times/')
-      ut.makedirs(Config.save_dir + 'features/' + feature_type + '/svms/train_times/')
+      ut.makedirs(config.save_dir + 'features/' + feature_type + '/times/')
+      ut.makedirs(config.save_dir + 'features/' + feature_type + '/codebooks/times/')
+      ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/train_times/')
       
     for cls_idx in range(mpi_rank, len(classes), mpi_size): 
     #for cls in classes:
@@ -238,7 +232,7 @@ def main():
     return
 
   if args.mode=='final_metaparams':
-    dirname = Config.get_sliding_windows_metaparams_dir(train_dataset.get_name())
+    dirname = config.get_sliding_windows_metaparams_dir(train_dataset.get_name())
     # currently these are the best auc/complexity params
     best_params_for_classes = [
         (62,15,12,'importance',0), #aeroplane

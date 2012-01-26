@@ -1,41 +1,35 @@
-import numpy as np
-import os
+from sklearn.cross_validation import KFold
 
-from synthetic.config import Config
+from common_imports import *
+from common_mpi import *
+
+from synthetic.class_priors import NGramModel
+import synthetic.util as ut
+import synthetic.config as config
 from synthetic.detector import Detector
 from synthetic.image import Image
-import time
 from synthetic.training import *
-import cPickle
-from mpi4py import MPI
-from synthetic.class_priors import NGramModel
-from sklearn.cross_validation import KFold
-import synthetic.util as ut
-
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
 
 class GistPriors():
   """
   Compute a likelihood-vector for the classes given a (precomputed) gist detection
   """
-  def __init__(self, dataset):
+  def __init__(self, dataset_name):
     """
     Load all gist features right away
     """
     print("Started loading GIST")
     t = time.time()
-    self.gist_table = np.load(Config.get_gist_dict_filename(dataset))
+    self.gist_table = np.load(config.get_gist_dict_filename(dataset_name))
     print("Time spent loading gist: %.3f"%(time.time()-t))
     self.svms = self.load_all_svms()
-    self.dataset = Dataset(dataset)
+    self.dataset = Dataset(dataset_name)
         
   def load_all_svms(self):
     svms = {}
-    for cls in Config.pascal_classes:
-      if os.path.exists(Config.get_gist_svm_filename(cls)):
-        svms[cls] = load_svm(Config.get_gist_svm_filename(cls))
+    for cls in config.pascal_classes:
+      if os.path.exists(config.get_gist_svm_filename(cls)):
+        svms[cls] = load_svm(config.get_gist_svm_filename(cls))
       else:
         print 'gist svm for',cls,'does not exist'
     return svms
@@ -47,10 +41,10 @@ class GistPriors():
     return svm_proba(gist, self.svms[cls])
          
   def get_priors(self, img):
-    num_classes = len(Config.pascal_classes)
+    num_classes = len(config.pascal_classes)
     prior_vect = []
     for cls_idx in range(num_classes):
-      cls = Config.pascal_classes[cls_idx]
+      cls = config.pascal_classes[cls_idx]
       prob = self.get_proba_for_cls(cls, img)[0,1]
       prior_vect.append(prob)      
     return prior_vect
@@ -85,7 +79,7 @@ class GistPriors():
     """
     Train classifiers to 
     """
-    for cls in Config.pascal_classes:
+    for cls in config.pascal_classes:
       print 'train class', cls
       t = time.time()
       pos = dataset.get_pos_samples_for_class(cls)
@@ -100,12 +94,12 @@ class GistPriors():
       y = [1]*num_pos + [-1]*num_pos
       print '\tcompute svm'
       svm = train_svm(x, y, kernel='linear',C=C,probab=True)
-      svm_filename = Config.get_gist_svm_filename(cls)+'_'+str(C)
+      svm_filename = config.get_gist_svm_filename(cls)+'_'+str(C)
       save_svm(svm, svm_filename)     
       print '\ttook', time.time()-t,'sec'
 
   def evaluate_svm(self, cls, dataset, C):
-    svm_filename = Config.get_gist_svm_filename(cls)+'_'+str(C)
+    svm_filename = config.get_gist_svm_filename(cls)+'_'+str(C)
     svm = load_svm(svm_filename)
     print 'evaluate class', cls
     t = time.time()
@@ -122,7 +116,7 @@ class GistPriors():
     result = svm_predict(x, svm)
     test_classification = np.matrix([1]*pos_gist.shape[0] + [-1]*neg_gist.shape[0]).reshape((result.shape[0],1))  
     acc = sum(np.multiply(result,test_classification) > 0)/float(2.*num_pos)
-    outfile_name = os.path.join(Config.gist_dir, cls)
+    outfile_name = os.path.join(config.gist_dir, cls)
     outfile = open(outfile_name,'a')
     outfile.writelines(str(C) + ' ' + str(acc[0][0])+'\n') 
     
@@ -172,7 +166,7 @@ def gist_evaluate_best_svm():
   for C_idx in range(mpi_rank, len(ranges), mpi_size):
     C = ranges[C_idx] 
     train_dect.train_all_svms(train_d, C)
-    for cls in Config.pascal_classes:
+    for cls in config.pascal_classes:
       val_dect.evaluate_svm(cls, val_d, C)
     
 def test_gist_one_sample(dataset):    
@@ -181,14 +175,14 @@ def test_gist_one_sample(dataset):
   vect = dect.get_priors(d.images[1])
   for idx in range(len(vect)):
     if vect[idx] > 0.5:
-     print Config.pascal_classes[idx], vect[idx]
+     print config.pascal_classes[idx], vect[idx]
      
 def save_gist_differently():
-  gist_dict = cPickle.load(open(Config.res_dir+'gist_features/features','r'))
+  gist_dict = cPickle.load(open(config.res_dir+'gist_features/features','r'))
   for dataset in ['full_pascal_train','full_pascal_val','full_pascal_test']:
     d = Dataset(dataset)
     print 'converting set', dataset
-    save_file = Config.res_dir+'gist_features/'+dataset
+    save_file = config.res_dir+'gist_features/'+dataset
     images = d.images
     gist_tab = np.zeros((len(images), 960))
     for idx in range(len(images)):
@@ -211,7 +205,7 @@ if __name__=='__main__':
   errors = comm.reduce(errors)
   
   if mpi_rank == 0:
-    result_file = Config.res_dir + 'cross_val_lam_gist.txt'
+    result_file = config.res_dir + 'cross_val_lam_gist.txt'
     outfile = open(result_file,'w')
     print errors
     for idx in range(lams.shape[0]):
