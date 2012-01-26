@@ -3,6 +3,14 @@ Timely Object Detection
 
 Repository for upcoming ECCV 2012 submission(s) on Timely Object Detection.
 
+Files
+---
+- data/ is not tracked in the repository but should contain
+  - results/: external repo for tracking generated results
+  - VOC2007/: the 2007 VOC data
+- timely/ is the code directory
+- writeups/ has latex papers, posters, and slides.
+
 Overview
 ---
 The project focuses on a multi-class detection policy.
@@ -41,8 +49,8 @@ Ideas
 Tasks
 ---
 ### misc
+  - rename 'synthetic' to 'timely' everywhere
   - check code with pylint
-  - make running experiments specifiable with one json file instead of several @sergey
   - write tests for all classes @sergey @tobi
   	- convert ngram_experiment.py to test suite for ngram marginal and conditional probabilities @sergey
 
@@ -58,7 +66,7 @@ Tasks
   - use some kind of fast soft quantization instead of k-means
 
 ### window proposals
-  - speed up: maybe in C
+  - speed up: profile code to see where the speed bottlenecks are. how can they be resolved?
   - look over the window generating code and resulting plots to refresh memory @sergey
   - try using x_scaled instead of x_frac for window proposal statistics
 
@@ -66,8 +74,10 @@ Tasks
   - port sub's code into scikits-learn
 
 ### belief state model
+  - refactor the validation method to use MPI instead of IPython.Parallel
   - experiment with smoothing in the empirical model
   - review graphical model solution
+  - read "Efficient Inference in Fully Connected CRFs with Gaussian Edge Potentials" and look at the code
   - ! formulate as CRF, conditioned on the detectors and GIST
 
 ### on the backburner
