@@ -19,11 +19,11 @@ def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
   indices = indices.reshape(positions.shape[0], 1)
   positions = np.asarray(np.hstack((positions, indices)))
   if not positions.size == 0:  
-    positions = positions[positions[:, 0] >= xmin, :]
+    positions = positions[positions[:, 0] > xmin, :]
   if not positions.size == 0:
     positions = positions[positions[:, 0] <= xmax, :]
   if not positions.size == 0:  
-    positions = positions[positions[:, 1] >= ymin, :]
+    positions = positions[positions[:, 1] > ymin, :]
   if not positions.size == 0:
     positions = positions[positions[:, 1] <= ymax, :]
   return np.asarray(positions[:, 2], dtype='int32')
@@ -48,13 +48,15 @@ def extract_pyramid(L, positions, assignments, codebook, image):
         bin_ass = np.matrix([])
       else:
         bin_ass = assignments[indices][:,2]
-      bin_ass = bin_ass.reshape(1,bin_ass.size)[0]
+        
+      bin_ass = bin_ass.reshape(1,bin_ass.size)[0] - 1
       counts = Counter(bin_ass)
       histogram = [counts.get(x,0) for x in range(codebook.shape[0])]
       if not len(bin_ass) == 0:
         histogram_level[i,j,:] = np.divide(histogram,float(assignments.shape[0]))
       else:
         histogram_level[i,j,:] = histogram
+        
   histogram_levels.append(histogram_level)
   
   # the other levels (just sum over lower levels respectively)  

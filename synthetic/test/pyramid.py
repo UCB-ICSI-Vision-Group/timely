@@ -5,10 +5,12 @@ Created on Jan 25, 2012
 '''
 
 import numpy as np
+import scipy.io as sio
 from os.path import join
 
-from synthetic.config import Config
+import synthetic.config as config
 from synthetic.pyramid import *
+
 
 def create_grid():
   positions = np.zeros((25,2))
@@ -31,7 +33,7 @@ def test_get_indices_empty_result():
   assert(inds.size == 0)       
   
 def test_compare_to_original_pyramid():
-  spatial_pyr_root = join(Config.test_support_dir, 'pyramid')
+  spatial_pyr_root = join(config.test_support_dir, 'pyramid/')
   mdict = {}
   io.loadmat(spatial_pyr_root + 'p1010843_texton_ind_200.mat', mdict)
   data = mdict['texton_ind'][0][0][0]
@@ -44,7 +46,9 @@ def test_compare_to_original_pyramid():
   L = 2
   codebook = np.zeros((200,6))
   pyr = extract_pyramid(L, ass[:,0:2], ass, codebook, image)
-  print pyr
+  mat = sio.loadmat(join(spatial_pyr_root,'p1010843_pyramid_200_3.mat'))['pyramid']
+  
+  assert (mat.all() == pyr.all())
 #  io.savemat(spatial_pyr_root + 'python_pyr.mat', {'pyr':pyr})
   
 if __name__=='__main__':  
