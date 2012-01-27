@@ -41,8 +41,8 @@ else:
 # repo_dir, data_dir, temp_data_dir
 paths = {
   'tobi_home':    ['/home/tobibaum/Documents/Vision/timely/',
-                   '/home/tobibaum/Documents/Vision/data/',
-                   '/home/tobibaum/Documents/Vision/data/temp/'],
+                   '/home/tobibaum/Documents/Vision/timely/data/',
+                   '/home/tobibaum/Documents/Vision/timely/data/temp/'],
   'tobi_icsi':    ['/u/tobibaum/timely/',
                    '/u/vis/x1/tobibaum/data/',
                    '/tscratch/tmp/tobibaum/timely/'],
