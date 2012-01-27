@@ -61,7 +61,7 @@ class BoundingBox:
 
   @classmethod
   def convert_arr_to_corners(cls, arr):
-    """Take an arr in x1,y1,x2,y2 format, and return arr in x,y,w,h format."""
+    """Take an arr in x1,y1,w,h format, and return arr in x1,y1,x2,y2 format."""
     ret_arr = np.copy(arr)
     if arr.ndim>1:
       expr = "ret_arr[:,2] = arr[:,2]+arr[:,0]-1;"+\

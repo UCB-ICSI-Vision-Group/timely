@@ -43,6 +43,12 @@ def test_get_overlap():
   print(ov)
   assert((ov >= 0.24) and (ov <= 0.26))
 
+  # switch order of arguments
+  bb =    np.array([ 139.,  200.,  35.,  51.])
+  ov = BoundingBox.get_overlap(bbgt,bb)
+  print(ov)
+  assert((ov >= 0.24) and (ov <= 0.26))
+
   bb =    np.array([ 239.,  300.,   69.,  51.])
   ov = BoundingBox.get_overlap(bb,bbgt)
   print(ov)
