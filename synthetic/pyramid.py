@@ -26,7 +26,6 @@ def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
     positions = positions[positions[:, 1] >= ymin, :]
   if not positions.size == 0:
     positions = positions[positions[:, 1] <= ymax, :]
-  #print 'positio', positions
   return np.asarray(positions[:, 2], dtype='int32')
 
 # This code should be in Extractor!
