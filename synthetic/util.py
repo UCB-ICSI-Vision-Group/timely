@@ -31,7 +31,7 @@ class Table:
     return self.arr.shape
 
   ###################
-  ### Save/Load
+  # Save/Load
   ###################
   def save_csv(self,filename):
     """Writes array out in csv format, with cols on the first row."""
@@ -85,7 +85,6 @@ class Table:
   def subset(self,col_names):
     """Return Table with only the specified col_names."""
     return Table(arr=self.subset_arr(col_names), cols=col_names)
-
 
   def subset_arr(self,col_names):
     """Return self.arr for only the columns that are specified."""
@@ -253,7 +252,27 @@ def keyboard(banner=None):
     try:
         code.interact(banner=banner, local=namespace)
     except SystemExit:
-        return 
+        return
+
+##############################################
+# Tic/Toc
+##############################################
+class Timer:
+  """MATLAB tic/toc."""
+  def __init__(self):
+    self.labels = {}
+
+  def tic(self,label=None):
+    if not label:
+      label = '__default'
+    self.labels[label] = time.time()
+  
+  def toc(self,label=None):
+    if not label:
+      label = '__default'
+    assert(label in self.labels)
+    elapsed = time.time()-self.labels[label]
+    print "Time elapsed: %.3f"%elapsed
 
 ##############################################
 # Shell interaction
