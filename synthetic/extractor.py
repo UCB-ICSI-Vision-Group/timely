@@ -13,7 +13,7 @@ from common_mpi import *
 
 class Extractor():
   def __init__(self):
-    self.save_dir = config.save_dir + 'features/'   
+    self.save_dir = config.data_dir + 'features/'   
     
     if not os.path.isdir(self.save_dir):
       os.mkdir(self.save_dir)
