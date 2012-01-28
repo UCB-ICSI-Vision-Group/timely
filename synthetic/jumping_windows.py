@@ -13,6 +13,8 @@ import time
 import synthetic.util as ut
 from mpi4py import MPI
 from numpy.numarray.numerictypes import Int
+import scipy.io as sio
+from os.path import join
 
 from synthetic.evaluation import Evaluation
 from synthetic.util import Table
@@ -459,62 +461,72 @@ def unify_rows(arr):
 ###############################################################
 ######################### Training ############################
 ###############################################################
-def train_jumping_windows(all_classes, train_set,use_scale=True,trun=False, diff=False):
-  M = 4
-  # Dataset
-  d = Dataset(train_set)
-  train_set = train_set[-5:] + '.txt'
+def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
+  llc_dir = '../../research/jumping_windows/llc/'
+  featdir = '../../research/jumping_windows/sift/'
   
-  e = Extractor()
-  print 'get cb'
-  codebook = e.get_codebook(d, 'dsift', force_new=False)
-  print 'got cb'
-  ut.makedirs(config.save_dir + 'JumpingWindows/')
-  ut.makedirs(config.save_dir + 'JumpingWindows/time/')
+  trainfiles = os.listdir(featdir)
+  grids = 4
   
-  if use_scale:
-    ut.makedirs(config.save_dir + 'JumpingWindows/scale/time/')
-     
-  for train_cls in all_classes:
-    # Codebook    
-    t = LookupTable_withgrid(codebook=codebook,use_scale=use_scale)   
-     
-    if use_scale:
-      save_table_file = config.save_dir + 'JumpingWindows/scale/' + train_cls
-      times_filename = config.save_dir + 'JumpingWindows/scale/time/' + train_cls
-    else:
-      save_table_file = config.save_dir + 'JumpingWindows/' + train_cls
-      times_filename = config.save_dir + 'JumpingWindows/time/' + train_cls
-    # Suppose we do this on just pos bboxes.
-#    gt = d.get_ground_truth_for_class(train_cls, include_diff=diff,
-#        include_trun=trun)
-    t_feat = time.time()
-    train_gt = d.get_pos_windows(train_cls)
-    print 'train on',train_gt.shape[0],'samples'
-    for row in train_gt:
-      bbox = row[0:4]
-      image = d.images[row[4]]
-      r = RootWindow_withgrid(bbox, image, M) 
-      #features = e.get_feature_with_pos('dsift', image, bbox)
-      t.add_features(bbox, r, train_cls, image) 
-    t_feat = time.time() - t_feat
+  for file in trainfiles:
+    # Load feature positions
+    feaSet = sio.loadmat(join(featdir,file))['feaSet']
+    x = feaSet['x'][0][0]
+    y = feaSet['y'][0][0]
     
-    t_weight = time.time()
-    print 'collected all boxes, now compute weights'
-    t.compute_all_weights()
-    t_weight = time.time() - t_weight
-    print 'weights computed, perform mean shift'
+    pts = np.hstack((x,y))
+  
+    codes = sio.loadmat(join(llc_dir,file))['codes'][0][0]
     
-    t_meanshift = time.time()    
-    t.perform_mean_shifts()
-    t_meanshift = time.time() - t_meanshift
-    t.save_table(save_table_file)
-    print 'lookup table for',train_cls,'saved. took:',t_weight+t_meanshift+t_feat
-    print save_table_file
-    
-    time_file = open(times_filename,'w')
-    time_file.writelines(['adding feats: '+str(t_feat),'\ncomp weights: '+\
-                          str(t_weight),'\nperform meanshift '+str(t_meanshift)])
+  
+def count_occurence(annotations, positions):
+  None
+#  
+#  if use_scale:
+#    ut.makedirs(config.save_dir + 'JumpingWindows/scale/time/')
+#     
+#  for train_cls in all_classes:
+#    # Codebook    
+#    t = LookupTable_withgrid(codebook=codebook,use_scale=use_scale)   
+#     
+#    if use_scale:
+#      save_table_file = config.save_dir + 'JumpingWindows/scale/' + train_cls
+#      times_filename = config.save_dir + 'JumpingWindows/scale/time/' + train_cls
+#    else:
+#      save_table_file = config.save_dir + 'JumpingWindows/' + train_cls
+#      times_filename = config.save_dir + 'JumpingWindows/time/' + train_cls
+#    # Suppose we do this on just pos bboxes.
+##    gt = d.get_ground_truth_for_class(train_cls, include_diff=diff,
+##        include_trun=trun)
+#    t_feat = time.time()
+#    train_gt = d.get_pos_windows(train_cls)
+#    print 'train on',train_gt.shape[0],'samples'
+#    for row in train_gt:
+#      bbox = row[0:4]
+#      image = d.images[row[4]]
+#      r = RootWindow_withgrid(bbox, image, M) 
+#      #features = e.get_feature_with_pos('dsift', image, bbox)
+#      t.add_features(bbox, r, train_cls, image) 
+#    t_feat = time.time() - t_feat
+#    
+#    # Here should be the same as in MATLAB
+#    
+#    t_weight = time.time()
+#    print 'collected all boxes, now compute weights'
+#    t.compute_all_weights()
+#    t_weight = time.time() - t_weight
+#    print 'weights computed, perform mean shift'
+#    
+#    t_meanshift = time.time()    
+#    t.perform_mean_shifts()
+#    t_meanshift = time.time() - t_meanshift
+#    t.save_table(save_table_file)
+#    print 'lookup table for',train_cls,'saved. took:',t_weight+t_meanshift+t_feat
+#    print save_table_file
+#    
+#    time_file = open(times_filename,'w')
+#    time_file.writelines(['adding feats: '+str(t_feat),'\ncomp weights: '+\
+#                          str(t_weight),'\nperform meanshift '+str(t_meanshift)])
     
 
 ###############################################################
@@ -596,8 +608,9 @@ if __name__=='__main__':
     # MPI this
     all_classes = mpi_get_sublist(mpi_rank, mpi_size, all_classes)
     print all_classes    
-    train_jumping_windows(all_classes, train_set,use_scale=use_scale,trun=True,diff=False)
-          
+    train_jumping_windows(train_set,use_scale=use_scale,trun=True,diff=False)
+    
+"""  
   classify = False
   if classify:
     print mpi_rank, 'at first barrier'
@@ -736,3 +749,4 @@ if __name__=='__main__':
 #      print cls, gt.arr.shape[0]
 #    print 'all', d.get_ground_truth().arr.shape[0]
   print mpi_rank, 'finished...'
+"""
