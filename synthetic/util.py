@@ -2,7 +2,7 @@ import subprocess
 from common_imports import *
 
 class Table:
-  """An ndarray with associated column names."""
+  "An ndarray with associated column names."
 
   ###################
   # Init/Copy/Repr
@@ -18,7 +18,7 @@ class Table:
     self.name = name
 
   def __deepcopy__(self):
-    """Make a deep copy of the Table and return it."""
+    "Make a deep copy of the Table and return it."
     ret = Table()
     ret.arr = self.arr.copy() if not self.arr == None else None
     ret.cols = list(self.cols) if not self.cols == None else None
@@ -26,9 +26,14 @@ class Table:
 
   def __repr__(self):
     return \
-      "Table (name: %s):\n"%self.name +\
-      "cols: \n[%s]\n"%',\t'.join(self.cols) +\
-      "arr: \n%s"%self.arr
+      "Table (%s):\n" % self.name +\
+      "%s\n"          % self.cols +\
+      "%s"            % str(self.arr.shape) +\
+      "\n%s"          % self.arr
+
+  def __eq__(self,other):
+    "Two Tables are equal if all columns and their names are equal, in order."
+    return np.all(self.arr==other.arr) and self.cols == other.cols
 
   def shape(self):
     return self.arr.shape
@@ -86,11 +91,11 @@ class Table:
   # Filtering
   ###################
   def subset(self,col_names):
-    """Return Table with only the specified col_names."""
+    "Return Table with only the specified col_names, in order."
     return Table(arr=self.subset_arr(col_names), cols=col_names)
 
   def subset_arr(self,col_names):
-    """Return self.arr for only the columns that are specified."""
+    "Return self.arr for only the columns that are specified."
     if not isinstance(col_names, types.ListType):
       inds = self.cols.index(col_names)
     else:
@@ -98,7 +103,7 @@ class Table:
     return self.arr[:,inds]
 
   def sort_by_column(self,ind_name,descending=False):
-    """Modifies self to sort arr by column."""
+    "Modifies self to sort arr by column."
     if descending:
       sorted_inds = np.argsort(-self.arr[:,self.cols.index(ind_name)])
     else:
@@ -118,15 +123,16 @@ class Table:
     return table
 
   def with_column_omitted(self,ind_name):
-    """Return Table with given column omitted."""
+    "Return Table with given column omitted. Name stays the same."
     ind = self.cols.index(ind_name)
+    # TODO: why use hstack?
     arr = np.hstack((self.arr[:,:ind], self.arr[:,ind+1:]))
     cols = list(self.cols)
     cols.remove(ind_name)
-    return Table(arr,cols)
+    return Table(arr,cols,self.name)
 
 ###################
-# Array manipulations
+# Ndarray manipulations
 ###################
 def append_index_column(arr, index):
   """ Take an m x n array, and appends a column containing index. """
@@ -291,7 +297,7 @@ class TicToc:
   def qtoc(self,label=None):
     "Quiet toc()"
     return self.toc(label,quiet=True)
-    
+
 ##############################################
 # Shell interaction
 ##############################################
