@@ -77,27 +77,26 @@ class Dataset:
     loading is faster.
     If force is True, does not look for cached data when loading.
     """
-    print("Dataset: Loading from PASCAL...")
+    tt = ut.TicToc().tic()
+    print("Dataset: loading PASCAL...")
     filename = config.get_cached_dataset_filename(name)
     if os.path.exists(filename):
-      print("...loading from cached dataset")
       with open(filename) as f:
         cached = cPickle.load(f)
         self.classes = cached.classes
         self.images = cached.images
-        print("...done")
+        print("...loaded from cache in %.3f s"%tt.qtoc())
         return
     print("...loading from scratch")
     filename = config.pascal_paths[name]
     self.classes = config.pascal_classes 
     with open(filename) as f:
       imgset = [line.strip() for line in f.readlines()]
-    t = time.time()
     for i,img in enumerate(imgset):
-      ti = time.time()-t
-      if ti > 2:
+      tt.tic('2')
+      if tt.qtoc('2') > 2:
         print("...on image %d/%d"%(i,len(imgset)))
-        t = time.time()
+        tt.tic('2')
       if len(img)>0:
         xml_filename = os.path.join(config.VOC_dir,'Annotations',img+'.xml')
         self.images.append(Image.load_from_xml(self,xml_filename))
@@ -105,7 +104,7 @@ class Dataset:
     print("...saving to cache file")
     with open(filename, 'w') as f:
       cPickle.dump(self,f)
-    print("...done\n")
+    print("...done in %.3f s\n"%tt.qtoc())
 
   def get_pos_windows(self, cls=None, window_params=None, min_overlap=0.6):
     """
