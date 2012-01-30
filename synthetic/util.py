@@ -25,7 +25,10 @@ class Table:
     return ret
 
   def __repr__(self):
-    return "Table:\n  name: %s\n  cols: \n%s\n  arr: \n%s"%(self.name,self.cols,self.arr)
+    return \
+      "Table (name: %s):\n"%self.name +\
+      "cols: \n[%s]\n"%',\t'.join(self.cols) +\
+      "arr: \n%s"%self.arr
 
   def shape(self):
     return self.arr.shape
@@ -122,39 +125,9 @@ class Table:
     cols.remove(ind_name)
     return Table(arr,cols)
 
-def random_subset_up_to_N(N, max_num=None):
-  """
-  Return a random subset of size min(N,max_num) of non-negative integers
-  up to N, in permuted order.
-  If max_num >= N, order of integers 0..N is not permuted.
-  N and max_num must be positive.
-  If max_num is not given, max_num=N.
-  """
-  if max_num == None:
-    max_num = N
-  if N <= 0 or max_num <= 0:
-    raise ValueError("Can't deal with N or max_num <= 0")
-  if max_num >= N:
-    return range(0,N)
-  return np.random.permutation(N)[:max_num]
-
-def random_subset(vals, max_num=None, ordered=False):
-  """
-  Return a random subset of size min(len(vals),max_num) of a list of
-  values, in permuted order (unless ordered=True). If max_num is not given,
-  max_num=len(vals).
-  If max_num >= N, order is not permuted.
-  NOTE: returns a list, not an array
-  """
-  if max_num == None:
-    max_num = len(vals)
-  if max_num >= len(vals) and ordered:
-    return vals
-  arr = np.array(vals)[random_subset_up_to_N(len(vals),max_num)]
-  if ordered:
-    arr = np.sort(arr)
-  return arr.tolist()
-
+###################
+# Array manipulations
+###################
 def append_index_column(arr, index):
   """ Take an m x n array, and appends a column containing index. """
   ind_vector = np.ones((np.shape(arr)[0],1)) * index
@@ -196,6 +169,50 @@ def collect_with_index_column(seq, func, cols=None):
   """See collect()."""
   return collect(seq,func,cols,with_index=True)
 
+def sort_by_column(arr,ind,mode='ascend'):
+  """Return the array row-sorted by column at ind."""
+  if mode == 'descend':
+    arr = arr[np.argsort(-arr[:,ind]),:]
+  else:
+    arr = arr[np.argsort(arr[:,ind]),:]
+  return arr
+
+###################
+# Misc
+###################
+def random_subset_up_to_N(N, max_num=None):
+  """
+  Return a random subset of size min(N,max_num) of non-negative integers
+  up to N, in permuted order.
+  If max_num >= N, order of integers 0..N is not permuted.
+  N and max_num must be positive.
+  If max_num is not given, max_num=N.
+  """
+  if max_num == None:
+    max_num = N
+  if N <= 0 or max_num <= 0:
+    raise ValueError("Can't deal with N or max_num <= 0")
+  if max_num >= N:
+    return range(0,N)
+  return np.random.permutation(N)[:max_num]
+
+def random_subset(vals, max_num=None, ordered=False):
+  """
+  Return a random subset of size min(len(vals),max_num) of a list of
+  values, in permuted order (unless ordered=True). If max_num is not given,
+  max_num=len(vals).
+  If max_num >= N, order is not permuted.
+  NOTE: returns a list, not an array
+  """
+  if max_num == None:
+    max_num = len(vals)
+  if max_num >= len(vals) and ordered:
+    return vals
+  arr = np.array(vals)[random_subset_up_to_N(len(vals),max_num)]
+  if ordered:
+    arr = np.sort(arr)
+  return arr.tolist()
+
 def makedirs(dirname):
   """Does what mkdir -p does, and returns dirname."""
   if not os.path.exists(dirname):
@@ -204,14 +221,6 @@ def makedirs(dirname):
     except:
       print("Exception on os.makedirs--what else is new?")
   return dirname
-
-def sort_by_column(arr,ind,mode='ascend'):
-  """Return the array row-sorted by column at ind."""
-  if mode == 'descend':
-    arr = arr[np.argsort(-arr[:,ind]),:]
-  else:
-    arr = arr[np.argsort(arr[:,ind]),:]
-  return arr
 
 def importance_sample(dist, num_points, kde=None):
   """
