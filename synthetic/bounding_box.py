@@ -26,14 +26,15 @@ class BoundingBox:
       self.arr = np.array([x,y,w,h])
 
   def area(self):
-    """Returns area."""
+    """Return area."""
     return self.arr[2]*self.arr[3]
 
   @classmethod
   def clipboxes_arr(cls, arr, bounds):
     """
     Take an arr in (x,y,w,h) format and clip boxes to fit into bounds,
-    provided as (min_x,min_y,max_x,max_y).
+    provided as (min_x,min_y,max_x,max_y). Remove detections that are
+    entirely outside the bounds.
     """
     # TODO: can make slightly faster by not converting to and from corners
     arr = cls.convert_arr_to_corners(arr)

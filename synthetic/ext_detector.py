@@ -19,12 +19,12 @@ class ExternalDetector(Detector):
     same class.
     """
     # Check if configs exist and look up the correct config for this detname and cls
+    detector_config = None
     filename = os.path.join(config.dets_configs_dir,detname+'.txt')
     if os.path.exists(filename):
       with open(filename) as f:
         configs = json.load(f)
       config_name = detname+'_'+cls
-      detector_config = None
       if config_name in configs:
         detector_config = configs[config_name]
         print("Successfully initialized detector %s with config!"%config_name)
@@ -34,12 +34,15 @@ class ExternalDetector(Detector):
     self.dets = dets
     suffix = detname[4:]
     self.csc_classif = CSCClassifier(suffix)    
-    self.svm = self.csc_classif.load_svm(cls)
-    setting_table = ut.Table.load(os.path.join(config.res_dir,'csc_svm_'+suffix,'best_table'))
-    settings = setting_table.arr[config.pascal_classes.index(cls),:]
-    self.intervalls = settings[setting_table.cols.index('bins')]
-    self.lower = settings[setting_table.cols.index('lower')]
-    self.upper = settings[setting_table.cols.index('upper')]
+    try:
+      self.svm = self.csc_classif.load_svm(cls)
+      setting_table = ut.Table.load(os.path.join(config.res_dir,'csc_svm_'+suffix,'best_table'))
+      settings = setting_table.arr[config.pascal_classes.index(cls),:]
+      self.intervalls = settings[setting_table.cols.index('bins')]
+      self.lower = settings[setting_table.cols.index('lower')]
+      self.upper = settings[setting_table.cols.index('upper')]
+    except:
+      print("Could not load classifier SVM for class %s"%cls)
 
   def detect(self, image):
     """
@@ -53,8 +56,7 @@ class ExternalDetector(Detector):
     if not dets.arr.shape[0]<1:
       time_passed = np.max(dets.subset_arr('time'))
     # Halve the time passed if my may25 DPM detector, to have reasonable times
-    # Also halve the time passed by csc_half detectorm, because we halved its
-    # APs!
+    # Also halve the time passed by csc_half detector, because we halved its AP
     if self.detname=='dpm_may25' or self.detname=='csc_half':
       time_passed /= 2
     dets = dets.with_column_omitted('time')
