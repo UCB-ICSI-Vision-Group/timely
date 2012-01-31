@@ -1,6 +1,5 @@
 import copy
 import datetime
-import json
 import scipy.io
 
 from common_mpi import *
@@ -26,7 +25,7 @@ class ImageAction:
 class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
-    'suffix': 'nov19', # can use this to re-run on same param due to changed code
+    'suffix': 'jan30', # can use this to re-run on same param due to changed code
     'detector': 'ext', # perfect,perfect_with_noise,ext
     'class_priors_mode': 'random', # random,oracle,fixed_order,no_smooth,backoff
     'dets_suffixes': ['dpm_may25'], # further specifies which detector to use
@@ -699,13 +698,14 @@ class DatasetPolicy:
         # all detections get the final time
         cls_dets = ut.append_index_column(cls_dets, det_time)
         cls_dets = ut.append_index_column(cls_dets, cls_ind)
-        # convert from corners!
-        cls_dets[:,0:4] = BoundingBox.convert_arr_from_corners(cls_dets[:,0:4])
-        cls_dets[:,:4] = BoundingBox.clipboxes_arr(cls_dets[:,:4],(0,0,image.size[0],image.size[1]))
+        # subtract 1 pixel and convert from corners!
+        cls_dets[:,:4] -= 1
+        cls_dets[:,:4] = BoundingBox.convert_arr_from_corners(cls_dets[:,:4])
         dets_seq.append(cls_dets)
     cols = ['x','y','w','h','dummy','dummy','dummy','dummy','score','time','cls_ind'] 
+    # NMS detections per class individually
     dets_mc = ut.collect(dets_seq, Detector.nms_detections, cols)
-    #dets_mc[:,:4] = BoundingBox.clipboxes_arr(dets_mc[:,:4],(0,0,image.size[0],image.size[1]))
+    dets_mc[:,:4] = BoundingBox.clipboxes_arr(dets_mc[:,:4],(0,0,image.size[0]-1,image.size[1]-1))
     time_elapsed = time.time()-t
     print("On image %s, took %.3f s"%(image.name, time_elapsed))
     return dets_mc

@@ -2,7 +2,7 @@ import subprocess
 from common_imports import *
 
 class Table:
-  """An ndarray with associated column names."""
+  "An ndarray with associated column names."
 
   ###################
   # Init/Copy/Repr
@@ -18,20 +18,28 @@ class Table:
     self.name = name
 
   def __deepcopy__(self):
-    """Make a deep copy of the Table and return it."""
+    "Make a deep copy of the Table and return it."
     ret = Table()
     ret.arr = self.arr.copy() if not self.arr == None else None
     ret.cols = list(self.cols) if not self.cols == None else None
     return ret
 
   def __repr__(self):
-    return "Table:\n  name: %s\n  cols: \n%s\n  arr: \n%s"%(self.name,self.cols,self.arr)
+    return \
+      "Table (%s):\n" % self.name +\
+      "%s\n"          % self.cols +\
+      "%s"            % str(self.arr.shape) +\
+      "\n%s"          % self.arr
+
+  def __eq__(self,other):
+    "Two Tables are equal if all columns and their names are equal, in order."
+    return np.all(self.arr==other.arr) and self.cols == other.cols
 
   def shape(self):
     return self.arr.shape
 
   ###################
-  ### Save/Load
+  # Save/Load
   ###################
   def save_csv(self,filename):
     """Writes array out in csv format, with cols on the first row."""
@@ -83,12 +91,11 @@ class Table:
   # Filtering
   ###################
   def subset(self,col_names):
-    """Return Table with only the specified col_names."""
+    "Return Table with only the specified col_names, in order."
     return Table(arr=self.subset_arr(col_names), cols=col_names)
 
-
   def subset_arr(self,col_names):
-    """Return self.arr for only the columns that are specified."""
+    "Return self.arr for only the columns that are specified."
     if not isinstance(col_names, types.ListType):
       inds = self.cols.index(col_names)
     else:
@@ -96,7 +103,7 @@ class Table:
     return self.arr[:,inds]
 
   def sort_by_column(self,ind_name,descending=False):
-    """Modifies self to sort arr by column."""
+    "Modifies self to sort arr by column."
     if descending:
       sorted_inds = np.argsort(-self.arr[:,self.cols.index(ind_name)])
     else:
@@ -116,46 +123,17 @@ class Table:
     return table
 
   def with_column_omitted(self,ind_name):
-    """Return Table with given column omitted."""
+    "Return Table with given column omitted. Name stays the same."
     ind = self.cols.index(ind_name)
+    # TODO: why use hstack?
     arr = np.hstack((self.arr[:,:ind], self.arr[:,ind+1:]))
     cols = list(self.cols)
     cols.remove(ind_name)
-    return Table(arr,cols)
+    return Table(arr,cols,self.name)
 
-def random_subset_up_to_N(N, max_num=None):
-  """
-  Return a random subset of size min(N,max_num) of non-negative integers
-  up to N, in permuted order.
-  If max_num >= N, order of integers 0..N is not permuted.
-  N and max_num must be positive.
-  If max_num is not given, max_num=N.
-  """
-  if max_num == None:
-    max_num = N
-  if N <= 0 or max_num <= 0:
-    raise ValueError("Can't deal with N or max_num <= 0")
-  if max_num >= N:
-    return range(0,N)
-  return np.random.permutation(N)[:max_num]
-
-def random_subset(vals, max_num=None, ordered=False):
-  """
-  Return a random subset of size min(len(vals),max_num) of a list of
-  values, in permuted order (unless ordered=True). If max_num is not given,
-  max_num=len(vals).
-  If max_num >= N, order is not permuted.
-  NOTE: returns a list, not an array
-  """
-  if max_num == None:
-    max_num = len(vals)
-  if max_num >= len(vals) and ordered:
-    return vals
-  arr = np.array(vals)[random_subset_up_to_N(len(vals),max_num)]
-  if ordered:
-    arr = np.sort(arr)
-  return arr.tolist()
-
+###################
+# Ndarray manipulations
+###################
 def append_index_column(arr, index):
   """ Take an m x n array, and appends a column containing index. """
   ind_vector = np.ones((np.shape(arr)[0],1)) * index
@@ -197,6 +175,50 @@ def collect_with_index_column(seq, func, cols=None):
   """See collect()."""
   return collect(seq,func,cols,with_index=True)
 
+def sort_by_column(arr,ind,mode='ascend'):
+  """Return the array row-sorted by column at ind."""
+  if mode == 'descend':
+    arr = arr[np.argsort(-arr[:,ind]),:]
+  else:
+    arr = arr[np.argsort(arr[:,ind]),:]
+  return arr
+
+###################
+# Misc
+###################
+def random_subset_up_to_N(N, max_num=None):
+  """
+  Return a random subset of size min(N,max_num) of non-negative integers
+  up to N, in permuted order.
+  If max_num >= N, order of integers 0..N is not permuted.
+  N and max_num must be positive.
+  If max_num is not given, max_num=N.
+  """
+  if max_num == None:
+    max_num = N
+  if N <= 0 or max_num <= 0:
+    raise ValueError("Can't deal with N or max_num <= 0")
+  if max_num >= N:
+    return range(0,N)
+  return np.random.permutation(N)[:max_num]
+
+def random_subset(vals, max_num=None, ordered=False):
+  """
+  Return a random subset of size min(len(vals),max_num) of a list of
+  values, in permuted order (unless ordered=True). If max_num is not given,
+  max_num=len(vals).
+  If max_num >= N, order is not permuted.
+  NOTE: returns a list, not an array
+  """
+  if max_num == None:
+    max_num = len(vals)
+  if max_num >= len(vals) and ordered:
+    return vals
+  arr = np.array(vals)[random_subset_up_to_N(len(vals),max_num)]
+  if ordered:
+    arr = np.sort(arr)
+  return arr.tolist()
+
 def makedirs(dirname):
   """Does what mkdir -p does, and returns dirname."""
   if not os.path.exists(dirname):
@@ -205,14 +227,6 @@ def makedirs(dirname):
     except:
       print("Exception on os.makedirs--what else is new?")
   return dirname
-
-def sort_by_column(arr,ind,mode='ascend'):
-  """Return the array row-sorted by column at ind."""
-  if mode == 'descend':
-    arr = arr[np.argsort(-arr[:,ind]),:]
-  else:
-    arr = arr[np.argsort(arr[:,ind]),:]
-  return arr
 
 def importance_sample(dist, num_points, kde=None):
   """
@@ -253,7 +267,36 @@ def keyboard(banner=None):
     try:
         code.interact(banner=banner, local=namespace)
     except SystemExit:
-        return 
+        return
+
+##############################################
+# Tic/Toc
+##############################################
+class TicToc:
+  "MATLAB tic/toc."
+  def __init__(self):
+    self.labels = {}
+
+  def tic(self,label=None):
+    "Start timer for given label. Returns self."
+    if not label:
+      label = '__default'
+    self.labels[label] = time.time()
+    return self
+
+  def toc(self,label=None,quiet=False):
+    "Return elapsed time for given label. Optionally print time."
+    if not label:
+      label = '__default'
+    assert(label in self.labels)
+    elapsed = time.time()-self.labels[label]
+    if not quiet:
+      print "Time elapsed: %.3f"%elapsed
+    return elapsed
+  
+  def qtoc(self,label=None):
+    "Quiet toc()"
+    return self.toc(label,quiet=True)
 
 ##############################################
 # Shell interaction
