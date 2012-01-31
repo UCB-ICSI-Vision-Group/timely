@@ -43,7 +43,7 @@ class BoundingBox:
     arr[:,3] = np.minimum(arr[:,3],bounds[3])
     arr = cls.convert_arr_from_corners(arr)
 
-    pick = np.nonzero((arr[:,2]>0) & (arr[:,3]>0))
+    pick = np.flatnonzero((arr[:,2]>0) & (arr[:,3]>0))
     return arr[pick,:]
 
   # NOTE (sergeyk): I've experimented with all kinds of ways of doing this,
