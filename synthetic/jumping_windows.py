@@ -18,11 +18,12 @@ from os.path import join
 
 from synthetic.evaluation import Evaluation
 from synthetic.util import Table
+import synthetic.util as util
 from synthetic.extractor import Extractor
 from synthetic.dataset import Dataset
 import synthetic.config as config
 from synthetic.detector import Detector
-from numpy.ma.core import floor
+from numpy.ma.core import floor, ceil
 from synthetic.bounding_box import BoundingBox
 from sklearn.cluster import MeanShift
 from synthetic.safebarrier import safebarrier
@@ -141,14 +142,14 @@ class JumpingWindowsDetectorGrid(Detector):
         print 'codebook',codebook_file,'does not exist'
         continue
       codebook = np.loadtxt(codebook_file)    
-      t = LookupTable_withgrid(codebook, self.M)          
+      t = LookupTable(codebook, self.M)          
       # Suppose we do this on just pos bboxes.
       gt = d.get_ground_truth_for_class(train_cls)      
       train_gt = gt.arr
       for row in train_gt:
         bbox = row[0:4]
         image = d.images[row[gt.cols.index('img_ind')].astype(Int)]
-        r = RootWindow_withgrid(bbox, d.images[row[gt.cols.index('img_ind')].astype(Int)],self.M) 
+        r = RootWindow(bbox, d.images[row[gt.cols.index('img_ind')].astype(Int)],self.M) 
         features = e.get_feature_with_pos('dsift', image, bbox)
         t.add_features(features, r)         
       t.compute_all_weights()  
@@ -169,8 +170,8 @@ def load_lookup_table(filename):
 
 # Gridding factors: NxM grids per window. Good Values are still tbd.
 
-# -------------------------------------------------- RootWindow_withgrid
-class RootWindow_withgrid():
+# -------------------------------------------------- RootWindow
+class RootWindow():
   """ A root window containing NxM grid cells, position and size"""
   def __init__(self, bbox, image, M):
     self.x = bbox[0]
@@ -187,7 +188,7 @@ class RootWindow_withgrid():
   def add_feature(self, positions):
     """ We expect a 1x2 positions here: x y """
     # First compute the bin in which this positions belongs. We need the relative
-    # coordinates of this feat to the RootWindow_withgrid. 
+    # coordinates of this feat to the RootWindow. 
     
     x = positions[:,0] - self.x
     y = positions[:,1] - self.y
@@ -205,8 +206,8 @@ class RootWindow_withgrid():
     return (m, n)
   
 
-# -------------------------------------------------- LookupTable_withgrid
-class LookupTable_withgrid():
+# -------------------------------------------------- LookupTable
+class LookupTable():
   """ Data structure for storing the trained lookup table. It's values are
   lists of tuples (grid-position, root window)"""
   def __init__(self, M=4, codebook = None, filename = None, use_scale=False):
@@ -214,7 +215,7 @@ class LookupTable_withgrid():
     if filename == None:
       # no file given, we train a new lookup table
       if codebook == None:
-        print 'LookupTable_withgrid - Warning: no codebook given/loaded'
+        print 'LookupTable - Warning: no codebook given/loaded'
       else:
         self.codebook = codebook
       self.table = {}
@@ -290,6 +291,23 @@ class LookupTable_withgrid():
       self.add_window_for_vg(row[0], row[1], row[2:4], window) 
       self.add_value(row[0], [row[1], win_idx])
 
+  def add_features_new(self, bbox, root_win, assignments, positions):
+        
+    if not root_win in self.windows:
+      self.windows.append(root_win)
+    win_idx = self.windows.index(root_win)
+            
+    grid_cell = self.windows[win_idx].add_feature(positions)
+    #print grid_cell
+    grid_cell = grid_cell.reshape(assignments.shape[0], 1)
+    ass_cell_pos = np.hstack((assignments, grid_cell, positions))
+    window = self.windows[win_idx]
+    print ass_cell_pos.shape
+    for row in ass_cell_pos:
+      self.add_window_for_vg(row[0, 0], row[0, 1], row[0, 2:4], window) 
+      self.add_value(row[0, 0], [row[0, 1], win_idx])
+
+
   def add_value(self, key, value):
     if self.table.has_key(key):
       self.table[key].append(value)
@@ -299,8 +317,9 @@ class LookupTable_withgrid():
   def add_window_for_vg(self, word, grid, position, window):
     if grid > self.M**2-1:
       return
-    x_off = position[0] - window.x
-    y_off = position[1] - window.y
+
+    x_off = position[0, 0] - window.x
+    y_off = position[0, 1] - window.y
     if self.use_scale:
       scale = window.scale
       ratio = window.ratio      
@@ -458,25 +477,57 @@ def unify_rows(arr):
   return np.array([np.array(x) for x in set(tuple(x) for x in arr)])
   
 
+def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
+  indices = np.matrix(np.arange(positions.shape[0]))
+  indices = indices.reshape(positions.shape[0], 1)
+  positions = np.asarray(np.hstack((positions, indices)))
+  if not positions.size == 0:  
+    positions = positions[positions[:, 0] >= xmin, :]
+  if not positions.size == 0:
+    positions = positions[positions[:, 0] <= xmax, :]
+  if not positions.size == 0:  
+    positions = positions[positions[:, 1] >= ymin, :]
+  if not positions.size == 0:
+    positions = positions[positions[:, 1] <= ymax, :]
+  return np.asarray(positions[:, 2], dtype='int32')
+
+
 ###############################################################
 ######################### Training ############################
 ###############################################################
 def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
+  # TODO: convert this to test-env
   llc_dir = '../../research/jumping_windows/llc/'
   featdir = '../../research/jumping_windows/sift/'
+  d = Dataset('full_pascal_trainval')
+  codebook = np.zeros((20,10))
+  M = 4
   
   trainfiles = os.listdir(featdir)
   grids = 4
-  
+  t = LookupTable(codebook = codebook)
+
   for file in trainfiles:
+    print file
     # Load feature positions
     feaSet = sio.loadmat(join(featdir,file))['feaSet']
     x = feaSet['x'][0][0]
-    y = feaSet['y'][0][0]
+    y = feaSet['y'][0][0]    
+    pts = np.hstack((x,y))    
+    codes = sio.loadmat(join(llc_dir,file))['codes']
+          
+    image = d.get_image_by_filename(file[:-4]+'.jpg')
+    im_ind = d.get_img_ind(image)
+    gt = d.get_ground_truth_for_img_inds([im_ind])
     
-    pts = np.hstack((x,y))
-  
-    codes = sio.loadmat(join(llc_dir,file))['codes'][0][0]
+    for row in gt.arr:
+      bbox = row[0:4]
+      inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
+      r = RootWindow(bbox, image, M)
+      ind = np.where(codes[:,inds].data > 0)[0]
+      words = np.transpose(np.asmatrix(codes.nonzero()[0][ind]))
+      ind = codes.nonzero()[1][ind]
+      t.add_features_new(bbox, r, words, pts[ind])    
     
   
 def count_occurence(annotations, positions):
@@ -487,7 +538,7 @@ def count_occurence(annotations, positions):
 #     
 #  for train_cls in all_classes:
 #    # Codebook    
-#    t = LookupTable_withgrid(codebook=codebook,use_scale=use_scale)   
+#    t = LookupTable(codebook=codebook,use_scale=use_scale)   
 #     
 #    if use_scale:
 #      save_table_file = config.save_dir + 'JumpingWindows/scale/' + train_cls
@@ -504,7 +555,7 @@ def count_occurence(annotations, positions):
 #    for row in train_gt:
 #      bbox = row[0:4]
 #      image = d.images[row[4]]
-#      r = RootWindow_withgrid(bbox, image, M) 
+#      r = RootWindow(bbox, image, M) 
 #      #features = e.get_feature_with_pos('dsift', image, bbox)
 #      t.add_features(bbox, r, train_cls, image) 
 #    t_feat = time.time() - t_feat
@@ -532,7 +583,7 @@ def count_occurence(annotations, positions):
 ###############################################################
 ######################### Testing #############################
 ###############################################################
-# We now have a LookupTable_withgrid and want to determine the root windows
+# We now have a LookupTable and want to determine the root windows
 # in a new image.
 def detect_jumping_windows_for_set(val_set, K, num_pos, all_classes):
   print 'Jumping Window Testing ...'
@@ -629,7 +680,7 @@ if __name__=='__main__':
         include_trun=True)
     e = Extractor()
     codebook = e.get_codebook(dtest, 'dsift')
-    t = LookupTable_withgrid(codebook=codebook)
+    t = LookupTable(codebook=codebook)
     
     if use_scale:
       t = load_lookup_table(config.save_dir + 'JumpingWindows/scale/'+cls)
@@ -687,7 +738,7 @@ if __name__=='__main__':
     dtest = Dataset('full_pascal_test')
     e = Extractor()
     codebook = e.get_codebook(d, 'dsift')
-    t = LookupTable_withgrid(codebook=codebook, use_scale=False)
+    t = LookupTable(codebook=codebook, use_scale=False)
         
     gt = d.get_ground_truth_for_class(cls, include_diff=False,
         include_trun=True)
@@ -703,7 +754,7 @@ if __name__=='__main__':
         row = train_gt[row_idx,:]
         bbox = row[0:4]
         image = d.images[row[gt.cols.index('img_ind')].astype(Int)]
-        r = RootWindow_withgrid(bbox, d.images[row[gt.cols.index('img_ind')].astype(Int)], M) 
+        r = RootWindow(bbox, d.images[row[gt.cols.index('img_ind')].astype(Int)], M) 
         #features = e.get_feature_with_pos('dsift', image, bbox)
         t.add_features(bbox, r, cls, image) 
       
