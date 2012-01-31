@@ -17,7 +17,9 @@ The project focuses on a multi-class detection policy.
 The overall motivation is the performance vs. time evaluation.
 
 A. Single-class detector: window proposals
+
 The evaluation method is plotting recall-#windows curves, keeping track of how long feature extraction and generating the windows take
+
 - A.1. Jumping window proposals
   - mostly following Vijay's implementation
     - storing scale-invariant offsets instead of actual pixel values
@@ -28,11 +30,14 @@ The evaluation method is plotting recall-#windows curves, keeping track of how l
   - ranked either in fixed-order (scanning) or according to their object likelihood
 
 B. Single-class detector: classification
+
   - Chi-square (with Subhransu's trick) vs. RBF
   - generate performance vs. time curves by timing how long it takes to process N window proposals from the first stage
 
 C. Multi-class policy
+
 Goal is to be able to learn a closed-loop policy
+
   - Given a detector for each class, what is the most efficient way to search through the classes?
   - What if there are multiple detectors per class (use the DPM detector as one of them, and ours as another)
 
@@ -49,35 +54,35 @@ Ideas
 Tasks
 ---
 ### misc
-  - rename 'synthetic' to 'timely' everywhere
-  - check code with pylint
-  - write tests for all classes @sergey @tobi
-  	- convert ngram_experiment.py to test suite for ngram marginal and conditional probabilities @sergey
+- rename 'synthetic' to 'timely' everywhere
+- check code with pylint
+- write tests for all classes @sergey @tobi
 
 ### policy
-  - include values for object classes (reference some paper by Ashish if can find) @sergey
-  - learn regression on policy samples, and replace the weight vectors of action with the results. @sergey
-  - code up LSPI and try to improve on the 1-step policy  @sergey
-  - include scene context action
+- include values for object classes (reference some paper by Ashish if can find) @sergey
+- learn regression on policy samples, and replace the weight vectors of action with the results. @sergey
+- code up LSPI and try to improve on the 1-step policy @sergey
+- include scene context action
 
 ### jumping windows
-  - is VQ performance adequate? should be pretty fast
-  - use some kind of fast soft quantization instead of k-means
+- ensure performance at published levels
+- is VQ performance adequate? should be pretty fast
+
+### classification
+- evaluate classification performance
+  - train classifier on top of detection output
 
 ### window proposals
-  - speed up: profile code to see where the speed bottlenecks are. how can they be resolved?
-  - look over the window generating code and resulting plots to refresh memory @sergey
-  - try using x_scaled instead of x_frac for window proposal statistics
+- speed up: profile code to see where the speed bottlenecks are. how can they be resolved?
+- try using x_scaled instead of x_frac for window proposal statistics
 
-### classifier
-  - port sub's code into scikits-learn
+### window classifier
+- port sub's code into scikits-learn
 
 ### belief state model
-  - refactor the validation method to use MPI instead of IPython.Parallel
-  - experiment with smoothing in the empirical model
-  - review graphical model solution
-  - read "Efficient Inference in Fully Connected CRFs with Gaussian Edge Potentials" and look at the code
-  - ! formulate as CRF, conditioned on the detectors and GIST
+- refactor the validation method to use MPI instead of IPython.Parallel
+- experiment with smoothing in the empirical model
+- review graphical model solution
+- formulate as CRF, conditioned on the detectors and GIST
 
 ### on the backburner
-  - look at DPPs and other sampling techniques and how they may help
