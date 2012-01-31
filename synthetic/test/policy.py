@@ -18,37 +18,36 @@ class TestDatasetPolicy:
   def test_perfect_detector(self):
     policy = DatasetPolicy(self.dataset,self.train_dataset,self.sw,detector='perfect',bounds=None)
     dets = policy.detect_in_dataset()
+    dets = dets.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
     gt = self.dataset.get_ground_truth()
-    print dets
-    print gt
-    assert(dets.arr.shape[0] == gt.arr.shape[0])
+    gt = gt.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
+    assert(dets == gt)
 
   def test_load_dpm_detections(self):
-    policy = DatasetPolicy(self.dataset,self.train_dataset,self.sw,detector='perfect')
-    dets = policy.load_ext_detections(self.dataset,'dpm','dpm_may25')
-    # load the same thing that I computed in Matlab, to check that my nms works
-    # the same
+    policy = DatasetPolicy(self.dataset,self.train_dataset,self.sw,detector='ext')
+    dets = policy.load_ext_detections(self.dataset,'dpm','dpm_may25',force=True)
+    dets = dets.with_column_omitted('time')
+
+    # load the ground truth dets, processed in Matlab
+    # (timely/data/test_support/concat_dets.m)
     filename = os.path.join(config.test_support_dir, 'val_dets.mat')
-    dets_correct = scipy.io.loadmat(filename)['dets']
-    cols = ['x1','y1','x2','y2','dummy','dummy','dummy','dummy','score','cls_ind','img_ind']
-    good_ind = [0,1,2,3,8,9,10]
-    dets_correct = dets_correct[:,good_ind]
-    dets_correct[:,0:4] = BoundingBox.convert_arr_from_corners(dets_correct[:,0:4])
-    # we need to remove the time column from our loaded dets for this comparison
-    subset_cols = list(dets.cols)
-    subset_cols.remove('time')
-    subset_dets = dets.subset(subset_cols)
+    dets_correct = ut.Table(
+        scipy.io.loadmat(filename)['dets'],
+        ['x1','y1','x2','y2','dummy','dummy','dummy','dummy','score','cls_ind','img_ind'],
+        'dets_correct')
+    dets_correct = dets_correct.subset(
+        ['x1','y1','x2','y2','score','cls_ind','img_ind'])
+    dets_correct.arr[:,:4] -= 1
+    dets_correct.arr[:,:4] = BoundingBox.convert_arr_from_corners(
+        dets_correct.arr[:,:4])
+    dets_correct.cols = ['x','y','w','h','score','cls_ind','img_ind']
+    
     print('----mine:')
-    print(subset_dets)
-    print(subset_dets.shape())
+    print(dets)
     print('----correct:')
     print(dets_correct)
-    print(dets_correct.shape)
     #ut.keyboard()
-    assert(np.all(subset_dets.arr == dets_correct))
-    print(dets.cols)
-    print(policy.get_cols())
-    assert(dets.cols == policy.get_cols())
+    assert(dets_correct == dets)
 
 if __name__ == '__main__':
   tdp = TestDatasetPolicy()
