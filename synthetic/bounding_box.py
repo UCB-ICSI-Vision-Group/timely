@@ -36,14 +36,15 @@ class BoundingBox:
     provided as (min_x,min_y,max_x,max_y). Remove detections that are
     entirely outside the bounds.
     """
-    # TODO: can make slightly faster by not converting to and from corners
     arr = cls.convert_arr_to_corners(arr)
-    arr[arr[:,0]<bounds[0], 0] = bounds[0]
-    arr[arr[:,1]<bounds[1], 1] = bounds[1]
-    arr[arr[:,2]>bounds[2], 2] = bounds[2]
-    arr[arr[:,3]>bounds[3], 3] = bounds[3]
+    arr[:,0] = np.maximum(arr[:,0],bounds[0])
+    arr[:,1] = np.maximum(arr[:,1],bounds[1])
+    arr[:,2] = np.minimum(arr[:,2],bounds[2])
+    arr[:,3] = np.minimum(arr[:,3],bounds[3])
     arr = cls.convert_arr_from_corners(arr)
-    return arr
+
+    pick = np.nonzero((arr[:,2]>0) & (arr[:,3]>0))
+    return arr[pick,:]
 
   # NOTE (sergeyk): I've experimented with all kinds of ways of doing this,
   # and this is the fastest I've found.
