@@ -302,7 +302,7 @@ class LookupTable():
     grid_cell = grid_cell.reshape(assignments.shape[0], 1)
     ass_cell_pos = np.hstack((assignments, grid_cell, positions))
     window = self.windows[win_idx]
-    print ass_cell_pos.shape
+    
     for row in ass_cell_pos:
       self.add_window_for_vg(row[0, 0], row[0, 1], row[0, 2:4], window) 
       self.add_value(row[0, 0], [row[0, 1], win_idx])
@@ -491,6 +491,11 @@ def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
     positions = positions[positions[:, 1] <= ymax, :]
   return np.asarray(positions[:, 2], dtype='int32')
 
+def sub2ind(A, x, y):
+  #[r,c] = size(M);  % Get the size of M
+  #vals = M(I+r.*(J-1))
+  return (y-1)*A[0] + x  
+
 
 ###############################################################
 ######################### Training ############################
@@ -500,20 +505,25 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
   llc_dir = '../../research/jumping_windows/llc/'
   featdir = '../../research/jumping_windows/sift/'
   d = Dataset('full_pascal_trainval')
-  codebook = np.zeros((20,10))
+  #codebook = np.zeros((20,10))
   M = 4
   
   trainfiles = os.listdir(featdir)
   grids = 4
-  t = LookupTable(codebook = codebook)
-
+  # t = LookupTable(codebook = codebook)
+  a = sio.loadmat(join(llc_dir,trainfiles[0]))['codes']
+  numcenters = a.shape[0]
+  ccmat = np.zeros((numcenters, len(d.classes)*grids*grids+1))
+  
+  first_visit = True
   for file in trainfiles:
     print file
     # Load feature positions
     feaSet = sio.loadmat(join(featdir,file))['feaSet']
     x = feaSet['x'][0][0]
     y = feaSet['y'][0][0]    
-    pts = np.hstack((x,y))    
+    pts = np.hstack((x,y))
+    bg = np.ones((pts.shape[0], 1))    
     codes = sio.loadmat(join(llc_dir,file))['codes']
           
     image = d.get_image_by_filename(file[:-4]+'.jpg')
@@ -521,13 +531,85 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
     gt = d.get_ground_truth_for_img_inds([im_ind])
     
     for row in gt.arr:
+    #for row in gt.arr[0,:]:
+      cls = row[gt.cols.index('cls_ind')]
       bbox = row[0:4]
       inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
-      r = RootWindow(bbox, image, M)
+      bg[inds] = 0
+      
+      # Compute grid that each point falls into
+      c_pts = pts + np.tile(1,pts.shape)
+      selbins = np.minimum(  grids, 
+                      np.maximum(  1,
+                            ceil(
+                                 (c_pts[inds,:] - 
+                                 np.tile(np.matrix([bbox[0], bbox[1]]),(len(inds),1)))/ 
+                                 np.tile(np.matrix([bbox[2]/grids, bbox[3]/grids]),(len(inds),1))
+                                )
+                          )
+                    );
+      #selbins -= np.tile(1,selbins.shape)
+      
+      # Convert to ccmat index      
+      binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
+          + cls*grids*grids);
+      sio.savemat('inds',{'inds2':inds}) 
       ind = np.where(codes[:,inds].data > 0)[0]
-      words = np.transpose(np.asmatrix(codes.nonzero()[0][ind]))
+      print codes[:,inds]
+      sio.savemat('boxcode',{'boxcodes2':codes[:,inds]})
+      sio.savemat('ind',{'ind2':ind})
+      print codes.shape
+      words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
+      sio.savemat('words',{'words2':words})
+      words += np.ones(words.shape)
+      print sum(words)
+      #return
       ind = codes.nonzero()[1][ind]
-      t.add_features_new(bbox, r, words, pts[ind])    
+      
+      
+      assert(sub2ind([5,10], 2, 8) == 37)
+      assert(sub2ind([135,13320], 122, 3438) == 464117)
+      
+      print words[0]
+      print binidx[ind][0]
+      idx = sub2ind(ccmat.shape, words, binidx[ind])
+      print ccmat.shape
+      sio.savemat('binind',{'binind':binidx[ind]})
+      sio.savemat('words',{'words2':words})
+      sio.savemat('idx',{'idx2':idx})
+      if file=='000752.mat' and first_visit:
+        assert(np.sum(idx,0)[0,0] == 380086795010.0)
+        first_visit = False
+      # THAT's RIGHT!
+      #print type(idx.astype('int32'))
+      idx = np.unique(np.asarray(idx))
+      idx = idx.astype('int32')
+      #return
+      for i in idx:
+        y = i/ccmat.shape[0]
+        x = i%ccmat.shape[0] - 1        
+        ccmat[x, y] = ccmat[x, y] + 1      
+      break
+      
+    # Now record background features
+    cls = len(d.classes)*grids*grids
+    inds = np.where(bg > 0)[0]
+
+    ind = np.where(codes[:,inds].data > 0)[0]
+    words = codes[:,inds].nonzero()[0][ind]
+    words = np.unique(words)
+    
+    print sum(words)
+    print words.shape
+    sio.savemat('bgidx', {'bgidx': words})
+    for w in words:
+      ccmat[w, cls] = ccmat[w, cls] + 1
+    sio.savemat('ccmat', {'ccmat2': ccmat})
+    
+    return
+    #t.add_background(words, cls)
+    
+  
     
   
 def count_occurence(annotations, positions):
@@ -539,7 +621,7 @@ def count_occurence(annotations, positions):
 #  for train_cls in all_classes:
 #    # Codebook    
 #    t = LookupTable(codebook=codebook,use_scale=use_scale)   
-#     
+#     sdsd
 #    if use_scale:
 #      save_table_file = config.save_dir + 'JumpingWindows/scale/' + train_cls
 #      times_filename = config.save_dir + 'JumpingWindows/scale/time/' + train_cls
