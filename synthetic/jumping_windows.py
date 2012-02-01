@@ -1,7 +1,7 @@
 """ Implementation of Viajayanarasimhan and Graumann's Jumping Windows for
 window candidate selection
 @author: Tobias Baumgartner
-@contact: tobi.baum@gmail.com
+@contact: tobibaum@gmail.com
 """
 
 import cPickle
@@ -492,10 +492,28 @@ def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
   return np.asarray(positions[:, 2], dtype='int32')
 
 def sub2ind(A, x, y):
-  #[r,c] = size(M);  % Get the size of M
-  #vals = M(I+r.*(J-1))
-  return (y-1)*A[0] + x  
+  return y*A[0] + x
 
+def ind2sub(width, ind):
+  y = ind/width
+  x = ind%width - 1
+  return [x, y]    
+
+def sort_cols(A,top_k = 500):
+  """
+  Sort a matrix column-wise. Return sorted matrix and permuted indices
+  """
+  n_cols = A.shape[1]
+  n_rows = A.shape[0]
+  I = np.argsort(-A, axis=0, kind='mergesort')[:top_k]  
+  b =  np.asmatrix(np.zeros((min(top_k, n_rows), n_cols)))
+  for col in range(n_cols):
+    idc = np.asanyarray(I.T[col,:]).tolist()[0]
+    b[:,col] = A[idc,col]
+  return [b, I]
+
+def line_up_cols(A):
+  return np.reshape(A.T,(A.size,1))
 
 ###############################################################
 ######################### Training ############################
@@ -505,12 +523,9 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
   llc_dir = '../../research/jumping_windows/llc/'
   featdir = '../../research/jumping_windows/sift/'
   d = Dataset('full_pascal_trainval')
-  #codebook = np.zeros((20,10))
-  M = 4
-  
+    
   trainfiles = os.listdir(featdir)
   grids = 4
-  # t = LookupTable(codebook = codebook)
   a = sio.loadmat(join(llc_dir,trainfiles[0]))['codes']
   numcenters = a.shape[0]
   ccmat = np.zeros((numcenters, len(d.classes)*grids*grids+1))
@@ -548,49 +563,27 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
                                 )
                           )
                     );
-      #selbins -= np.tile(1,selbins.shape)
       
       # Convert to ccmat index      
       binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
           + cls*grids*grids);
-      sio.savemat('inds',{'inds2':inds}) 
       ind = np.where(codes[:,inds].data > 0)[0]
-      print codes[:,inds]
-      sio.savemat('boxcode',{'boxcodes2':codes[:,inds]})
-      sio.savemat('ind',{'ind2':ind})
-      print codes.shape
       words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
-      sio.savemat('words',{'words2':words})
       words += np.ones(words.shape)
-      print sum(words)
-      #return
       ind = codes.nonzero()[1][ind]
-      
-      
-      assert(sub2ind([5,10], 2, 8) == 37)
-      assert(sub2ind([135,13320], 122, 3438) == 464117)
-      
-      print words[0]
-      print binidx[ind][0]
       idx = sub2ind(ccmat.shape, words, binidx[ind])
-      print ccmat.shape
-      sio.savemat('binind',{'binind':binidx[ind]})
-      sio.savemat('words',{'words2':words})
-      sio.savemat('idx',{'idx2':idx})
-      if file=='000752.mat' and first_visit:
-        assert(np.sum(idx,0)[0,0] == 380086795010.0)
-        first_visit = False
-      # THAT's RIGHT!
-      #print type(idx.astype('int32'))
+      # Can somehow move to tests?
+#      if file=='000752.mat' and first_visit:
+#        assert(np.sum(idx,0)[0,0] == 380086795010.0)
+#        first_visit = False
       idx = np.unique(np.asarray(idx))
       idx = idx.astype('int32')
-      #return
+      
       for i in idx:
-        y = i/ccmat.shape[0]
-        x = i%ccmat.shape[0] - 1        
+        [x, y] = ind2sub(ccmat.shape[0], i)        
         ccmat[x, y] = ccmat[x, y] + 1      
       break
-      
+    
     # Now record background features
     cls = len(d.classes)*grids*grids
     inds = np.where(bg > 0)[0]
@@ -599,16 +592,38 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
     words = codes[:,inds].nonzero()[0][ind]
     words = np.unique(words)
     
-    print sum(words)
-    print words.shape
-    sio.savemat('bgidx', {'bgidx': words})
     for w in words:
       ccmat[w, cls] = ccmat[w, cls] + 1
     sio.savemat('ccmat', {'ccmat2': ccmat})
+    break
+  
+  # counted all words for all images&object, now compute weights   
+  div = np.sum(ccmat,1)
+  for didx in range(len(div)):
+    t = div[didx]
+    if t == 0:
+      ccmat[didx, :] = 2.5
+      continue
+    ccmat[didx, :] /= t
+        
+  [sortedprob, discwords] = sort_cols(ccmat, 500)
+  
+  sio.savemat('disc', {'disc':discwords})
+  
+  for cls_idx in range(len(d.classes)):
     
+    cls = d.classes[cls_idx]
+    clswords = discwords[:,cls_idx*grids*grids:(cls_idx+1)*grids*grids]
+    binidx,_ = np.meshgrid(range(grids*grids), np.zeros((clswords.shape[0],1)))
+    
+    print clswords[0,0]
+    print binidx[0,0]
+    clswords = sub2ind([numcenters, grids*grids], line_up_cols(clswords), line_up_cols(binidx))
+    sio.savemat('clswords', {'clswords2': clswords})
+    
+    print clswords
+    print clswords.shape    
     return
-    #t.add_background(words, cls)
-    
   
     
   
