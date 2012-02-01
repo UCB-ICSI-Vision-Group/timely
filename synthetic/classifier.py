@@ -92,7 +92,7 @@ class Classifier():
     return ret
   
   def load_svm(self, cls):
-    filename = config.res_dir + self.name + '_svm_'+self.suffix+'/' + cls
+    filename = opjoin(config.res_dir, self.name+'_svm_'+self.suffix, cls)
     model = load_svm(filename)
     return model
   

@@ -1,4 +1,6 @@
 import os
+from os.path import join as opjoin
+from os.path import exists as opexists
 import sys
 import time
 import types
