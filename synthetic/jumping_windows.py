@@ -499,18 +499,32 @@ def ind2sub(width, ind):
   x = ind%width - 1
   return [x, y]    
 
-def sort_cols(A,top_k = 500):
+def sort_cols(A,top_k=None):
   """
   Sort a matrix column-wise. Return sorted matrix and permuted indices
   """
-  n_cols = A.shape[1]
   n_rows = A.shape[0]
+  if not top_k == None:
+    min(top_k, n_rows)    
   I = np.argsort(-A, axis=0, kind='mergesort')[:top_k]  
-  b =  np.asmatrix(np.zeros((min(top_k, n_rows), n_cols)))
+  b = mat_from_col_idx(A, I)
+  return [b, I]
+
+def mat_from_col_idx(A, I):
+  """
+  Generate Submatrix from column index
+  """
+  n_rows = I.shape[0]
+  n_cols = A.shape[1]
+  b =  np.asmatrix(np.zeros((n_rows, n_cols)))
   for col in range(n_cols):
     idc = np.asanyarray(I.T[col,:]).tolist()[0]
-    b[:,col] = A[idc,col]
-  return [b, I]
+    print b.shape
+    if type(A[idc,col]) == type(np.array(None)):
+      b[:,col] = np.asmatrix(A[idc,col]).T
+    else:
+      b[:,col] = A[idc,col]
+  return b
 
 def line_up_cols(A):
   return np.reshape(A.T,(A.size,1))
@@ -613,12 +627,24 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
   for cls_idx in range(len(d.classes)):
     
     cls = d.classes[cls_idx]
-    clswords = discwords[:,cls_idx*grids*grids:(cls_idx+1)*grids*grids]
+    clswords = discwords[:, cls_idx*grids*grids:(cls_idx+1)*grids*grids]
     binidx,_ = np.meshgrid(range(grids*grids), np.zeros((clswords.shape[0],1)))
     
     print clswords[0,0]
     print binidx[0,0]
     clswords = sub2ind([numcenters, grids*grids], line_up_cols(clswords), line_up_cols(binidx))
+    
+    # === GOOD! ===
+    wordprobs = sortedprob[:, cls_idx*grids*grids:(cls_idx+1)*grids*grids];
+    wordprobs = line_up_cols(wordprobs);
+    [wordprobs2, idx] = sort_cols(wordprobs);
+    
+    wordprobs = mat_from_col_idx(wordprobs, idx)
+    assert(wordprobs2.all() == wordprobs.all())
+    print clswords.shape
+    print 'hallo!!!!'
+    clswords = mat_from_col_idx(clswords, idx);
+    
     sio.savemat('clswords', {'clswords2': clswords})
     
     print clswords
