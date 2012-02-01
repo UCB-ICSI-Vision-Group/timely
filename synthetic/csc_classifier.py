@@ -3,20 +3,14 @@ Created on Nov 20, 2011
 
 @author: Tobias Baumgartner
 '''
-
-import numpy as np
-from mpi4py import MPI
 import itertools
-import os
+
+from common_imports import *
+from common_mpi import *
 
 from synthetic.dpm_classifier import Classifier
 from synthetic.dataset import Dataset
 import synthetic.config as config
-
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
-
 
 class CSCClassifier(Classifier):
   def __init__(self, suffix):
@@ -67,7 +61,7 @@ def csc_classifier_train():
   list_of_parameters = [lowers, uppers, kernels, intervallss, clss, Cs]
   product_of_parameters = list(itertools.product(*list_of_parameters))
   
-  for params_idx in range(mpi_rank, len(product_of_parameters), mpi_size):
+  for params_idx in range(comm_rank, len(product_of_parameters), comm_size):
     params = product_of_parameters[params_idx] 
     lower = params[0]
     upper = params[1]
@@ -102,7 +96,7 @@ if __name__=='__main__':
     svm_save_dir = os.path.join(config.res_dir,csc_classif.name)+ '_svm_'+csc_classif.suffix+'/'
     score_file = os.path.join(svm_save_dir,'test_accuracy.txt')
                       
-    for cls_idx in range(mpi_rank, 20, mpi_size):
+    for cls_idx in range(comm_rank, 20, comm_size):
       row = best_table.filter_on_column('cls_ind', cls_idx).arr
       intervalls = row[0,best_table.cols.index('bins')]
       kernel = config.kernels[int(row[0,best_table.cols.index('kernel')])]

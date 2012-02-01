@@ -18,60 +18,74 @@ from synthetic.sliding_windows import SlidingWindows
 from synthetic.evaluation import Evaluation
 import synthetic.config as config
 
-def load_configs(args_string):
+def load_configs(name):
   """
-  Load the config, expected in json format.
-  If filepath is a directory, loads all json files in it.
-  Can also be list of json filenames without extensions, separated by commas.
+  Load the config in json format and return as list of experiments.
+  Look for config_dir/#{name}.json
   """
-  def load_config(full_filename):
-    print(full_filename)
-    assert(os.path.exists(full_filename))
-    with open(full_filename) as f:
-      config = json.load(f)
-    if 'bounds' in config:
-      config['bounds'] = tuple(config['bounds']) # IMPORTANT!
-    return config
-
-  config_filenames = args_string.split(',')
-  # check if we only have one file and if its a directory
-  if len(config_filenames)==1:
-    if os.path.isdir(config.config_dir+'/'+config_filenames[0]):
-      dirname = config_filenames[0]
-      config_filenames = glob.glob(config.config_dir+'/'+dirname+'/*.json')
-      return [load_config(filename) for filename in config_filenames]
-  # load the json files
-  full_filename = lambda filename: os.path.join(config.config_dir,filename+'.json')
-  return [load_config(full_filename(filename)) for filename in config_filenames]
+  full_filename = opjoin(config.config_dir,name+'.json')
+  print("Loading %s"%full_filename)
+  assert(opexists(full_filename))
+  with open(full_filename) as f:
+    cf = json.load(f)
+  # Gather multiple values of settings, if given
+  num_conditions = 1
+  if 'bounds' in cf:
+    bounds_list = []
+    if isinstance(cf['bounds'][0], list):
+      bounds_list = cf['bounds']
+    else:
+      bounds_list = [cf['bounds']]
+    num_conditions *= len(bounds_list)
+  
+  configs = []
+  for i in range(0,num_conditions):
+    configs.append(dict(cf))
+    configs[i]['bounds'] = bounds_list[i%len(bounds_list)]
+  return configs
 
 def main():
-  parser = argparse.ArgumentParser(description='Execute different functions of our system')
-  parser.add_argument('--test_dataset', choices=['val','test','train','trainval'],
-      default='test',
-      help="""Dataset to use for testing. Can only be set to one thing. Run on
-      val until ready for final runs.
-      the training dataset is automatically inferred (val->train and test->trainval).""")
+  parser = argparse.ArgumentParser(
+    description="Run experiments with the timely detection system.")
+
+  # TODO: this should be specified in config file as well
+  parser.add_argument('--test_dataset',
+    choices=['val','test','train','trainval'],
+    default='val',
+    help="""Dataset to use for testing. Run on val until final runs.
+    The training dataset is inferred (val->train; test->trainval).""")
+
   parser.add_argument('--first_n', type=int,
-      help='only take the first N images in the datasets')
-  parser.add_argument('--configs', help="""List of config files to run on.
-  They have to be in results/configs/*.json, but just give the filename without extension.
-  If the name passed in is a dirname, then will go through all the config files in that directory.""")
+    help='only take the first N images in the datasets')
+
+  parser.add_argument('--configs',
+    help="""List of config files to run on.
+    They have to be in results/configs/*.json, but just give the filename without extension.
+    If the name passed in is a dirname, then will go through all the config files in that directory.""")
+
   parser.add_argument('--force', action='store_true', 
-      default=False, help='force overwrite')
+    default=False, help='force overwrite')
+
   parser.add_argument('--wholeset_prs', action='store_true', 
-      default=False, help='evaluate in the final p-r regime')
+    default=False, help='evaluate in the final p-r regime')
+
   parser.add_argument('--no_policy', action='store_true', 
-      default=False, help='do not use the policy when evaluating wholeset_pr')
+    default=False, help='do not use the policy when evaluating wholeset_pr')
+
   parser.add_argument('--no_apvst', action='store_true', 
-      default=False, help='do NOT evaluate in the ap vs. time regime')
+    default=False, help='do NOT evaluate in the ap vs. time regime')
+
   parser.add_argument('--det_configs', action='store_true', 
-      default=False, help='output detector statistics to det_configs')
+    default=False, help='output detector statistics to det_configs')
+
   args = parser.parse_args()
+  print(args)
+
+  # If config file is not given, just run one experiment using default config
   if not args.configs:
     configs = [DatasetPolicy.default_config]
   else:
     configs = load_configs(args.configs)
-  print(args)
 
   # Load the dataset
   dataset = Dataset('full_pascal_'+args.test_dataset)
@@ -90,9 +104,11 @@ def main():
   tables = []
   all_bounds = []
   dps = []
-  for config in configs:
+
+  for config_f in configs:
     sw = SlidingWindows(dataset,train_dataset)
-    dp = DatasetPolicy(dataset, train_dataset, sw, **config)
+    dp = DatasetPolicy(dataset, train_dataset, sw, **config_f)
+
     ev = Evaluation(dp)
     dps.append(dp)
     all_bounds.append(dp.bounds)
