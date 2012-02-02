@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Wrapper script for running the final stages of our CVPR12 experiments.
+Script for running experiments and outputting the results.
 """
 import shutil
 import glob

@@ -62,6 +62,7 @@ def main():
     args.priors = args.priors.split(',')
   if args.bounds:
     args.bounds = [float(x) for x in re.findall(r'\d+', args.bounds)]
+    assert(len(args.bounds)==2)
   print(args)
 
   # Load the dataset
@@ -102,9 +103,7 @@ def main():
     return
 
   if args.mode=='window_stats':
-    """
-    Compute and plot the statistics of ground truth window parameters.
-    """
+    "Compute and plot the statistics of ground truth window parameters."
     results = SlidingWindows.get_dataset_window_stats(train_dataset,plot=True)
 
   if args.mode=='detect' or args.mode=='evaluate':
