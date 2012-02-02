@@ -71,6 +71,8 @@ Tasks
 ### classification
 - evaluate classification performance
   - train classifier on top of detection output
+  - train classifier for the whole image (SIFT+SPM)
+  - compare their performances
 
 ### window proposals
 - speed up: profile code to see where the speed bottlenecks are. how can they be resolved?

@@ -52,7 +52,7 @@ class Dataset:
     return None
 
   def get_image_filename(self,img_ind):
-    return config.VOC_dir + 'JPEGImages/' + self.images[img_ind].name
+    return opjoin(config.VOC_dir, 'JPEGImages', self.images[img_ind].name)
 
   def __repr__(self):
     return self.get_name()
@@ -78,14 +78,14 @@ class Dataset:
     If force is True, does not look for cached data when loading.
     """
     tt = ut.TicToc().tic()
-    print("Dataset: loading PASCAL...")
+    print("Dataset: %s"%name),
     filename = config.get_cached_dataset_filename(name)
-    if os.path.exists(filename):
+    if opexists(filename):
       with open(filename) as f:
         cached = cPickle.load(f)
         self.classes = cached.classes
         self.images = cached.images
-        print("...loaded from cache in %.3f s"%tt.qtoc())
+        print("...loaded from cache in %.2f s"%tt.qtoc())
         return
     print("...loading from scratch")
     filename = config.pascal_paths[name]
@@ -95,16 +95,16 @@ class Dataset:
     for i,img in enumerate(imgset):
       tt.tic('2')
       if tt.qtoc('2') > 2:
-        print("...on image %d/%d"%(i,len(imgset)))
+        print("  on image %d/%d"%(i,len(imgset)))
         tt.tic('2')
       if len(img)>0:
-        xml_filename = os.path.join(config.VOC_dir,'Annotations',img+'.xml')
+        xml_filename = opjoin(config.VOC_dir,'Annotations',img+'.xml')
         self.images.append(Image.load_from_xml(self,xml_filename))
     filename = config.get_cached_dataset_filename(name)
-    print("...saving to cache file")
+    print("  ...saving to cache file")
     with open(filename, 'w') as f:
       cPickle.dump(self,f)
-    print("...done in %.3f s\n"%tt.qtoc())
+    print("  ...done in %.2f s\n"%tt.qtoc())
 
   def get_pos_windows(self, cls=None, window_params=None, min_overlap=0.6):
     """
