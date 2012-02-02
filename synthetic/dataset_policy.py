@@ -25,10 +25,10 @@ class ImageAction:
 class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
-    'suffix': 'jan30', # can use this to re-run on same param due to changed code
+    'suffix': 'jan30', # use this to re-run on same params after changing code
     'detector': 'ext', # perfect,perfect_with_noise,ext
     'class_priors_mode': 'random', # random,oracle,fixed_order,no_smooth,backoff
-    'dets_suffixes': ['dpm_may25'], # further specifies which detector to use
+    'dets_suffixes': ['csc_default'], # further specifies which detector to use
     'bounds': None, # start and deadline times for the policy
     'gist': 0, # use the GIST action? 0/1
     'with_entropy': 0, # use the entropy feature in belief state featurization?
@@ -64,32 +64,20 @@ class DatasetPolicy:
     return Detector.get_cols() + ['cls_ind','img_ind','time']
 
   def __init__(self, dataset, train_dataset, sw, **kwargs):
+    "**kwargs update the default config"
     config = copy.copy(DatasetPolicy.default_config)
     config.update(kwargs)
 
-    # required stuff
     self.dataset = dataset
     self.train_dataset = train_dataset
     self.sw = sw
 
-    # config stuff: we take a shortcut
     self.__dict__.update(config)
-
-    delay_initialize = kwargs.pop('delay_initialize', False)
-    if not delay_initialize:
-      self.initialize_fields()
-
-  def initialize_fields(self):
-    """
-    Allow outside callers to change the config and then call this to
-    re-init.
-    """
-    print("Running with config:")
+    print("DatasetPolicy running with config:")
     pprint(self.__dict__)
     self.priors = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
     self.ev = Evaluation(self)
 
-    #####
     # Construct the actions list
     self.actions = []
     
@@ -169,7 +157,7 @@ class DatasetPolicy:
     self.reset_actions()
   
   def get_ext_dets(self):
-    """Return external detections straight from their cache."""
+    "Return external detections straight from their cache."
     return self.all_dets
 
   def detect_in_dataset(self,force=False):
