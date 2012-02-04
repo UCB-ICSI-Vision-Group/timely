@@ -39,6 +39,7 @@ else:
   raise RuntimeError("Can't set paths correctly")
 
 # repo_dir, data_dir, temp_data_dir
+# temp_data_dir is not propagated between machines!
 paths = {
   'tobi_home':    ['/home/tobibaum/Documents/Vision/timely/',
                    '/home/tobibaum/Documents/Vision/timely/data/',
@@ -78,7 +79,7 @@ config_dir = join(script_dir,'configs')
 
 # Result data
 res_dir = makedirs(join(data_dir, 'results'))
-temp_res_dir = makedirs(join(temp_data_dir, 'results'))
+temp_res_dir = makedirs(join(data_dir, 'temp_results'))
 dets_configs_dir = makedirs(join(res_dir,'det_configs'))
 
 # ./results/sliding_windows_{dataset}
@@ -150,7 +151,9 @@ def get_ext_dets_filename(dataset, suffix):
   dataset_name = dataset.name # NOTE does not depend on # images
   return join(dirname, '%s_%s.npy'%(dataset_name,suffix))
 
-# directory for gist features
+#####
+# GIST
+#####
 gist_dir = makedirs(join(res_dir, 'gist_features'))
 
 def get_gist_dict_filename(dataset_name):
@@ -159,3 +162,25 @@ def get_gist_dict_filename(dataset_name):
 def get_gist_svm_filename(for_cls):
   dirname = makedirs(join(gist_dir,'svm'))
   return join(dirname,for_cls)
+
+#####
+# Classifier
+#####
+# learning
+def get_classifier_learning_dirname(classifier):
+  return makedirs(join(config.temp_res_dir, classifier.name+'_svm_'+classifier.suffix))
+
+def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C)
+  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
+  return join(dirname, "%s_%d_%d_%d"%(cls,lower,upper,C))
+    
+def get_classifier_learning_eval_filename(classifier,cls,kernel,intervals,lower,upper,C)
+  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
+  return join(dirname, "eval_%d_%d_%d"%(lower,upper,C))
+
+# final
+def get_classifier_dirname(classifier):
+  return makedirs(join(config.res_dir, classifier.name+'_svm_'+classifier.suffix))
+
+def get_classifier_filename(classifier,cls):
+  return join(config.get_classifier_dirname, cls)
