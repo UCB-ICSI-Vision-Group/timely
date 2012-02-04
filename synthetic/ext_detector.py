@@ -62,7 +62,7 @@ class ExternalDetector(Detector):
     dets = dets.with_column_omitted('time')
     return (dets.arr, time_passed)
 
-  def compute_posterior(self, image, dets, oracle=True):
+  def compute_posterior(self, image, dets, oracle=False):
     """
     Return the 0/1 decision of whether the cls of this detector is present in
     the image, given the detections table.

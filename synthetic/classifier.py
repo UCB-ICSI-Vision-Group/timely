@@ -1,9 +1,3 @@
-'''
-Created on Nov 20, 2011
-
-@author: Tobias Baumgartner
-'''
-
 from abc import abstractmethod
 import fnmatch
 
@@ -18,26 +12,25 @@ class Classifier():
     self.name = ''
     self.suffix = ''
   
-  def compute_histogram(self,arr, intervalls, lower, upper):
+  def compute_histogram(self, arr, intervals, lower, upper):
     band = upper - lower
-    int_width = band/intervalls
-    hist = np.zeros((intervalls,1))
-    # first compute the cumulated  histogram
-    for i in range(int(intervalls)):
+    int_width = band/intervals
+    hist = np.zeros((intervals,1))
+    # first compute the cumulative  histogram
+    for i in range(int(intervals)):
       every = sum(arr < (lower + int_width*(i+1)))
       hist[i] =  every
     # and then uncumulate
-    for j in range(int(intervalls)-1):
-      hist[intervalls-j-1] -= hist[intervalls-j-2]
+    for j in range(int(intervals)-1):
+      hist[intervals-j-1] -= hist[intervals-j-2]
     if sum(hist) > 0:
       hist = np.divide(hist, sum(hist)) 
     return np.transpose(hist)
   
   @abstractmethod
-  def create_vector(self, feats, cls, img, intervalls, lower, upper):
-    """
-    Changes in classifiers. Create the feature vector that is going to be classified 
-    """
+  def create_vector(self, feats, cls, img, intervals, lower, upper):
+    "Create the feature vector."
+    # implement in subclasses
   
   def train(self, pos, neg, kernel, C):    
     y = [1]*pos.shape[0] + [-1]*neg.shape[0]
@@ -58,19 +51,17 @@ class Classifier():
       scores[idx] = 1./(math.exp(-2.*scores[idx]) + 1.)  
     return np.hstack((scores, arr[:,1:3]))
       
-  def train_for_all_cls(self, train_dataset, feats, intervalls, kernel, lower, upper, cls_idx, C):
+  def train_for_all_cls(self, train_dataset, feats, intervals, kernel, lower, upper, cls_idx, C):
     cls = train_dataset.classes[cls_idx]
-    ut.makedirs(config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls))
-    filename = config.save_dir + self.name + '_svm_'+self.suffix+'/'+ kernel + '/' + str(intervalls) + '/'+ \
-      cls + '_' + str(lower) + '_' + str(upper) + '_' + str(C)
-    
-    images = train_dataset.images
+    filename = config.get_classifier_svm_learning_filename(
+      self,cls,kernel,intervals,lower,upper,C)
+
     pos_images = train_dataset.get_pos_samples_for_class(cls)
     pos = []
     neg = []
-    print comm_rank, 'trains', cls, intervalls, kernel, lower, upper, C
-    for img in range(len(images)):
-      vector = self.create_vector(feats, train_dataset.classes.index(cls), img, intervalls, lower, upper)
+    print comm_rank, 'trains', cls, intervals, kernel, lower, upper, C
+    for img in range(len(train_dataset.images)):
+      vector = self.create_vector(feats, train_dataset.classes.index(cls), img, intervals, lower, upper)
       if img in pos_images:
         pos.append(vector)
       else:
@@ -78,13 +69,14 @@ class Classifier():
         
     pos = np.concatenate(pos)
     neg = np.concatenate(neg)
+    # take as many negatives as there are positives
     neg = np.random.permutation(neg)[:pos.shape[0]]
     model = self.train(pos, neg, kernel, C)
    
     save_svm(model, filename)
     
-  def classify_image(self, model, dets, cls, img, intervalls, lower, upper): 
-    vector = self.create_vector(dets, cls, img, intervalls, lower, upper)
+  def classify_image(self, model, dets, cls, img, intervals, lower, upper): 
+    vector = self.create_vector(dets, cls, img, intervals, lower, upper)
     result = svm_predict(vector, model)
     ret = 0
     if (result > 0)[0][0]:
@@ -92,11 +84,10 @@ class Classifier():
     return ret
   
   def load_svm(self, cls):
-    filename = opjoin(config.res_dir, self.name+'_svm_'+self.suffix, cls)
-    model = load_svm(filename)
+    model = load_svm(config.get_classifier_svm_filename(self,cls))
     return model
   
-  def test_svm(self, test_dataset, feats, intervalls, kernel, lower, upper, \
+  def test_svm(self, test_dataset, feats, intervals, kernel, lower, upper, \
                cls_idx, C, file_out=True,local=False):
     images = test_dataset.images  
   
@@ -104,9 +95,9 @@ class Classifier():
     pos_images = test_dataset.get_pos_samples_for_class(cls)
     pos = []
     neg = []
-    print comm_rank, 'evaluates', cls, intervalls, kernel, lower, upper, C
+    print comm_rank, 'evaluates', cls, intervals, kernel, lower, upper, C
     for img in range(len(images)):
-      vector = self.create_vector(feats, test_dataset.classes.index(cls), img, intervalls, lower, upper)
+      vector = self.create_vector(feats, test_dataset.classes.index(cls), img, intervals, lower, upper)
       if img in pos_images:
         pos.append(vector)
       else:
@@ -119,10 +110,10 @@ class Classifier():
     numneg = neg.shape[0]
     
     if local:
-      filename = config.res_dir + self.name + '_svm_'+self.suffix +'/' +cls
+      filename = config.get_classifier_svm_filename(self,cls)
     else:
-      filename = config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls) + '/'+ \
-        cls + '_' + str(lower) + '_' + str(upper) + '_' + str(C)
+      filename = config.get_classifier_svm_learning_filename(
+        self,cls,kernel,intervals,lower,upper,C)
     model = load_svm(filename)
     evaluation = self.evaluate(pos, neg, model)
     pos_res = evaluation[:pos.shape[0],:]
@@ -133,8 +124,8 @@ class Classifier():
     tn   = sum(neg_res > 0)
     prec = tp/float(tp+fp)
     rec  = tp/float(tp+fn)
-    eval_file = config.save_dir + self.name + '_svm_'+self.suffix+'/' + kernel + '/' + str(intervalls) + \
-      '/'+ 'eval_' + str(lower) + '_' + str(upper) + '_' + str(C)
+    eval_file = config.get_classifier_svm_learning_eval_filename(
+      self,cls,kernel,intervals,lower,upper,C)
     acc = (tp/float(numpos)*numneg + tn)/float(2*neg.shape[0])
     if file_out:
       with open(eval_file, 'a') as myfile:
@@ -142,7 +133,6 @@ class Classifier():
                      ' ' + str(np.array(acc)[0][0]) + '\n')
     else:
       return np.array(acc)[0][0]
-        
     
   def get_best_svm_choices(self):  
     classes = config.pascal_classes
@@ -152,7 +142,7 @@ class Classifier():
     best_settings = {}
     kernels = config.kernels
     
-    direct = os.path.join(config.save_dir + self.name + '_svm_'+self.suffix+'/')
+    direct = get_classifier_svm_learning_dirname(self)
     for root, dirs, files in os.walk(direct):
       _,kernel =  os.path.split(root)    
       for direc in dirs:
@@ -177,12 +167,10 @@ class Classifier():
     for idx in range(len(classes)):
       best_arr[idx,:] = best_settings[classes[idx]] + [idx]
     
-    # Store the best svms in resuslts
-    svm_save_dir = os.path.join(config.res_dir,self.name)+ '_svm_'+self.suffix+'/'
-    os.system('rm ' + svm_save_dir + '*') 
-    ut.makedirs(svm_save_dir)
+    # Store the best svms in results
+    svm_save_dir = config.get_classifier_svm_dirname(self)
     score_sum = 0
-    score_file = open(os.path.join(svm_save_dir,'accuracy.txt'),'a')
+    score_file = open(opjoin(svm_save_dir,'accuracy.txt'),'w')
     for row in best_arr:
       cls = classes[int(row[6])]
       svm_name = cls + '_' + str(row[2]) + '_' + \
@@ -195,16 +183,11 @@ class Classifier():
       print svm_name
     score_file.writelines('mean' + '\t\t\t' + str(score_sum/20.) + '\n')
     
-    
     best_table = ut.Table(best_arr, cols)
     best_table.name = 'Best_'+self.name+'_values'
-    save_best_table_name = os.path.join(config.res_dir,'%s_svm_%s'%(self.name,self.suffix),'best_table') 
-    best_table.save(save_best_table_name)
+    best_table.save(opjoin(svm_save_dir,'best_table'))
     print best_table
     
   def get_best_table(self):
-    best_table_name = os.path.join(config.res_dir,'%s_svm_%s'%(self.name,self.suffix),'best_table') 
-    return ut.Table.load(best_table_name)
-    
-    
+      return ut.Table.load(opjoin(svm_save_dir,'best_table'))
     
