@@ -389,14 +389,9 @@ def get_selbins(grids, inds, c_pts, bbox):
         )
   );  
   
-def get_idx(inds, codes, pts, grids, bbox, c_shape, cls, feats):
+def get_idx(inds, codes, c_shape, feats, binidx):
   # Compute grid that each point falls into
-  selbins = get_selbins(grids, inds, pts, bbox)
-  
-  # Convert to ccmat index      
-  binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
-      + cls*grids*grids);
-  
+    
   if feats == 'llc':
     ind = np.where(codes[:,inds].data > 0)[0]
     words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
@@ -459,7 +454,11 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
       inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
       bg[inds] = 0
       
-      idx = get_idx(inds, codes, pts, grids, bbox, ccmat.shape, cls, feats)      
+      selbins = get_selbins(grids, inds, pts, bbox) 
+      binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
+          + cls*grids*grids);
+      
+      idx = get_idx(inds, codes, ccmat.shape, feats, binidx)  
       
       for i in idx:
         [x, y] = ind2sub(ccmat.shape[0], i)        
@@ -533,6 +532,7 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
         codes = sio.loadmat(join(llc_dir,filename))['codes']
         last_filename = filename
       bbox = row[0:4]
+      
       inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
             
       # Compute grid that each point falls into
@@ -541,12 +541,17 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
       
       binidx = np.transpose(sub2ind([grids, grids], selbins[:,0]-1, selbins[:,1]-1));
           
-      ind = np.where(codes[:,inds].data > 0)[0]
-      words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
-      words += np.ones(words.shape)
-      ind = codes.nonzero()[1][ind]
-      idx = sub2ind([numcenters, grids**2], words, binidx[ind])
+      selbins = get_selbins(grids, inds, pts, bbox) 
+      binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
+          + cls*grids*grids);
       
+      idx = get_idx(inds, codes, ccmat.shape, feats, binidx)
+      
+      if feats == 'llc':
+        ind = np.where(codes[:,inds].data > 0)[0]
+        ind = codes.nonzero()[1][ind]
+      elif feats == 'sift':
+        ind = inds
       #intersect idx and clswords
             
       clswords = np.unique(np.asarray(clswords))
