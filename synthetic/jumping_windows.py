@@ -192,7 +192,6 @@ class RootWindow():
     """ We expect a 1x2 positions here: x y """
     # First compute the bin in which this positions belongs. We need the relative
     # coordinates of this feat to the RootWindow. 
-    
     x = positions[:,0] - self.x
     y = positions[:,1] - self.y
     x_pos = (x/(self.width+1)*self.M).astype(Int)
@@ -302,15 +301,17 @@ class LookupTable:
         test_annos = np.where(annots[:,2] == word)[0]
         test_positions = positions[test_annos][:, 0:2]
       
+
       if test_positions.size == 0:
-        word_idx += 1
+        curr_weight_idx += 1
         continue
       # find the root windows that have ann at position grid
+
       if not word in self.clusters:
         # we haven't never seen this annotations before. skip it
-        word_idx += 1
+        curr_weight_idx += 1
         continue
-      
+     
       windows = self.clusters[word]
       for pos in test_positions[0]:
         pos = np.array(pos)[0]
@@ -324,6 +325,7 @@ class LookupTable:
               break        
         else:
           break
+
       word_idx += 1
     return top_boxes    
 
@@ -408,6 +410,21 @@ def get_idx(inds, codes, c_shape, feats, binidx):
   idx = idx.astype('int32')
   
   return idx
+
+
+def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
+  indices = np.matrix(np.arange(positions.shape[0]))
+  indices = indices.reshape(positions.shape[0], 1)
+  positions = np.asarray(np.hstack((positions, indices)))
+  if not positions.size == 0:  
+    positions = positions[positions[:, 0] >= xmin, :]
+  if not positions.size == 0:
+    positions = positions[positions[:, 0] <= xmax, :]
+  if not positions.size == 0:  
+    positions = positions[positions[:, 1] >= ymin, :]
+  if not positions.size == 0:
+    positions = positions[positions[:, 1] <= ymax, :]
+  return np.asarray(positions[:, 2], dtype='int32')
 
 
 ###############################################################
@@ -687,9 +704,9 @@ if __name__=='__main__':
   #num_pos = 1
   #all_classes = ['bird']
   use_scale = False
+
   e = Extractor()
   d = Dataset(train_set)
-    
   train = True
   if train:
     # this is the codebook size
