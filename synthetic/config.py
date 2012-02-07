@@ -1,6 +1,4 @@
-"""
-Set up paths to files and other one-time or platform-dependent settings.
-"""
+"Set up paths to files and other one-time or platform-dependent settings."
 
 from os.path import join,exists
 import getpass
@@ -16,6 +14,7 @@ pascal_classes = ['aeroplane','bicycle', 'bird','boat','bottle','bus','car',
                   'cat','chair','cow','diningtable','dog', 'horse',
                   'motorbike','person','pottedplant','sheep','sofa','train',
                   'tvmonitor']
+# TODO: formalize the below path
 dpm_may25_dirname = '/tscratch/tmp/sergeyk/object_detection/dets_may25_DP/'
 
 ##################
@@ -134,7 +133,7 @@ def get_evals_dp_dir(dataset_policy):
 def get_dp_detections_filename(dataset_policy):
   return join(get_evals_dp_dir(dataset_policy), 'cached_dets.npy')
 
-# ./results/evaluations/{dataset_name}/{dp_config_name}/weights/
+# results/evaluations/{dataset_name}/{dp_config_name}/weights/
 def get_dp_weights_dirname(dataset_policy):
   dirname = get_evals_dp_dir(dataset_policy)
   return makedirs(join(dirname,'weights'))
@@ -151,11 +150,14 @@ def get_ext_dets_filename(dataset, suffix):
   return join(dirname, '%s_%s.npy'%(dataset_name,suffix))
 
 # directory for gist features
+# results/gist_features/
 gist_dir = makedirs(join(res_dir, 'gist_features'))
 
+# results/gist_features/full_pascal_trainval.npy
 def get_gist_dict_filename(dataset_name):
   return join(gist_dir, dataset_name + '.npy')
 
+# results/gist_features/svm/
 def get_gist_svm_filename(for_cls):
   dirname = makedirs(join(gist_dir,'svm'))
   return join(dirname,for_cls)
