@@ -279,7 +279,53 @@ class LookupTable:
   def save(self):
     store_file = open( 'test_' + self.cls, 'w') 
     cPickle.dump(self, store_file)
+  
+  def compute_top_boxes(self, annots, positions, K, cut_tolerance,feature_type='sift'):
+    """ compute the top K boxes in the sense of weights"""
+    word_idx = 0    
+    top_boxes = np.zeros((K, 4))
+
+    insert_count = 0    
+    go_on = True
+    #annots = unify_rows(annots)
     
+    while go_on:
+      if word_idx >= self.top_words.shape[0]:
+        go_on = False
+        continue
+      
+      word = self.top_words[word_idx][0]
+      if feature_type=='sift':
+        test_annos = np.where(annots[:,3] == word)[0]
+        test_positions = annots[test_annos][:, 0:3]
+      else:
+        test_annos = np.where(annots[:,2] == word)[0]
+        test_positions = positions[test_annos][:, 0:2]
+      
+      if test_positions.size == 0:
+        word_idx += 1
+        continue
+      # find the root windows that have ann at position grid
+      if not word in self.clusters:
+        # we haven't never seen this annotations before. skip it
+        word_idx += 1
+        continue
+      
+      windows = self.clusters[word]
+      for pos in test_positions[0]:
+        pos = np.array(pos)[0]
+        if go_on:
+          for windex in range(windows.shape[0]):
+            win = np.array(windows[windex,:])[0]           
+            top_boxes[insert_count,:] = [pos[0] + win[0], pos[1] + win[1], pos[0] + win[2], pos[1] + win[3]]
+            insert_count += 1
+            if insert_count == K:
+              go_on = False
+              break        
+        else:
+          break
+      word_idx += 1
+    return top_boxes    
 
 def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
   indices = np.matrix(np.arange(positions.shape[0]))
@@ -342,6 +388,30 @@ def get_selbins(grids, inds, c_pts, bbox):
               )
         )
   );  
+  
+def get_idx(inds, codes, pts, grids, bbox, c_shape, cls):
+  # Compute grid that each point falls into
+  selbins = get_selbins(grids, inds, pts, bbox)
+  
+  # Convert to ccmat index      
+  binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
+      + cls*grids*grids);
+  ind = np.where(codes[:,inds].data > 0)[0] 
+  
+  words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
+  words += np.ones(words.shape)
+  ind = codes.nonzero()[1][ind]
+#  print words
+#  print binidx[ind]
+#  ut.keyboard()
+  
+  idx = sub2ind(c_shape, words, binidx[ind])
+
+  idx = np.unique(np.asarray(idx))
+  idx = idx.astype('int32')
+  
+  return idx
+
 
 ###############################################################
 ######################### Training ############################
@@ -367,6 +437,7 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
     y = feaSet['y'][0][0]    
     pts = np.hstack((x,y))
     bg = np.ones((pts.shape[0], 1))    
+    
     codes = sio.loadmat(join(llc_dir,file))['codes']
           
     image = d.get_image_by_filename(file[:-4]+'.jpg')
@@ -380,28 +451,11 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
       inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
       bg[inds] = 0
       
-      # Compute grid that each point falls into
-      selbins = get_selbins(grids, inds, pts, bbox)
-      
-      # Convert to ccmat index      
-      binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
-          + cls*grids*grids);
-      ind = np.where(codes[:,inds].data > 0)[0]
-      words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
-      words += np.ones(words.shape)
-      ind = codes.nonzero()[1][ind]
-      idx = sub2ind(ccmat.shape, words, binidx[ind])
-      # Can somehow move to tests?
-#      if file=='000752.mat' and first_visit:
-#        assert(np.sum(idx,0)[0,0] == 380086795010.0)
-#        first_visit = False
-      idx = np.unique(np.asarray(idx))
-      idx = idx.astype('int32')
+      idx = get_idx(inds, codes, pts, grids, bbox, ccmat.shape, cls)
       
       for i in idx:
         [x, y] = ind2sub(ccmat.shape[0], i)        
         ccmat[x, y] = ccmat[x, y] + 1      
-      #break
     
     # Now record background features
     cls = len(d.classes)*grids*grids
@@ -498,52 +552,45 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
         bbinfo.insert(c, ins)         
       
     bbinfo.perform_mean_shifts()
-    bbinfo.save()
-    
+    bbinfo.top_words = np.asarray(bbinfo.wordprobs.argsort(axis=0))[::-1]
+    bbinfo.save() 
+
 def generate_jwin(bbinfo, im, cls, codes, pts):
   wordids = []
   pos = []
   
   #[I,J] = codes.nonzero()
   ind = np.where(codes.data > 0)[0]
-  print ind.shape
+  
   I = np.transpose(np.asmatrix(codes.nonzero()[0][ind]))
   J = np.transpose(np.asmatrix(codes.nonzero()[1][ind]))
   
-  sio.savemat('IJ', {'I2': I, 'J2': J})
-  #print I, J
-  binidx = np.tile(range(bbinfo.grids*bbinfo.grids), (I.shape[0],1))
-  binidx = line_up_cols(binidx)
+  annots = np.hstack((pts[J.T.tolist()[0]], I))
+  #print annots.shape
+  return bbinfo.compute_top_boxes(annots, annots[:,0:2], K=3000, cut_tolerance = 0.5, feature_type = 'llc')
   
-  print I.shape
-  print 'sumI', np.sum(I)
-  print 'meanI', np.mean(I)
-  print J.shape
-  print 'sumJ', np.sum(J)
-  print 'meanJ', np.mean(J)
-  
-  
-  I = line_up_cols(np.tile(I, (bbinfo.grids*bbinfo.grids, 1)))
-  J = np.tile(J, (bbinfo.grids*bbinfo.grids, 1))
-  I = sub2ind([bbinfo.numcenters, bbinfo.grids*bbinfo.grids], I, binidx)
-  
-  sio.savemat('IJ2', {'I3': I, 'J3': J})
-  print np.sort(I)
-  print np.sum(I)
-  print I.shape 
-  print 'clswords sum', np.sum(bbinfo.clswords)
-  c = []
-  ia = []
-  ib = []
-  cnt = 0
-  for s in np.unique(I):
-    if s in bbinfo.clswords:
-      cnt+=1
-  print cnt
+#  sio.savemat('IJ', {'I2': I, 'J2': J})
+#  #print I, J
+#  binidx = np.tile(range(bbinfo.grids*bbinfo.grids), (I.shape[0],1))
+#  binidx = line_up_cols(binidx)
+#  
+#  print I.shape
+#  print 'sumI', np.sum(I)
+#  print 'meanI', np.mean(I)
+#  print J.shape
+#  print 'sumJ', np.sum(J)
+#  print 'meanJ', np.mean(J)
+#  
+#  
+#  I = line_up_cols(np.tile(I, (bbinfo.grids*bbinfo.grids, 1)))
+#  J = np.tile(J, (bbinfo.grids*bbinfo.grids, 1))
+#  I = sub2ind([bbinfo.numcenters, bbinfo.grids*bbinfo.grids], I, binidx)
+#  
+
+    
   # np.unique(np.intersect1d(np.asarray(bbinfo.clswords), np.asarray(I), assume_unique=False))
   
-  print c.shape
-  print sum(c)
+
 #  [c,ib,ia] = intersect(jw.clswords,I);
 #  bboxes = [];
 #  length(c)
@@ -632,7 +679,7 @@ if __name__=='__main__':
     # MPI this
     all_classes = mpi_get_sublist(mpi_rank, mpi_size, all_classes)
     print all_classes    
-#    train_jumping_windows(train_set,use_scale=use_scale,trun=True,diff=False)
+    train_jumping_windows(train_set,use_scale=use_scale,trun=True,diff=False)
     
     store_file = open('test_dog', 'r')
     bbinfo = cPickle.load(store_file)
@@ -653,7 +700,14 @@ if __name__=='__main__':
     
 #    print codes
 #    print pts
-    generate_jwin(bbinfo, im, cls, codes, pts)
+    wins = generate_jwin(bbinfo, im, cls, codes, pts)
+    
+    print wins[1:5,:]
+    wins_true = np.matrix([[ 248.,  211.,  586.,  487.],
+                           [ -16.,  -59.,  322.,  217.],
+                           [  -8.,  -63.,  330.,  213.],
+                           [ -88.,  309.,  250.,  585.]])
+    np.testing.assert_equal(np.asarray(wins_true), np.asarray(wins[1:5,:]))
     
 """  
   classify = False
