@@ -7,7 +7,7 @@ import scipy.cluster.vq as sp
 from sklearn import cluster
 
 import util as ut
-import config as cfg
+from synthetic.config import *
 from dataset import *
 from common_mpi import *
 
@@ -154,13 +154,14 @@ class Extractor():
 
   
   def process_img(self, img, feature, sizes=[16,24,32], step_size=4):
-    filename = self.save_dir + feature + '/' + img.name[0:-4]               
+    filename = self.save_dir + feature + '/' + img.name[0:-4]
+    print filename               
     # since our parallelism just uses different images, we don't check the file 
     # for correct size.
     if not os.path.isfile(filename):
       # extract featues and write to file
       print 'extracting',feature,'for',img.name[0:-4],'...'
-      feature_type = self.dense_extract(cfg.config.VOC_dir + 'JPEGImages/' + img.name,
+      feature_type = self.dense_extract(config.VOC_dir + 'JPEGImages/' + img.name,
                       feature, (0, 0, img.size[0], img.size[1]),sizes, step_size)
       if feature[0:4] == 'phog':
         np.savetxt(filename, feature_type.view(float))
@@ -358,12 +359,12 @@ class Extractor():
   
 if __name__ == '__main__':
   e = Extractor()
-  image_set = 'full_pascal_test'
-  feature_type = 'dsift'
+  image_set = 'full_pascal_trainval'
+  feature_type = 'sift'
   sizes = [16,24,32]
   step_size = 4
   
-  #e.extract_all(feature_type,image_sets, sizes, step_size)
+  e.extract_all(feature_type,image_set, sizes, step_size)
   all_classes = config.pascal_classes
 #  all_classes = ['cat']
 #  e.extract_all_assignments('dsift', image_sets, all_classes)

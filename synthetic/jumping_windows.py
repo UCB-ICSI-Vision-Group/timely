@@ -389,21 +389,23 @@ def get_selbins(grids, inds, c_pts, bbox):
         )
   );  
   
-def get_idx(inds, codes, pts, grids, bbox, c_shape, cls):
+def get_idx(inds, codes, pts, grids, bbox, c_shape, cls, feats):
   # Compute grid that each point falls into
   selbins = get_selbins(grids, inds, pts, bbox)
   
   # Convert to ccmat index      
   binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
       + cls*grids*grids);
-  ind = np.where(codes[:,inds].data > 0)[0] 
   
-  words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
-  words += np.ones(words.shape)
-  ind = codes.nonzero()[1][ind]
-#  print words
-#  print binidx[ind]
-#  ut.keyboard()
+  if feats == 'llc':
+    ind = np.where(codes[:,inds].data > 0)[0]
+    words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
+    words += np.ones(words.shape)
+    ind = codes.nonzero()[1][ind]
+    
+  elif feats == 'sift':
+    ind = inds
+    words = codes[ind]  
   
   idx = sub2ind(c_shape, words, binidx[ind])
 
@@ -416,29 +418,35 @@ def get_idx(inds, codes, pts, grids, bbox, c_shape, cls):
 ###############################################################
 ######################### Training ############################
 ###############################################################
-def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
+def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, feats='sift'):
   # TODO: convert this to test-env
   llc_dir = '../../research/jumping_windows/llc/'
   featdir = '../../research/jumping_windows/sift/'
-  d = Dataset('full_pascal_trainval')
     
   trainfiles = os.listdir(featdir)
   grids = 4
   a = sio.loadmat(join(llc_dir,trainfiles[0]))['codes']
   numcenters = a.shape[0]
   ccmat = np.zeros((numcenters, len(d.classes)*grids*grids+1))
-  
+  e = Extractor()
   #first_visit = True
   for file in trainfiles:
     print file
+    assignment = e.get_assignments([0,0,100000,1000000], 'sift', codebook, d.get_image_by_filename(file))
     # Load feature positions
-    feaSet = sio.loadmat(join(featdir,file))['feaSet']
-    x = feaSet['x'][0][0]
-    y = feaSet['y'][0][0]    
-    pts = np.hstack((x,y))
-    bg = np.ones((pts.shape[0], 1))    
+    if feats == 'sift':
+      pts = assignment[:,0:2]
+      codes = assignment[2]
+      
+    elif feats == 'llc':
+      feaSet = sio.loadmat(join(featdir,file))['feaSet']
+      x = feaSet['x'][0][0]
+      y = feaSet['y'][0][0]    
+      pts = np.hstack((x,y))
+      codes = sio.loadmat(join(llc_dir,file))['codes']
+      
+    bg = np.ones((pts.shape[0], 1))        
     
-    codes = sio.loadmat(join(llc_dir,file))['codes']
           
     image = d.get_image_by_filename(file[:-4]+'.jpg')
     im_ind = d.get_img_ind(image)
@@ -451,7 +459,7 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
       inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
       bg[inds] = 0
       
-      idx = get_idx(inds, codes, pts, grids, bbox, ccmat.shape, cls)
+      idx = get_idx(inds, codes, pts, grids, bbox, ccmat.shape, cls, feats)      
       
       for i in idx:
         [x, y] = ind2sub(ccmat.shape[0], i)        
@@ -461,9 +469,12 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
     cls = len(d.classes)*grids*grids
     inds = np.where(bg > 0)[0]
 
-    ind = np.where(codes[:,inds].data > 0)[0]
-    words = codes[:,inds].nonzero()[0][ind]
-    words = np.unique(words)
+    if feats == 'llc':
+      ind = np.where(codes[:,inds].data > 0)[0]
+      words = codes[:,inds].nonzero()[0][ind]
+      words = np.unique(words)
+    elif feats == 'sift':
+      words = codes[inds]
     
     for w in words:
       ccmat[w, cls] = ccmat[w, cls] + 1
@@ -481,7 +492,7 @@ def train_jumping_windows(train_set,use_scale=True,trun=False, diff=False):
   
   numwords = 500
   [sortedprob, discwords] = sort_cols(ccmat, numwords)
-    
+  return
   # Lookup for every class
   for cls_idx in range(len(d.classes)):
   #for cls_idx in [14]:
@@ -671,6 +682,8 @@ if __name__=='__main__':
   #num_pos = 1
   #all_classes = ['bird']
   use_scale = False
+  e = Extractor()
+  d = Dataset(train_set)
     
   train = True
   if train:
@@ -679,7 +692,8 @@ if __name__=='__main__':
     # MPI this
     all_classes = mpi_get_sublist(mpi_rank, mpi_size, all_classes)
     print all_classes    
-    train_jumping_windows(train_set,use_scale=use_scale,trun=True,diff=False)
+    codebook = e.get_codebook(d, 'sift')
+    train_jumping_windows(d, codebook, use_scale=use_scale,trun=True,diff=False)
     
     store_file = open('test_dog', 'r')
     bbinfo = cPickle.load(store_file)
