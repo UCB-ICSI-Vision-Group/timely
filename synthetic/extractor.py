@@ -352,22 +352,23 @@ class Extractor():
         img_idx = cls_gt.arr[:,cls_gt.cols.index('img_ind')]
         for img in range(comm_rank, len(img_idx), comm_size): # PARALLEL
           image = images[img_idx[img].astype(Int)]
-          pos_bounds = np.matrix([[0,0],[image.size[0],image.size[1]]])
-          self.get_assignments(pos_bounds, feature, codebook, cls, image)
+          pos_bounds = np.array([0,0,image.size[0]+1,image.size[1]+1])
+          self.get_assignments(pos_bounds, feature, codebook, image)
         
     
   
 if __name__ == '__main__':
   e = Extractor()
-  image_set = 'full_pascal_trainval'
+  image_sets = ['full_pascal_trainval','full_pascal_test']
   feature_type = 'sift'
   sizes = [16,24,32]
   step_size = 4
   
-  e.extract_all(feature_type,image_set, sizes, step_size)
+  #e.extract_all(feature_type,image_set, sizes, step_size)
   all_classes = config.pascal_classes
 #  all_classes = ['cat']
-#  e.extract_all_assignments('dsift', image_sets, all_classes)
+  e.extract_all_assignments('sift', image_sets, all_classes)
+"""
   d = Dataset(image_set)
   codebook = e.get_codebook(d, feature_type)  
   print 'codebook loaded'
@@ -378,4 +379,4 @@ if __name__ == '__main__':
     e.get_assignments(np.array([0,0,img.size[0],img.size[1]]), feature_type, codebook, img)
    
 #  e.get_codebook(d, 'dsift', 3000, True, True)
-  
+""" 

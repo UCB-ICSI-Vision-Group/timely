@@ -119,9 +119,9 @@ class LookupTable:
       self.clusters[bb_key] = centers
       
   def save(self):
-    filename_lookup = join(config.data_dir, 'jumping_window','lookup',cls)
+    filename_lookup = join(config.data_dir, 'jumping_window','lookup', self.cls)
     store_file = open( filename_lookup, 'w')
-    print 'save ', store_file 
+    print 'save ', filename_lookup 
     cPickle.dump(self, store_file)
   
   def compute_top_boxes(self, annots, positions, K, cut_tolerance,feature_type='sift'):
@@ -263,6 +263,7 @@ def get_idx(inds, codes, c_shape, feats, binidx):
 ######################### Training ############################
 ###############################################################
 def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, feature='sift'):
+  tocer = ut.TicToc()
   llc_dir = '../../research/jumping_windows/llc/'
   featdir = '../../research/jumping_windows/sift/'
   
@@ -281,6 +282,8 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
   ccmat = np.zeros((numcenters, len(d.classes)*grids*grids+1))
   e = Extractor()
   #first_visit = True
+  print 'Read all features to create weights'
+  tocer.tic()
   for filename in trainfiles:
     print filename
 
@@ -342,15 +345,22 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
     #sio.savemat('ccmat', {'ccmat2': ccmat})
     #break
   
+  print 'features counted'
+  tocer.toc()
+  tocer.tic()
   # counted all words for all images&object, now compute weights   
   div = np.sum(ccmat,1)
   for didx in range(len(div)):
-    t = div[didx]
-    if t == 0:
+    ta = div[didx]
+    if ta == 0:
       ccmat[didx, :] = 2.5
       continue
-    ccmat[didx, :] /= t
+    ccmat[didx, :] /= ta
   
+  print 'computed weights'
+  tocer.toc()
+  
+  tocer.tic()
   numwords = 500
   [sortedprob, discwords] = sort_cols(ccmat, numwords)
   #return
@@ -431,8 +441,11 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
       
     bbinfo.perform_mean_shifts()
     bbinfo.top_words = np.asarray(bbinfo.wordprobs.argsort(axis=0))[::-1]
-    bbinfo.save() 
-
+    bbinfo.save()
+    
+  print 'computed all lookup tables' 
+  tocer.toc()
+  
 def generate_jwin(bbinfo, im, cls, codes, pts, feature = 'sift'):
   if feature == 'llc':
     ind = np.where(codes.data > 0)[0]
@@ -471,7 +484,7 @@ if __name__=='__main__':
 
   e = Extractor()
   d = Dataset(train_set)
-  train = True
+  train = False
   if train:
     # this is the codebook size
     # This is just for that it broke down during the night
@@ -480,8 +493,9 @@ if __name__=='__main__':
     codebook = e.get_codebook(d, 'sift')
     ut.makedirs(join(config.data_dir, 'jumping_window','lookup'))
     train_jumping_windows(d, codebook, use_scale=use_scale,trun=True,diff=False, feature=feature)
-    
-  just_eval = False
+  
+  debug = True
+  just_eval = True
   if just_eval:
     basedir = join(config.data_dir, 'jumping_window')
     foldname_det = join(basedir, 'detections')    
@@ -490,8 +504,9 @@ if __name__=='__main__':
     
     print 'start testing on node', mpi_rank
     dtest = Dataset('full_pascal_test')
-    for cls_idx, cls in enumerate(all_classes):
-      cls=all_classes 
+    #for cls_idx, cls in enumerate(all_classes):
+    for cls_idx, cls in enumerate([all_classes[0]]):
+      #cls=all_classes
       gt_t = dtest.get_ground_truth_for_class(cls, include_diff=False,
           include_trun=True)
       e = Extractor()
@@ -504,19 +519,22 @@ if __name__=='__main__':
       test_gt = gt_t.arr
       npos = test_gt.shape[0]
       test_imgs = test_gt[:,gt_t.cols.index('img_ind')]
-      test_imgs = np.unique(test_imgs)
+      
+      #test_imgs = np.unique(test_imgs)
+      test_imgs = np.unique(test_imgs)[:1]
           
       for i in range(mpi_rank, len(test_imgs), mpi_size):
         img_ind = int(test_imgs[i])
         image = dtest.images[img_ind]
-        codes = e.get_assignments(np.matrix([0,0,100000,100000]), 'sift', codebook, image)
+        codes = e.get_assignments(np.array([0,0,100000,100000]), 'sift', codebook, image)
         dets = generate_jwin(bbinfo, image, cls, codes, codes[:,0:2])
       
         bbox_curr = np.zeros((dets.shape[0], 7))
         ent_idx = 0
         num_rows = dets.shape[0]
+        print dets
         for i, det in enumerate(dets):
-          bbox_curr[i,:] = np.vstack((det, 1 - i/float((num_rows - 1)), cls_idx, img_ind))
+          bbox_curr[i,:] = np.hstack((det, 1 - i/float((num_rows - 1)), cls_idx, img_ind))
         
         # save this detections
         
