@@ -32,14 +32,12 @@ class Extractor():
       force_new - delete existing codebook
       use_neg - Create with negative samples?
     """
-    filename = self.data_dir + feature_type + '/codebooks/codebook'
-    print filename 
-    ut.makedirs(self.data_dir + feature_type + '/' + 'codebooks/')
+    filename = config.get_codebook_path(feature_type)
     if (not os.path.isfile(filename)) or force_new:
       if force_new:
         if os.path.isfile(filename):
           os.remove(filename)
-           
+      print 'compute codebook'    
       # select the windows to draw feature_type from
       gt = d.get_ground_truth()
       pos_wins = np.random.permutation(gt.arr)[:400]
@@ -350,10 +348,9 @@ class Extractor():
       images = d.images
       for img in range(comm_rank, len(images), comm_size): # PARALLEL
         print ''
-        image = images[img].astype(Int)
+        image = images[img]
         pos_bounds = np.matrix([[0,0],[image.size[0],image.size[1]]])
-        self.get_assignments(pos_bounds, feature, codebook, image, sizes=sizes,step_size=step_size)
-        
+        self.get_assignments(pos_bounds, feature, codebook, image, sizes=sizes,step_size=step_size)    
     
   
 if __name__ == '__main__':

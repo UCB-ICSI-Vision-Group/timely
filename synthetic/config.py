@@ -197,3 +197,7 @@ def get_image_path(image):
 def get_assignments_path(feature, image):
   dirname = makedirs(join(data_dir, feature, '/assignments/'))
   return join(dirname, image.name[0:-4])
+
+def get_codebook_path(feature):
+  dirname = makedirs(join(data_dir, feature, 'codebooks'))
+  return join(dirname, 'codebook')
