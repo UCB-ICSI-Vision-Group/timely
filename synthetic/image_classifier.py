@@ -8,8 +8,8 @@ from synthetic.extractor import Extractor
 def train_image_classifiers(dataset):
   e = Extractor()
   d = Dataset(dataset)
+  
   for cls in d.classes:
-    cls = 'dog'
     pos_images = d.get_pos_samples_for_class(cls)
     neg_images = d.get_neg_samples_for_class(cls, pos_images.size)
     dense_codebook = e.get_codebook(d, 'dsift')
