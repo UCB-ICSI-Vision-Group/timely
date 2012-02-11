@@ -189,8 +189,10 @@ def get_classifier_dirname(classifier):
   makedirs(dirname)
   return dirname
 
-def get_classifier_filename(classifier,cls):
-  return join(get_classifier_dirname, cls)
+def get_classifier_svm_name(cls):
+  dirname = join(res_dir, 'classify_svm')
+  makedirs(dirname) 
+  return join(dirname, cls)
 
 #####
 # Feature Extraction

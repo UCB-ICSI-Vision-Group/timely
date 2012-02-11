@@ -81,7 +81,7 @@ def train_svm(x, y, kernel='chi2',C=1.0,probab=False):
     print 'computed gram-matrix in',t_gram,'seconds'
     clf.fit(gram, y)
   elif kernel == 'rbf' or kernel == 'linear':
-    clf = SVC(kernel=kernel,C=C, probability=probab)
+    clf = SVC(kernel=kernel, C=C, probability=probab)
     clf.fit(x, y)
   else:
     raise RuntimeError("Unknown kernel passed to train_svm")  
