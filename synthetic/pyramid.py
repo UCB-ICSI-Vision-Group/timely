@@ -8,25 +8,11 @@ import numpy as np
 import os
 from synthetic.dataset import Dataset
 import scipy.cluster.vq as sp
-from collections import Counter
-from numpy.ma.core import floor
 from scipy import io 
 from synthetic.image import Image
 
-
-def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
-  indices = np.matrix(np.arange(positions.shape[0]))
-  indices = indices.reshape(positions.shape[0], 1)
-  positions = np.asarray(np.hstack((positions, indices)))
-  if not positions.size == 0:  
-    positions = positions[positions[:, 0] > xmin, :]
-  if not positions.size == 0:
-    positions = positions[positions[:, 0] <= xmax, :]
-  if not positions.size == 0:  
-    positions = positions[positions[:, 1] > ymin, :]
-  if not positions.size == 0:
-    positions = positions[positions[:, 1] <= ymax, :]
-  return np.asarray(positions[:, 2], dtype='int32')
+def get_pyr_feat_size(L, M):
+  return (4**(L+1)-1)/3.*M
 
 # This code should be in Extractor!
 def extract_pyramid(L, positions, assignments, codebook, image):
@@ -39,19 +25,7 @@ def extract_pyramid(L, positions, assignments, codebook, image):
   #finest level
   for i in range(num_bins):
     for j in range(num_bins):
-      xmin = floor(im_width / num_bins * i)
-      xmax = floor(im_width / num_bins * (i + 1))
-      ymin = floor(im_height / num_bins * j)
-      ymax = floor(im_height / num_bins * (j + 1))
-      indices = get_indices_for_pos(positions, xmin, xmax, ymin, ymax)
-      if indices.size == 0:
-        bin_ass = np.matrix([])
-      else:
-        bin_ass = assignments[indices][:,2]
-        
-      bin_ass = bin_ass.reshape(1,bin_ass.size)[0] - 1
-      counts = Counter(bin_ass)
-      histogram = [counts.get(x,0) for x in range(codebook.shape[0])]
+      [bin_ass, histogram] = count_histogram_for_bin(positions, assignments, im_width, im_height, num_bins, i, j, M)
       if not len(bin_ass) == 0:
         histogram_level[i,j,:] = np.divide(histogram,float(assignments.shape[0]))
       else:
@@ -87,7 +61,7 @@ def extract_pyramid(L, positions, assignments, codebook, image):
   pyramid = np.matrix(pyramid)
   return pyramid
 
-from synthetic.extractor import Extractor
+from synthetic.extractor import Extractor, count_histogram_for_bin
 if __name__=='__main__':
   # Load codebook and
   spatial_pyr_root = '/home/tobibaum/Documents/Vision/research/SpatialPyramid/data2/'

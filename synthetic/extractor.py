@@ -11,6 +11,8 @@ import util as ut
 from synthetic.config import *
 from dataset import *
 from common_mpi import *
+from collections import Counter
+from numpy.ma.core import floor
 
 class Extractor():
   def __init__(self):
@@ -37,7 +39,7 @@ class Extractor():
       if force_new:
         if os.path.isfile(filename):
           os.remove(filename)
-      print 'compute codebook'    
+      print 'compute codebook:', filename 
       # select the windows to draw feature_type from
       gt = d.get_ground_truth()
       pos_wins = np.random.permutation(gt.arr)[:400]
@@ -186,11 +188,15 @@ class Extractor():
     else:
       print 'load assignment:',img.name[0:-4]
       assignments = np.loadtxt(filename)
-    if not positions.size == 4: 
-      bbox = [np.amin(positions[:,0]), np.amin(positions[:,1]), 
-            np.amax(positions[:,0]), np.amax(positions[:,1])]
-    else:
+    if type(positions) == type([]):
       bbox = [positions[0],positions[1],positions[0]+positions[2],positions[1]+\
+              positions[3]]
+    else:
+      if not positions.size == 4: 
+        bbox = [np.amin(positions[:,0]), np.amin(positions[:,1]), 
+              np.amax(positions[:,0]), np.amax(positions[:,1])]
+      else:
+        bbox = [positions[0],positions[1],positions[0]+positions[2],positions[1]+\
               positions[3]]
       
     if not assignments.size == 0:  
@@ -349,10 +355,56 @@ class Extractor():
       for img in range(comm_rank, len(images), comm_size): # PARALLEL
         print ''
         image = images[img]
-        pos_bounds = np.matrix([[0,0],[image.size[0],image.size[1]]])
-        self.get_assignments(pos_bounds, feature, codebook, image, sizes=sizes,step_size=step_size)    
+        pos_bounds = [0,0,image.size[0],image.size[1]]
+        self.get_assignments(pos_bounds, feature, codebook, image, sizes=sizes,step_size=step_size)
+            
+  def get_bow_for_image(self, image, feature):
+    d = Dataset('full_pascal_trainval')
+    codebook = self.get_codebook(d, feature)
+    width = image.size[0]
+    height = image.size[1]
+    ass = self.get_assignments([0,0,width, height], feature, codebook, image)
+    _, histogram = count_histogram_for_bin(ass[:,0:2], ass, width, height, \
+                                        num_bins=1, i=0, j=0, \
+                                        num_words=codebook.shape[0])
     
-  
+    print type(histogram)
+    print float(ass.shape[0])
+    print type(float(ass.shape[0]))
+    return np.asmatrix(histogram)/float(ass.shape[0])    
+
+
+def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
+  indices = np.matrix(np.arange(positions.shape[0]))
+  indices = indices.reshape(positions.shape[0], 1)
+  positions = np.asarray(np.hstack((positions, indices)))
+  if not positions.size == 0:  
+    positions = positions[positions[:, 0] > xmin, :]
+  if not positions.size == 0:
+    positions = positions[positions[:, 0] <= xmax, :]
+  if not positions.size == 0:  
+    positions = positions[positions[:, 1] > ymin, :]
+  if not positions.size == 0:
+    positions = positions[positions[:, 1] <= ymax, :]
+  return np.asarray(positions[:, 2], dtype='int32')
+
+
+def count_histogram_for_bin(positions, assignments, im_width, im_height, num_bins, i, j, num_words):
+  xmin = floor(im_width / num_bins * i)
+  xmax = floor(im_width / num_bins * (i + 1))
+  ymin = floor(im_height / num_bins * j)
+  ymax = floor(im_height / num_bins * (j + 1))
+  indices = get_indices_for_pos(positions, xmin, xmax, ymin, ymax)
+  if indices.size == 0:
+    bin_ass = np.matrix([])
+  else:
+    bin_ass = assignments[indices][:,2]
+    
+  bin_ass = bin_ass.reshape(1,bin_ass.size)[0] - 1
+  counts = Counter(bin_ass)
+  histogram = [counts.get(x,0) for x in range(num_words)]
+  return bin_ass, histogram
+
 if __name__ == '__main__':
   e = Extractor()
   image_sets = ['full_pascal_trainval','full_pascal_test']
