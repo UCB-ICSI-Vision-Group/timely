@@ -194,6 +194,8 @@ class Dataset:
     """
     Return array of indices of self.images that contain no objects of this class.
     """
+    if number == 0:
+      return np.array([])
     pos_indices = self.get_pos_samples_for_class(cls,include_diff,include_trun)
     neg_indices = np.setdiff1d(np.arange(len(self.images)),pos_indices,assume_unique=True)
     # TODO tobi: why do these have to be ordered?

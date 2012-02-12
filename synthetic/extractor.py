@@ -358,19 +358,12 @@ class Extractor():
         pos_bounds = [0,0,image.size[0],image.size[1]]
         self.get_assignments(pos_bounds, feature, codebook, image, sizes=sizes,step_size=step_size)
             
-  def get_bow_for_image(self, image, feature):
-    d = Dataset('full_pascal_trainval')
-    codebook = self.get_codebook(d, feature)
+  def get_bow_for_image(self, d, num_words, ass, image):
     width = image.size[0]
     height = image.size[1]
-    ass = self.get_assignments([0,0,width, height], feature, codebook, image)
     _, histogram = count_histogram_for_bin(ass[:,0:2], ass, width, height, \
                                         num_bins=1, i=0, j=0, \
-                                        num_words=codebook.shape[0])
-    
-    print type(histogram)
-    print float(ass.shape[0])
-    print type(float(ass.shape[0]))
+                                        num_words=num_words)
     return np.asmatrix(histogram)/float(ass.shape[0])    
 
 
