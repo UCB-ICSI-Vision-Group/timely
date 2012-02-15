@@ -121,10 +121,9 @@ def main():
 
       if args.mode=='evaluate':
         ev = Evaluation(dp)
-        table = ev.evaluate_dets_vs_t_avg(all_dets,force=args.force)
+        table = ev.evaluate_dets_vs_t(all_dets,force=args.force)
         if comm_rank==0:
           tables.append(table)
-        #ev.evaluate_dets_vs_t_whole(all_dets,force=args.force)
 
     # If asked to, and did more than one condition, plot comparison as well
     if args.compare_evals and len(args.priors)>1 and comm_rank==0:

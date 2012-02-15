@@ -21,14 +21,14 @@ class Evaluation:
 
   def __init__(self,dataset_policy=None,dataset=None,name='default'):
     """
-    Must have either dataset_policy or dataset.
+    Must have either dataset_policy or dataset and name.
     If dataset_policy is given, dataset and name are ignored.
     """
     assert(dataset_policy or (dataset and name))
 
     if dataset_policy:
+      self.dp = dataset_policy
       self.dataset = dataset_policy.dataset
-      self.dataset_policy = dataset_policy
       self.name = dataset_policy.get_config_name()
     else:
       self.dataset = dataset
@@ -38,45 +38,42 @@ class Evaluation:
     self.min_overlap = Evaluation.MIN_OVERLAP
 
     # Determine filenames and create directories
-    self.results_path = config.get_evals_dp_dir(self.dataset_policy)
+    self.results_path = config.get_evals_dp_dir(self.dp)
 
     # wholeset evaluations
-    self.dashboard_filename = os.path.join(self.results_path, 'dashboard_%s.html')
-    self.wholeset_aps_filename = os.path.join(self.results_path, 'aps_whole.txt')
+    self.dashboard_filename = opjoin(self.results_path, 'dashboard_%s.html')
+    self.wholeset_aps_filename = opjoin(self.results_path, 'aps_whole.txt')
 
     # evals/{name}/wholeset_detailed
-    dirname = os.path.join(self.results_path, 'wholeset_detailed')
+    dirname = opjoin(self.results_path, 'wholeset_detailed')
     ut.makedirs(dirname)
-    self.pr_whole_png_filename = os.path.join(dirname, 'pr_whole_%s.png')
-    self.pr_whole_txt_filename = os.path.join(dirname, 'pr_whole_%s.txt')
-    self.apvst_whole_png_filename = os.path.join(dirname, 'apvst_wholes.png')
-    self.apvst_whole_txt_filename = os.path.join(dirname, 'apvst_whole_%s.txt')
-    self.apvst_whole_data_filename = os.path.join(dirname, 'apvst_whole_table.npy')
-    self.apvst_whole_png_filename = os.path.join(dirname, 'apvst_whole.png')
+    self.pr_whole_png_filename = opjoin(dirname, 'pr_whole_%s.png')
+    self.pr_whole_txt_filename = opjoin(dirname, 'pr_whole_%s.txt')
+    self.apvst_whole_png_filename = opjoin(dirname, 'apvst_wholes.png')
+    self.apvst_whole_txt_filename = opjoin(dirname, 'apvst_whole_%s.txt')
+    self.apvst_whole_data_filename = opjoin(dirname, 'apvst_whole_table.npy')
+    self.apvst_whole_png_filename = opjoin(dirname, 'apvst_whole.png')
 
     # avg-image evaluations
-    self.apvst_avg_data_filename = os.path.join(self.results_path, 'apvst_avg_table.npy')
-    self.apvst_avg_png_filename = os.path.join(self.results_path, 'apvst_avg.png')
+    self.apvst_avg_data_filename = opjoin(self.results_path, 'apvst_avg_table.npy')
+    self.apvst_avg_png_filename = opjoin(self.results_path, 'apvst_avg.png')
 
-    self.pr_avg_png_filename = os.path.join(self.results_path, 'pr_avg_%s.png')
-    self.pr_avg_txt_filename = os.path.join(self.results_path, 'pr_avg_%s.txt')
-    self.apvst_data_filename = os.path.join(self.results_path, 'apvst_table.npy')
-    self.apvst_png_filename = os.path.join(self.results_path, 'apvst.png')
+    self.pr_avg_png_filename = opjoin(self.results_path, 'pr_avg_%s.png')
+    self.pr_avg_txt_filename = opjoin(self.results_path, 'pr_avg_%s.txt')
+    self.apvst_data_filename = opjoin(self.results_path, 'apvst_table.npy')
+    self.apvst_png_filename = opjoin(self.results_path, 'apvst.png')
 
   ##############
   # Avg- and Whole-set AP vs. Time
   ##############
-  def evaluate_dets_vs_t_avg(self,dets=None,plot=True,force=False):
+  def evaluate_dets_vs_t(self,dets=None,plot=True,force=False):
     """
     Evaluate detections in the AP vs Time regime and write out plots to
     canonical places.
-    - dets must be on self.dataset
-    This version evaluates on the whole dataset instead of averaging per-image
-    performances, and so gets rid of error bars.
+    We evaluate on the whole dataset instead of averaging per-image,
+    and so get rid of error bars.
     """
-    bounds = None
-    if self.dataset_policy and self.dataset_policy.bounds:
-      bounds = self.dataset_policy.bounds
+    bounds = self.dp.bounds if self.dp and self.dp.bounds else None
 
     table = None
     filename = self.apvst_avg_data_filename
@@ -84,9 +81,8 @@ class Evaluation:
       if comm_rank==0:
         table = np.load(filename)[()]
     else:
-      # must have dets then, so generate if not given
       if not dets:
-        dets = self.dataset_policy.detect_in_dataset()
+        dets = self.dp.detect_in_dataset()
 
       # determine time sampling points
       all_times = dets.subset_arr('time')
@@ -109,7 +105,7 @@ class Evaluation:
       ap_stds = np.zeros(num_points)
       arr = np.zeros((num_points,3))
       for i in range(comm_rank,num_points,comm_size):
-        t = time.time()
+        tt = ut.TicToc().tic()
         point = points[i]
         aps = []
         num_dets = 0
@@ -121,9 +117,8 @@ class Evaluation:
           ap,rec,prec = self.compute_pr(dets_to_this_point,gt_for_image)
           aps.append(ap)
         arr[i,:] = [point,np.mean(aps),np.std(aps)]
-        elapsed_time = time.time()-t
         print("Calculating avg-image AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
-          np.mean(aps),num_dets,point,elapsed_time))
+          np.mean(aps),num_dets,point,tt.qtoc()))
       arr_all = None
       if comm_rank == 0:
         arr_all = np.zeros((num_points,3))
@@ -139,55 +134,6 @@ class Evaluation:
       except:
         print("Could not plot")
     return table
-
-  def evaluate_dets_vs_t_whole(self,dets=None,force=False):
-    """
-    Evaluate detections in the AP vs Time regime and write out plots to
-    canonical places.
-    - dets must be on self.dataset
-    This version evaluates on the whole dataset instead of averaging per-image
-    performances, and so gets rid of error bars.
-    """
-    # TODO: this method is out of date, should update with changes from
-    # evaluate_dets_vs_t_avg
-    bounds = None
-    if self.dataset_policy and self.dataset_policy.bounds:
-      bounds = self.dataset_policy.bounds
-    if os.path.exists(self.apvst_whole_data_filename) and not force:
-      table = np.load(self.apvst_whole_data_filename)[()]
-    else:
-      # must have dets then, so generate if not given
-      if not dets:
-        dets = self.dataset_policy.detect_in_dataset()
-
-      # determine time sampling points
-      all_times = dets.subset_arr('time')
-      num_points = self.time_intervals
-      points = ut.importance_sample(all_times,num_points)
-      # make sure bounds are included in the sampling points if given
-      if bounds:
-        points = np.sort(np.array(points.tolist() + bounds))
-        num_points += 2
-      table = ut.Table(np.zeros((num_points,3)), ['time','ap','max_rec'], self.name)
-      aps = np.zeros(num_points)
-      for i in range(1,num_points):
-        t = time.time()
-        point = points[i]
-        dets_to_this_point = dets.filter_on_column('time',point,operator.le)
-        img_inds = np.unique(dets.subset_arr('img_ind'))
-        gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
-        ap,rec,prec = self.compute_pr(dets_to_this_point,gt)
-        max_rec = rec[-1] 
-        table.arr[i,:] = [point,ap,max_rec]
-        elapsed_time = time.time()-t
-        print("Calculating AP (%.3f) of %d dets (up to %.3f s) took %.3f s"%(
-          ap,dets_to_this_point.shape()[0],point,elapsed_time))
-      np.save(self.apvst_whole_data_filename,table)
-    # Plot the table
-    try:
-      Evaluation.plot_ap_vs_t([table],self.apvst_whole_png_filename, bounds)
-    except:
-      print("Could not plot")
 
   @classmethod
   def compute_auc(cls,times,vals,bounds=None):
@@ -214,18 +160,19 @@ class Evaluation:
     Save plot to given filename.
     Does not return anything.
     """
+    print("here1")
     plt.clf()
     colors = ['black','orange','#4084ff','purple']
     styles = ['-','--','-..','-.']
     prod = [x for x in itertools.product(colors,styles)]
-    print prod
+    print(all_bounds)
     if not all_bounds:
       all_bounds = [None for table in tables]
-    elif not isinstance(all_bounds, types.ListType):
+    elif not isinstance(all_bounds[0], types.ListType):
       all_bounds = [all_bounds for table in tables]
     else:
       assert(len(all_bounds)==len(tables))
-
+    
     for i,table in enumerate(tables):
       print("Plotting %s"%table.name)
       bounds = all_bounds[i]
@@ -274,8 +221,8 @@ class Evaluation:
     - per-class PR plots (only detections of that class are considered)
     """
     if not dets:
-      assert(self.dataset_policy != None)
-      dets = self.dataset_policy.detect_in_dataset()
+      assert(self.dp != None)
+      dets = self.dp.detect_in_dataset()
 
     # Per-Class
     num_classes = len(self.dataset.classes)
@@ -295,7 +242,7 @@ class Evaluation:
     if comm_rank == 0:
       # Multi-class
       gt = self.dataset.get_ground_truth(include_diff=True)
-      filename = os.path.join(self.results_path, 'pr_whole_multiclass')
+      filename = opjoin(self.results_path, 'pr_whole_multiclass')
       if force or not os.path.exists(filename):
         t = time.time()
         print("Evaluating %d dets in the multiclass setting..."%dets.shape()[0])
@@ -354,8 +301,11 @@ class Evaluation:
         ap = float(f.readline())
     return ap
 
-  def plot_pr(self, ap, rec, prec, name, filename):
+  def plot_pr(self, ap, rec, prec, name, filename, force=False):
     """Plot the Precision-Recall curve, saving png to filename."""
+    if opexists(filename) and not force:
+      print("plot_pr: not doing anything as file exists")
+      return
     label = "%s: %.3f"%(name,ap)
     plt.clf()
     plt.plot(rec,prec,label=label,color='black',linewidth=5)
@@ -367,11 +317,14 @@ class Evaluation:
     plt.grid(True)
     plt.savefig(filename)
 
-  def plot_pr_grid(self, aps, recs, precs, names, filename):
+  def plot_pr_grid(self, aps, recs, precs, names, filename, force=False):
     """
     Plot P-R curves for all the data passed in in a grid of minimal size.
     Save png to filename.
     """
+    if opexists(filename) and not force:
+      print("plot_pr_grid: not doing anything as file exists")
+      return
     h = int(np.round(np.sqrt(len(names))))
     w = int(np.ceil(np.sqrt(len(names))))
     # TODO: increase figsize or resolution here or something, plots are too big
@@ -424,9 +377,9 @@ class Evaluation:
     NOTE: modifies dets in-place (sorts by score)
     Return ap, recall, and precision vectors as tuple.
     """
-    # if dets are empty, return 0's
+    # if dets or gt are empty, return 0's
     nd = dets.arr.shape[0]
-    if nd < 1:
+    if nd < 1 or gt.shape()[0] < 1:
       ap = 0
       rec = np.array([0])
       prec = np.array([0])

@@ -134,10 +134,9 @@ def main():
 
     # evaluate in the AP vs. Time regime, unless told not to
     if not args.no_apvst:
-      table = ev.evaluate_dets_vs_t_avg(None,force=args.force)
+      table = ev.evaluate_dets_vs_t(None,force=args.force)
       if comm_rank==0:
         tables.append(table)
-      #ev.evaluate_dets_vs_t_whole(all_dets,force=args.force)
 
     # optionally, evaluate in the standard PR regime
     if args.wholeset_prs:
