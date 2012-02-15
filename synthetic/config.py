@@ -194,6 +194,16 @@ def get_classifier_svm_name(cls):
   makedirs(dirname) 
   return join(dirname, cls)
 
+def get_classifier_featvect_name(img, L):
+  dirname = join(res_dir, 'classify_featvects', str(L))
+  makedirs(dirname) 
+  return join(dirname, img.name[:-4])
+
+def get_classifier_score_name(img, L):
+  dirname = join(res_dir, 'classify_scores', str(L))
+  makedirs(dirname) 
+  return join(dirname, img.name[:-4])
+
 #####
 # Feature Extraction
 #####
