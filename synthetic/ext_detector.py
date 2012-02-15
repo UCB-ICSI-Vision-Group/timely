@@ -27,22 +27,18 @@ class ExternalDetector(Detector):
       config_name = detname+'_'+cls
       if config_name in configs:
         detector_config = configs[config_name]
-        print("Successfully initialized detector %s with config!"%config_name)
 
     Detector.__init__(self,dataset,cls,detector_config)
     self.detname = detname
     self.dets = dets
     suffix = detname[4:]
     self.csc_classif = CSCClassifier(suffix)    
-    try:
-      self.svm = self.csc_classif.load_svm(cls)
-      setting_table = ut.Table.load(os.path.join(config.res_dir,'csc_svm_'+suffix,'best_table'))
-      settings = setting_table.arr[config.pascal_classes.index(cls),:]
-      self.intervalls = settings[setting_table.cols.index('bins')]
-      self.lower = settings[setting_table.cols.index('lower')]
-      self.upper = settings[setting_table.cols.index('upper')]
-    except:
-      print("Could not load classifier SVM for class %s"%cls)
+    self.svm = self.csc_classif.load_svm(cls)
+    setting_table = ut.Table.load(os.path.join(config.res_dir,'csc_svm_'+suffix,'best_table'))
+    settings = setting_table.arr[config.pascal_classes.index(cls),:]
+    self.intervalls = settings[setting_table.cols.index('bins')]
+    self.lower = settings[setting_table.cols.index('lower')]
+    self.upper = settings[setting_table.cols.index('upper')]
 
   def detect(self, image):
     """

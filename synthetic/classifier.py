@@ -84,7 +84,7 @@ class Classifier():
     return ret
   
   def load_svm(self, cls):
-    model = load_svm(config.get_classifier_svm_filename(self,cls))
+    model = load_svm(config.get_classifier_filename(self,cls))
     return model
   
   def test_svm(self, test_dataset, feats, intervals, kernel, lower, upper, \
