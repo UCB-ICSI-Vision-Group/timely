@@ -8,7 +8,6 @@ from common_imports import *
 from synthetic.dataset import Dataset
 from synthetic.image import BoundingBox
 import synthetic.config as config
-from synthetic.safebarrier import safebarrier
 
 class Evaluation:
   """
@@ -53,13 +52,6 @@ class Evaluation:
     self.apvst_whole_txt_filename = opjoin(dirname, 'apvst_whole_%s.txt')
     self.apvst_whole_data_filename = opjoin(dirname, 'apvst_whole_table.npy')
     self.apvst_whole_png_filename = opjoin(dirname, 'apvst_whole.png')
-
-    # avg-image evaluations
-    self.apvst_avg_data_filename = opjoin(self.results_path, 'apvst_avg_table.npy')
-    self.apvst_avg_png_filename = opjoin(self.results_path, 'apvst_avg.png')
-
-    self.pr_avg_png_filename = opjoin(self.results_path, 'pr_avg_%s.png')
-    self.pr_avg_txt_filename = opjoin(self.results_path, 'pr_avg_%s.txt')
     self.apvst_data_filename = opjoin(self.results_path, 'apvst_table.npy')
     self.apvst_png_filename = opjoin(self.results_path, 'apvst.png')
 
@@ -76,8 +68,8 @@ class Evaluation:
     bounds = self.dp.bounds if self.dp and self.dp.bounds else None
 
     table = None
-    filename = self.apvst_avg_data_filename
-    if os.path.exists(filename) and not force:
+    filename = self.apvst_data_filename
+    if opexists(filename) and not force:
       if comm_rank==0:
         table = np.load(filename)[()]
     else:
@@ -130,7 +122,7 @@ class Evaluation:
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([table],self.apvst_avg_png_filename, bounds)
+        Evaluation.plot_ap_vs_t([table],self.apvst_png_filename, bounds)
       except:
         print("Could not plot")
     return table
@@ -160,7 +152,6 @@ class Evaluation:
     Save plot to given filename.
     Does not return anything.
     """
-    print("here1")
     plt.clf()
     colors = ['black','orange','#4084ff','purple']
     styles = ['-','--','-..','-.']
@@ -243,7 +234,7 @@ class Evaluation:
       # Multi-class
       gt = self.dataset.get_ground_truth(include_diff=True)
       filename = opjoin(self.results_path, 'pr_whole_multiclass')
-      if force or not os.path.exists(filename):
+      if force or not opexists(filename):
         t = time.time()
         print("Evaluating %d dets in the multiclass setting..."%dets.shape()[0])
         ap_mc = self.compute_and_plot_pr(dets, gt, 'multiclass')
@@ -257,26 +248,22 @@ class Evaluation:
         f.write(','.join(['%.3f'%ap for ap in aps])+'\n')
 
       # Assemble everything in one HTML file, the Dashboard
-      if False:
-        filename = self.pr_whole_png_filename%'all'
-        names = list(self.dataset.classes)
-        names.append('multiclass')
-        aps.append(ap_mc)
-        recs.append(rec_mc)
-        precs.append(prec_mc)
-        self.plot_pr_grid(aps,recs,precs,names,filename)
+      filename = self.pr_whole_png_filename%'all'
+      names = list(self.dataset.classes)
+      names.append('multiclass')
+      aps = aps.tolist()
+      aps.append(ap_mc)
 
-        eval_type = 'whole'
-        template = Template(filename=config.eval_template_filename)
-        filename = self.dashboard_filename%eval_type
-        names = list(self.dataset.classes)
-        names.append('avg')
-        aps.append(np.mean(aps))
-        with open(filename, 'w') as f:
-          f.write(template.render(
-            title=eval_type,
-            names=names, aps=aps,
-            all_pr_filename=os.path.basename(self.pr_whole_png_filename%'all')))
+      eval_type = 'whole'
+      template = Template(filename=config.eval_template_filename)
+      filename = self.dashboard_filename%eval_type
+      names = list(self.dataset.classes)
+      names.append('avg')
+      aps.append(np.mean(aps))
+      with open(filename, 'w') as f:
+        f.write(template.render(
+          title=eval_type,
+          names=names, aps=aps))
     safebarrier(comm)
 
   def compute_and_plot_pr(self, dets, gt, name, force=False):
@@ -286,7 +273,7 @@ class Evaluation:
     Return ap.
     """
     filename = self.pr_whole_txt_filename%name
-    if force or not os.path.exists(filename):
+    if force or not opexists(filename):
       [ap,rec,prec] = self.compute_pr(dets, gt)
       try:
         self.plot_pr(ap,rec,prec,name,self.pr_whole_png_filename%name)
@@ -315,42 +302,6 @@ class Evaluation:
     plt.xlabel('Recall',size=16)
     plt.ylabel('Precision',size=16)
     plt.grid(True)
-    plt.savefig(filename)
-
-  def plot_pr_grid(self, aps, recs, precs, names, filename, force=False):
-    """
-    Plot P-R curves for all the data passed in in a grid of minimal size.
-    Save png to filename.
-    """
-    if opexists(filename) and not force:
-      print("plot_pr_grid: not doing anything as file exists")
-      return
-    h = int(np.round(np.sqrt(len(names))))
-    w = int(np.ceil(np.sqrt(len(names))))
-    # TODO: increase figsize or resolution here or something, plots are too big
-    # for the figure size right now
-    fig, axes = plt.subplots(h, w, sharex=True, sharey=True)
-    left = 0.0625
-    bottom = 0.05
-    width = 1-2*left
-    height = 1-2*bottom
-    ax = fig.add_axes([left,bottom,width,height],frameon=False)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_xlabel('Recall',size=16)
-    ax.set_ylabel('Precision',size=16)
-    for i in range(len(names)):
-      ax = axes.flat[i]
-      ap = aps[i]
-      label = "%s: %.3f"%(names[i],ap)
-      ax.plot(recs[i], precs[i], label=label, linewidth=5)
-      ax.set_xlim(0,1)
-      ax.set_ylim(0,1)
-      ax.legend(loc='lower left')
-      ax.set_title(names[i])
-      ax.grid(True)
-    plt.setp([a.get_xticklabels() for a in axes[0,:]], visible=False)
-    plt.setp([a.get_yticklabels() for a in axes[:,1]], visible=False)
     plt.savefig(filename)
   
   ##############################

@@ -76,7 +76,7 @@ pascal_paths = {
     'full_pascal_test':     join(VOC_dir,'ImageSets/Main/test.txt')}
 config_dir = join(script_dir,'configs')
 eval_support_dir = join(script_dir, 'eval_support')
-template_filename = join(eval_support_dir, 'dashboard_template.html')
+eval_template_filename = join(eval_support_dir, 'dashboard_template.html')
 
 # Result data
 res_dir = makedirs(join(data_dir, 'results'))
