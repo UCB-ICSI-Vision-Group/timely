@@ -64,7 +64,7 @@ makedirs(temp_data_dir)
 script_dir = join(repo_dir, 'synthetic')
 
 # Input data
-test_support_dir = join(data_dir, 'test_support')
+test_support_dir = join(script_dir, 'test_support')
 data1 = join(test_support_dir,'data1.json')
 VOC_dir = join(data_dir, 'VOC%(year)s/')%{'year':VOCyear}
 pascal_paths = {
@@ -75,6 +75,8 @@ pascal_paths = {
     'full_pascal_trainval': join(VOC_dir,'ImageSets/Main/trainval.txt'),
     'full_pascal_test':     join(VOC_dir,'ImageSets/Main/test.txt')}
 config_dir = join(script_dir,'configs')
+eval_support_dir = join(script_dir, 'eval_support')
+template_filename = join(eval_support_dir, 'dashboard_template.html')
 
 # Result data
 res_dir = makedirs(join(data_dir, 'results'))

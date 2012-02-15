@@ -38,8 +38,6 @@ class Evaluation:
     self.min_overlap = Evaluation.MIN_OVERLAP
 
     # Determine filenames and create directories
-    self.template_filename = os.path.join(config.script_dir, 'evaluation_support/dashboard_template.html')
-
     self.results_path = config.get_evals_dp_dir(self.dataset_policy)
 
     # wholeset evaluations
@@ -322,7 +320,7 @@ class Evaluation:
         self.plot_pr_grid(aps,recs,precs,names,filename)
 
         eval_type = 'whole'
-        template = Template(filename=self.template_filename)
+        template = Template(filename=config.eval_template_filename)
         filename = self.dashboard_filename%eval_type
         names = list(self.dataset.classes)
         names.append('avg')
