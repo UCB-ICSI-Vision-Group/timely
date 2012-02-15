@@ -133,7 +133,7 @@ The policy's performance is determined by treating the final values of $P(\mathb
 \subsection{Reward} \label{sec:reward}
 The goal of our policy is Anytime performance, so it would be limiting to evaluate only at deadline time.
 Optimal performance results from becoming maximally certain of the correct values $C_i$ as quickly as possible (given the setup time).
-Toward this goal, we formulate a \emph{reward function} that encourages this behavior by assigning a score to an action taken in a belief state.
+Toward this goal, we formulate a \emph{reward function} that encourages this behavior by assigning a score to a belief state.
 
 Let's say that given deadline $T_d$ and some image, the policy had time to take $J$ actions.
 The total expected reward of a policy $\pi$ is then defined as the sum of rewards
@@ -163,8 +163,7 @@ Additionally, the equation shows that if $\Delta t$ exceeds $t_T$, the value of 
 
 \subsubsection{Information gain}
 A common approach to our kind of problem is to minimize uncertainty as quickly as possible.
-Specifically, 
-
+Therefore we define the reward as a function of the negative residual entropy, following \cite{Gao2011}.
 
 \todo{What's the difference here between minimizing entropy and maximizing expected information gain over the length of the episode?}
 
@@ -172,9 +171,8 @@ Specifically,
 At each step, we want to pick the action that maximizes the expected rewards until the end of the episode.
 We therefore define our policy as
 \begin{equation}
-\argmax_{a \in \mathcal{A} \setminus \mathcal{O}} \theta^\top \phi(b,a)
+\pi(b) = \argmax_{a \in \mathcal{A} \setminus \mathcal{O}} \theta^\top \phi(b,a)
 \end{equation}
-
 
 Learning this accurately is the domain of Reinforcement Learning research, and is generally intractable for large-scale POMDPs.
 We explore three different value functions.
@@ -183,10 +181,14 @@ First, we seek to maximize the expected next-stage reward, and manually construc
 Next, we note that the manually constructed value function can be represented as a scalar product of a parameter vector with a featurization of the belief state; we learn the weights by regression to the actual next-stage reward from running many episodes.
 Lastly, we use a reinforcement learning technique to learn the weights such that the expected rewards over the whole episode are maximized.
 
-\subsubsection{Manually specified greedy value function}
+\subsubsection{Greedy expected-value}
+We can compute the expected value of the reward function given a distribution over the classifier response.
+If we define the value function by this expectation, we will have constructed a one-step greedy policy.
+
+\note{Discuss submodularity defense of greedy policies here; costs are tricky though.}
 
 \subsubsection{Learning the greedy policy}
-
+We note that we can represent the one-step greedy policy value function as a scalar product 
 
 \subsubsection{Learning the proper policy}
 \note{I'm considering two options here: (1) log-linear representation and policy gradient algorithm; (2) least-squares policy iteration.}
@@ -199,7 +201,7 @@ P(a|b;\theta) = \frac{\exp(\theta^T \phi(b,a))}{\sum_{a' \in \mathcal{A}} \exp(\
 
 Basically stochastic gradient ascent on the estimate of the reward accrued by an episode.
 
-This approach has been shown to scale to large problems in \cite{Branavan2009,Sutton2000}, although it has been proven to converge only to local maxima and only for MDPs.
+This approach has been shown to scale to large problems in \cite{Branavan2009}, although it has been proven to converge only to local maxima and only for MDPs \cite{Sutton2000}.
 
 \note{Does the constraint that no action is taken more than once affect this algorithm?}
 
