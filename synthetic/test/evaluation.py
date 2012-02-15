@@ -8,20 +8,20 @@ from synthetic.sliding_windows import SlidingWindows
 
 class TestEvaluationPerfect:
   def setup(self):
-    train_dataset = Dataset('test_pascal_train')
-    dataset = Dataset('test_pascal_val')
+    train_dataset = Dataset('test_pascal_train',force=True)
+    dataset = Dataset('test_pascal_val',force=True)
     sw = SlidingWindows(dataset,train_dataset)
     self.dp = DatasetPolicy(dataset,train_dataset,sw, detector='perfect')
     self.evaluation = Evaluation(self.dp)
 
   def test_compute_pr_multiclass(self):
-    cols = ['x','y','w','h','cls_ind','img_ind'] 
+    cols = ['x','y','w','h','diff','cls_ind','img_ind'] 
     dets_cols = ['x', 'y', 'w', 'h', 'score', 'time', 'cls_ind', 'img_ind']
     
     # two objects of different classes in the image, perfect detection
     arr = np.array(
-        [ [0,0,10,10,0,0],
-          [10,10,10,10,1,0] ])
+        [ [0,0,10,10,0,0,0],
+          [10,10,10,10,0,1,0] ])
     gt = ut.Table(arr,cols)
 
     dets_arr = np.array(
@@ -69,10 +69,10 @@ class TestEvaluationPerfect:
 
     # now let's add two objects of a different class to gt to lower recall
     arr = np.array(
-        [ [0,0,10,10,0,0],
-          [10,10,10,10,1,0],
-          [20,20,10,10,2,0],
-          [30,30,10,10,2,0] ])
+        [ [0,0,10,10,0,0,0],
+          [10,10,10,10,0,1,0],
+          [20,20,10,10,0,2,0],
+          [30,30,10,10,0,2,0] ])
     gt = ut.Table(arr,cols)
     ap,rec,prec = self.evaluation.compute_pr(dets, gt)
     correct_rec = np.array([0.25,0.5,0.5,0.5])

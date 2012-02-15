@@ -28,7 +28,7 @@ class DatasetPolicy:
     'suffix': 'jan30', # use this to re-run on same params after changing code
     'detector': 'ext', # perfect,perfect_with_noise,ext
     'class_priors_mode': 'random', # random,oracle,fixed_order,no_smooth,backoff
-    'dets_suffixes': ['csc_default'], # further specifies which detector to use
+    'dets_suffixes': ['dpm'], # further specifies which detector to use (use 'dpm' so tests pass)
     'bounds': None, # start and deadline times for the policy
     'gist': 0, # use the GIST action? 0/1
     'with_entropy': 0, # use the entropy feature in belief state featurization?

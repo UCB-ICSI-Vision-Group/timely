@@ -38,6 +38,9 @@ class Table:
   def shape(self):
     return self.arr.shape
 
+  def ind(self,col_name):
+    return self.cols.index(col_name)
+
   ###################
   # Save/Load
   ###################
@@ -115,6 +118,8 @@ class Table:
     Take name of column to index by and value to filter by.
     By providing an operator, more than just equality filtering can be done.
     """
+    if ind_name not in self.cols:
+      return self
     table = Table(cols=self.cols,arr=self.arr)
     table.arr = filter_on_column(table.arr,table.cols.index(ind_name),val,op,omit)
     if omit:

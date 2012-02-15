@@ -433,25 +433,16 @@ class Evaluation:
       rec = np.array([0])
       prec = np.array([0])
       return (ap,rec,prec)
-    t = time.time()
+    tt = ut.TicToc().tic()
 
     # augment gt with a column keeping track of matches
     cols = list(gt.cols) + ['matched']
     arr = np.zeros((gt.arr.shape[0],gt.arr.shape[1]+1))
     arr[:,:-1] = gt.arr
-    #arr = np.hstack((gt.arr, np.zeros((gt.arr.shape[0],1))))
     gt = ut.Table(arr,cols)
-    gt_cls_ind_ind = gt.cols.index('cls_ind')
-    gt_diff_ind = gt.cols.index('diff')
-    gt_matched_ind = gt.cols.index('matched')
-    if 'img_ind' in gt.cols:
-      gt_img_ind_ind = gt.cols.index('img_ind')
 
     # sort detections by confidence
-    # TODO: maybe bug here
     dets.sort_by_column('score',descending=True)
-    cls_ind_ind = dets.cols.index('cls_ind')
-    img_ind_ind = dets.cols.index('img_ind')
 
     # match detections to ground truth objects
     npos = gt.filter_on_column('diff',0).shape()[0]
@@ -459,44 +450,41 @@ class Evaluation:
     fp = np.zeros(nd)
     hard_neg = np.zeros(nd)
     for d in range(nd):
-      time_elapsed = time.time()-t
-      if time_elapsed>15:
+      if tt.qtoc() > 15:
         print("... on %d/%d dets"%(d,nd))
-        t = time.time()
+        tt.tic()
 
       det = dets.arr[d,:]
 
       # find ground truth for this image
       if 'img_ind' in gt.cols:
-        img_ind = det[img_ind_ind]
-        inds = gt.arr[:,gt_img_ind_ind] == img_ind
+        img_ind = det[dets.ind('img_ind')]
+        inds = gt.arr[:,gt.ind('img_ind')] == img_ind
         gt_for_image = gt.arr[inds,:]
       else:
         gt_for_image = gt.arr
       
       if gt_for_image.shape[0] < 1:
         # this can happen if we're passing ground truth for a class
+        # false positive due to detection in image that does not contain the class
         fp[d] = 1 
         hard_neg[d] = 1
-        # false positive due to detection in image that does not contain the class
         continue
 
       # find the maximally overlapping ground truth element for this detection
-      # TODO: bug in get_overlap?
       overlaps = BoundingBox.get_overlap(gt_for_image[:,:4],det[:4])
       jmax = overlaps.argmax()
       ovmax = overlaps[jmax]
 
       # assign detection as true positive/don't care/false positive
       if ovmax >= self.MIN_OVERLAP:
-        if not gt_for_image[jmax,gt_diff_ind]:
-          is_matched = gt_for_image[jmax,gt_matched_ind]
+        if not gt_for_image[jmax,gt.ind('diff')]:
+          is_matched = gt_for_image[jmax,gt.ind('matched')]
           if is_matched == 0:
-            cls_ind = det[cls_ind_ind]
-            if gt_for_image[jmax,gt_cls_ind_ind] == cls_ind:
+            if gt_for_image[jmax,gt.ind('cls_ind')] == det[dets.ind('cls_ind')]:
               # true positive
               tp[d] = 1
-              gt_for_image[jmax,gt_matched_ind] = 1
+              gt_for_image[jmax,gt.ind('matched')] = 1
             else:
               # false positive due to wrong class
               fp[d] = 1
@@ -517,7 +505,7 @@ class Evaluation:
       if 'img_ind' in gt.cols:
         gt.arr[inds,:] = gt_for_image
     fp=np.cumsum(fp)
-    tp=np.cumsum(tp)    
+    tp=np.cumsum(tp)
     rec=1.*tp/npos
     prec=1.*tp/(fp+tp)
 

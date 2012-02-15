@@ -70,7 +70,7 @@ def main():
     description="Run experiments with the timely detection system.")
 
   parser.add_argument('--test_dataset',
-    choices=['val','test','train','trainval'],
+    choices=['val','test'],
     default='val',
     help="""Dataset to use for testing. Run on val until final runs.
     The training dataset is inferred (val->train; test->trainval).""")
@@ -80,7 +80,7 @@ def main():
 
   parser.add_argument('--config',
     help="""Config file name that specifies the experiments to run.
-    Give name s.t the file is configs/#{name}.json or configs/#{name}/.
+    Give name such that the file is configs/#{name}.json or configs/#{name}/
     In the latter case, all files within the directory will be loaded.""")
 
   parser.add_argument('--force', action='store_true', 
@@ -118,8 +118,7 @@ def main():
   elif args.test_dataset=='val':
     train_dataset = Dataset('full_pascal_train')
   else:
-    print("Impossible, setting train_dataset to dataset")
-    train_dataset = dataset
+    None # impossible by argparse settings
 
   tables = []
   all_bounds = []

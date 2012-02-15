@@ -172,12 +172,12 @@ def get_gist_svm_filename(for_cls):
 def get_classifier_learning_dirname(classifier):
   return makedirs(join(config.temp_res_dir, classifier.name+'_svm_'+classifier.suffix))
 
-def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C)
-  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
+def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C):
+  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))
   return join(dirname, "%s_%d_%d_%d"%(cls,lower,upper,C))
     
-def get_classifier_learning_eval_filename(classifier,cls,kernel,intervals,lower,upper,C)
-  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
+def get_classifier_learning_eval_filename(classifier,cls,kernel,intervals,lower,upper,C):
+  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))
   return join(dirname, "eval_%d_%d_%d"%(lower,upper,C))
 
 # final
