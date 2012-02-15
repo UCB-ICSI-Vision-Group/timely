@@ -12,7 +12,7 @@ class ExternalDetector(Detector):
   Actually works by pre-loading all the detections and then returning them as
   requested.
   """
-  def __init__(self, dataset, cls, sw, dets, detname):
+  def __init__(self, dataset, cls, dets, detname):
     """
     Expects cached detections in Table format to be passed in.
     The dets should not have the 'cls_ind' column, as they should all be of the
@@ -29,7 +29,7 @@ class ExternalDetector(Detector):
         detector_config = configs[config_name]
         print("Successfully initialized detector %s with config!"%config_name)
 
-    Detector.__init__(self,dataset,cls,sw,detector_config)
+    Detector.__init__(self,dataset,cls,detector_config)
     self.detname = detname
     self.dets = dets
     suffix = detname[4:]

@@ -10,8 +10,7 @@ class TestEvaluationPerfect:
   def setup(self):
     train_dataset = Dataset('test_pascal_train',force=True)
     dataset = Dataset('test_pascal_val',force=True)
-    sw = SlidingWindows(dataset,train_dataset)
-    self.dp = DatasetPolicy(dataset,train_dataset,sw, detector='perfect')
+    self.dp = DatasetPolicy(dataset,train_dataset,detector='perfect')
     self.evaluation = Evaluation(self.dp)
 
   def test_compute_pr_multiclass(self):

@@ -123,9 +123,8 @@ def main():
   tables = []
   all_bounds = []
 
-  sw = SlidingWindows(dataset,train_dataset)
   for config_f in configs:
-    dp = DatasetPolicy(dataset, train_dataset, sw, **config_f)
+    dp = DatasetPolicy(dataset, train_dataset, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)
 

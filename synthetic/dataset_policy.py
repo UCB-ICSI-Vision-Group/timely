@@ -63,14 +63,13 @@ class DatasetPolicy:
   def get_cols(cls):
     return Detector.get_cols() + ['cls_ind','img_ind','time']
 
-  def __init__(self, dataset, train_dataset, sw, **kwargs):
+  def __init__(self, dataset, train_dataset, **kwargs):
     "**kwargs update the default config"
     config = copy.copy(DatasetPolicy.default_config)
     config.update(kwargs)
 
     self.dataset = dataset
     self.train_dataset = train_dataset
-    self.sw = sw
 
     self.__dict__.update(config)
     print("DatasetPolicy running with config:")
@@ -89,12 +88,13 @@ class DatasetPolicy:
     # synthetic perfect detector
     if self.detector=='perfect':
       for cls in self.dataset.classes:
-        det = PerfectDetector(self.dataset, cls, self.sw)
+        det = PerfectDetector(self.dataset, cls)
         self.actions.append(ImageAction('perfect_%s'%cls,det))
     # synthetic perfect detector with noise in the detections
     elif self.detector=='perfect_with_noise':
       for cls in self.dataset.classes:
-        det = PerfectDetectorWithNoise(self.dataset, cls, self.sw)
+        sw = SlidingWindows(self.train_dataset,self.dataset)
+        det = PerfectDetectorWithNoise(self.dataset, cls, sw)
         self.actions.append(ImageAction('perfect_noise_%s'%cls,det))
     # real detectors, with pre-cached detections
     elif self.detector=='ext':
@@ -114,7 +114,7 @@ class DatasetPolicy:
         for cls in self.dataset.classes:
           cls_ind = self.dataset.get_ind(cls)
           all_dets_for_cls = self.all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
-          det = ExternalDetector(self.dataset, cls, self.sw, all_dets_for_cls, suffix)
+          det = ExternalDetector(self.dataset, cls, all_dets_for_cls, suffix)
           self.actions.append(ImageAction('%s_%s'%(suffix,cls), det))
     else:
       raise RuntimeError("Unknown mode for detectors")
