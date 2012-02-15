@@ -20,11 +20,7 @@ class TestDetector:
     d = Detector(self.train_dataset,'dog')
     assert(isinstance(d,Detector))
 
-class TestPerfectDetector:
-  def setup(self):
-    self.dataset = Dataset('test_pascal_val')
-    self.train_dataset = Dataset('test_pascal_train')
-
+class TestPerfectDetector(TestDetector):
   def test_expected_time(self):
     d = PerfectDetector(self.train_dataset,'dog')
     img = Image(size=(500,375))
