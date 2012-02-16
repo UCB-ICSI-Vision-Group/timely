@@ -53,7 +53,6 @@ def test_compare_to_original_pyramid():
 #  io.savemat(spatial_pyr_root + 'python_pyr.mat', {'pyr':pyr})
   
 def test_extract_horiz_slices():
-  # create a grid that nicely falls into 3 slices
   assignments = np.zeros((25,3))
   ind = 0
   for i in range(5):
@@ -65,15 +64,18 @@ def test_extract_horiz_slices():
         ass = 3
       if (i, j) == (1,3) or (i, j) == (2,3) or (i, j) == (3,3):
         ass = 4
-        
       assignments[ind, :] = np.matrix([[i, j, ass]])
       ind += 1
-  image = Image(size=(25,25))
-  slices = extract_horiz_sclices(3, assignments, image)
-  print slices
+  image = Image(size=(5,5))
+  num_words = 4
+  slices = extract_horiz_sclices(3, assignments, image, num_words)
+  corr_stack = np.matrix([[7, 3, 0, 0], [2, 0, 3, 0], [7, 0, 0, 3]])
+  slice_stack = np.vstack(slices)
+  np.testing.assert_array_equal(corr_stack, slice_stack)
   
   
 if __name__=='__main__':  
-  test_get_indices()
-  test_get_indices_empty_result()
-  test_compare_to_original_pyramid()
+#  test_get_indices()
+#  test_get_indices_empty_result()
+#  test_compare_to_original_pyramid()
+  test_extract_horiz_slices()

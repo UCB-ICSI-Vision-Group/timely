@@ -63,11 +63,34 @@ def extract_pyramid(L, positions, assignments, codebook, image):
   pyramid = np.matrix(pyramid)
   return pyramid
 
-def extract_horiz_sclices(num_bins, positions, assignments, codebook, image):
+def extract_horiz_sclices(num_bins, assignments, image, num_words):
   im_width = image.size[0]
   im_height = image.size[1]
   slices = []
   for i in range(num_bins):
-    slices.append(count_histogram_for_slice(positions, assignments, im_width, im_height, num_bins, i, num_words))
+    slices.append(count_histogram_for_slice(assignments, im_width, im_height, num_bins, i, num_words)[1])
+  return slices
+
+if __name__ =='__main__':
+  assignments = np.zeros((25,3))
+  ind = 0
+  for i in range(5):
+    for j in range(5):
+      ass = 1
+      if (i, j) == (1,1) or (i, j) == (2,1) or (i, j) == (3,1):
+        ass = 2
+      if (i, j) == (1,2) or (i, j) == (2,2) or (i, j) == (3,2):
+        ass = 3
+      if (i, j) == (1,3) or (i, j) == (2,3) or (i, j) == (3,3):
+        ass = 4
+      assignments[ind, :] = np.matrix([[i, j, ass]])
+      ind += 1
+  image = Image(size=(5,5))
+  num_words = 4
+  slices = extract_horiz_sclices(3, assignments, image, num_words)
+  corr_stack = np.matrix([[7, 3, 0, 0],[2, 0, 3, 0],[7, 0, 0, 3]])
+  slice_stack = np.vstack(slices)
+  assert(corr_stack.all() == slice_stack.all())
+  #print slices
     
     

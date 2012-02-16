@@ -372,11 +372,11 @@ def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
   indices = indices.reshape(positions.shape[0], 1)
   positions = np.asarray(np.hstack((positions, indices)))
   if not positions.size == 0:  
-    positions = positions[positions[:, 0] > xmin, :]
+    positions = positions[positions[:, 0] >= xmin, :]
   if not positions.size == 0:
     positions = positions[positions[:, 0] <= xmax, :]
   if not positions.size == 0:  
-    positions = positions[positions[:, 1] > ymin, :]
+    positions = positions[positions[:, 1] >= ymin, :]
   if not positions.size == 0:
     positions = positions[positions[:, 1] <= ymax, :]
   return np.asarray(positions[:, 2], dtype='int32')
@@ -392,18 +392,19 @@ def count_histogram(indices, assignments, num_words):
   return bin_ass, histogram
 
 def count_histogram_for_bin(positions, assignments, im_width, im_height, num_bins, i, j, num_words):
-  xmin = floor(im_width / num_bins * i)
-  xmax = floor(im_width / num_bins * (i + 1))
-  ymin = floor(im_height / num_bins * j)
-  ymax = floor(im_height / num_bins * (j + 1))
+  xmin = floor(im_width / float(num_bins) * i)
+  xmax = floor(im_width / float(num_bins) * (i + 1))
+  ymin = floor(im_height / float(num_bins) * j)
+  ymax = floor(im_height / float(num_bins) * (j + 1))
   indices = get_indices_for_pos(positions, xmin, xmax, ymin, ymax)
   return count_histogram(indices, assignments, num_words)
 
-def count_histogram_for_slice(positions, assignments, im_width, im_height, num_bins, i, num_words):
+def count_histogram_for_slice(assignments, im_width, im_height, num_bins, i, num_words):
+  positions = assignments[:, 0:2]
   xmin = 0
-  xmax = im_width + 1
-  ymin = floor(im_height / num_bins * i)
-  ymax = floor(im_height / num_bins * (i + 1))
+  xmax = im_width
+  ymin = (im_height-1) / float(num_bins) * i
+  ymax = (im_height-1) / float(num_bins) * (i + 1)
   indices = get_indices_for_pos(positions, xmin, xmax, ymin, ymax)
   return count_histogram(indices, assignments, num_words)
 
