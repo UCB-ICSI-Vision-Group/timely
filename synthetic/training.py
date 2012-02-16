@@ -189,9 +189,9 @@ def train_with_hard_negatives(d, dtest,cbwords, cbsamps, codebook, cls, pos_tabl
   
   classification = np.asarray([1]*pos_table.arr.shape[0] + [-1]*neg_table.arr.shape[0])
   
-  filename = config.save_dir + 'features/' + feature_type + '/svms/' + kernel + \
+  filename = config.data_dir + 'features/' + feature_type + '/svms/' + kernel + \
         '/'+ cls
-  ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/' + kernel)
+  ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/' + kernel)
   
     
   # with that we now determined our whole dataset D  
@@ -323,9 +323,9 @@ if __name__=='__main__':
 #  num_pos = 1
 
   if mpi_rank == 0:
-    ut.makedirs(config.save_dir + 'features/' + feature_type + '/times/')
-    ut.makedirs(config.save_dir + 'features/' + feature_type + '/codebooks/times/')
-    ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/train_times/')
+    ut.makedirs(config.data_dir + 'features/' + feature_type + '/times/')
+    ut.makedirs(config.data_dir + 'features/' + feature_type + '/codebooks/times/')
+    ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/train_times/')
     
   for cls_idx in range(mpi_rank, len(classes), mpi_size): 
   #for cls in classes:

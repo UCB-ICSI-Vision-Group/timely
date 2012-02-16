@@ -7,16 +7,18 @@ import scipy.cluster.vq as sp
 from sklearn import cluster
 
 import util as ut
+
 from synthetic.config import *
 from dataset import *
 from common_mpi import *
 
 class Extractor():
   def __init__(self):
-    self.save_dir = config.data_dir + 'features/'   
+
+    self.data_dir = join(config.data_dir, 'features/')   
     
-    if not os.path.isdir(self.save_dir):
-      os.mkdir(self.save_dir)
+    if not os.path.isdir(self.data_dir):
+      os.mkdir(self.data_dir)
     self.feature = ''
     
   def get_codebook(self,d, feature_type, num_words=3000,iterations=10, force_new=False, kmeansBatch=True):
@@ -30,9 +32,9 @@ class Extractor():
       force_new - delete existing codebook
       use_neg - Create with negative samples?
     """
-    filename = self.save_dir + feature_type + '/codebooks/codebook'
+    filename = self.data_dir + feature_type + '/codebooks/codebook'
     print filename 
-    ut.makedirs(self.save_dir + feature_type + '/' + 'codebooks/')
+    ut.makedirs(self.data_dir + feature_type + '/' + 'codebooks/')
     if (not os.path.isfile(filename)) or force_new:
       if force_new:
         if os.path.isfile(filename):
@@ -88,7 +90,7 @@ class Extractor():
       print "feat_mat: ", feature_matrix.shape
       print 'feat: ', feature_type
       
-      time_filename = self.save_dir + feature_type + '/' + 'codebooks/time' 
+      time_filename = self.data_dir + feature_type + '/' + 'codebooks/time' 
   
       print 'start computing codebook...'
       #if comm_rank == 0: infile = open(filename, 'w')
@@ -144,7 +146,7 @@ class Extractor():
     t = time.time()
     feature_type = self.get_feature(feature_type, image, bound_box)
     t = time.time() - t
-    filename = self.save_dir + feature_type + '/times/' + \
+    filename = self.data_dir + feature_type + '/times/' + \
       image.name[0:-4]
     if not os.path.isfile(filename):
       f = open(filename, 'w')
@@ -154,14 +156,14 @@ class Extractor():
 
   
   def process_img(self, img, feature, sizes=[16,24,32], step_size=4):
-    filename = self.save_dir + feature + '/' + img.name[0:-4]
-    print filename               
+    filename = self.data_dir + feature + '/' + img.name[0:-4]               
+
     # since our parallelism just uses different images, we don't check the file 
     # for correct size.
     if not os.path.isfile(filename):
       # extract featues and write to file
       print 'extracting',feature,'for',img.name[0:-4],'...'
-      feature_type = self.dense_extract(config.VOC_dir + 'JPEGImages/' + img.name,
+      feature_type = self.dense_extract(config.get_image_path(img),
                       feature, (0, 0, img.size[0], img.size[1]),sizes, step_size)
       if feature[0:4] == 'phog':
         np.savetxt(filename, feature_type.view(float))
@@ -170,12 +172,11 @@ class Extractor():
     else:
       print img.name[0:-4], 'already exists'
  
-  def get_assignments(self, positions, feature_type, codebook, img):
-    filename = self.save_dir + feature_type + '/assignments/' + img.name[0:-4]
+  def get_assignments(self, positions, feature_type, codebook, img, sizes=[16,24,32],step_size=4):
+    filename = config.get_assignments_path(feature_type, img)
     if not os.path.isfile(filename):
-      ut.makedirs(self.save_dir + feature_type + '/assignments/')
       print 'compute assignment for ' + img.name[0:-4]      
-      feature = self.get_feature_with_pos(feature_type,img,[0,0,img.size[0],img.size[1]])
+      feature = self.get_feature_with_pos(feature_type,img,[0,0,img.size[0],img.size[1]], sizes=sizes, step_size=step_size)
       features_white = sp.whiten(feature[:,3:])
       assignments = sp.vq(features_white, codebook)[0]
       assignments = assignments.reshape(feature.shape[0], 1)
@@ -208,21 +209,21 @@ class Extractor():
     ret = self.get_feature_with_pos(feature_type, img, bound_box)
     return ret[:,3:]
   
-  def get_feature_with_pos(self, feature_type, img, bound_box):
+  def get_feature_with_pos(self, feature_type, img, bound_box, sizes=[16,24,32],step_size=4):
     """ feature_type = 'sift', 'dsift', 'phow', 'cphow', 'phog180', 'phog360'
         data_collection = 'val', 'train', 'test' 
         img: Image instance
         bound_box: [x, y, w, h]"""
         
     self.feature = feature_type
-    self.process_img(img, feature_type)
-    filename = self.save_dir + feature_type + '/' + img.name[0:-4]
+    self.process_img(img, feature_type, sizes=sizes,step_size=step_size)
+    filename = self.data_dir + feature_type + '/' + img.name[0:-4]
     try:
-      feature_type = np.loadtxt(filename)
+      feature = np.loadtxt(filename)
     except ValueError:
-      print 'loading feature_type for', img.name[0:-4],'failed, redoing it!...'
+      print 'loading feature for', img.name[0:-4],'failed, redoing it!...'
       os.remove(filename)
-      return self.get_feature_with_pos(feature_type, img, bound_box)
+      return self.get_feature_with_pos(feature, img, bound_box)
     
     # Crop the matrix to fit the boundingbox
     x_min = bound_box[0]
@@ -230,16 +231,16 @@ class Extractor():
     x_max = bound_box[0] + bound_box[2] - 1
     y_max = bound_box[1] + bound_box[3] - 1
        
-    if not feature_type.size == 0:
-      feature_type = feature_type[feature_type[:,0] >= x_min,:]
-    if not feature_type.size == 0:
-      feature_type = feature_type[feature_type[:,0] <= x_max,:]
-    if not feature_type.size == 0:
-      feature_type = feature_type[feature_type[:,1] >= y_min,:]
-    if not feature_type.size == 0:
-      feature_type = feature_type[feature_type[:,1] <= y_max,:]
+    if not feature.size == 0:
+      feature = feature[feature[:,0] >= x_min,:]
+    if not feature.size == 0:
+      feature = feature[feature[:,0] <= x_max,:]
+    if not feature.size == 0:
+      feature = feature[feature[:,1] >= y_min,:]
+    if not feature.size == 0:
+      feature = feature[feature[:,1] <= y_max,:]
     # Forget spatial information
-    return feature_type
+    return feature
   
   def dense_extract(self,infile, feature, bbox, sizes, step_size):
     """Extract specified feature_type from image."""
@@ -320,63 +321,53 @@ class Extractor():
     self.feature = feature
     self.process_img(image, feature, sizes, step_size)
     t = time.time() - t
-    filename = self.save_dir + feature + '/times/' + image.name[0:-4]
+    filename = self.data_dir + feature + '/times/' + image.name[0:-4]
     if not os.path.isfile(filename):
       f = open(filename, 'w')
       f.write(str(t))
       f.close()
     
   def extract_all(self,feature_type,image_sets,sizes, step_size):    
-    if not os.path.isdir(self.save_dir):
-      os.mkdir(self.save_dir)    
+    if not os.path.isdir(self.data_dir):
+      os.mkdir(self.data_dir)    
     for imset in image_sets:#'train.txt', 'test.txt']:
       d = Dataset(imset)
       images = d.images    
       for feature in feature_type:#, 'phow', 'cphow', 'phog180', 'phog360']:          
-        ut.makedirs(self.save_dir + feature + '/' )
-        ut.makedirs(self.save_dir + feature + '/times/')               
+        ut.makedirs(self.data_dir + feature + '/' )
+        ut.makedirs(self.data_dir + feature + '/times/')               
         for img in range(comm_rank, len(images), comm_size): # PARALLEL
           image = images[img]
           self.create_image_feature(image, feature, sizes, step_size)
           
   def extract_all_assignments(self, feature, image_sets,all_classes,numpos=15, \
-                              num_words=3000, iterations = 10):
-    if not os.path.isdir(self.save_dir):
-      os.mkdir(self.save_dir)
+                              num_words=3000, iterations = 10, sizes=[16,24,32],step_size=4):
+    if not os.path.isdir(self.data_dir):
+      os.mkdir(self.data_dir)
     for imset in image_sets:
       d = Dataset(imset)
-      for cls in all_classes:
-        images = d.images  
-        codebook = self.get_codebook(d, feature, num_words=3000, iterations=iterations)
-        cls_gt = d.get_ground_truth_for_class(cls, True,True)
-        img_idx = cls_gt.arr[:,cls_gt.cols.index('img_ind')]
-        for img in range(comm_rank, len(img_idx), comm_size): # PARALLEL
-          image = images[img_idx[img].astype(Int)]
-          pos_bounds = np.array([0,0,image.size[0]+1,image.size[1]+1])
-          self.get_assignments(pos_bounds, feature, codebook, image)
+      codebook = self.get_codebook(d, feature, num_words=3000, iterations=iterations)
+      images = d.images
+      for img in range(comm_rank, len(images), comm_size): # PARALLEL
+        print ''
+        image = images[img].astype(Int)
+        pos_bounds = np.matrix([[0,0],[image.size[0],image.size[1]]])
+        self.get_assignments(pos_bounds, feature, codebook, image, sizes=sizes,step_size=step_size)
         
     
   
 if __name__ == '__main__':
   e = Extractor()
   image_sets = ['full_pascal_trainval','full_pascal_test']
-  feature_type = 'sift'
+
+  feature_type = 'dsift'
   sizes = [16,24,32]
   step_size = 4
   
   #e.extract_all(feature_type,image_set, sizes, step_size)
   all_classes = config.pascal_classes
 #  all_classes = ['cat']
-  e.extract_all_assignments('sift', image_sets, all_classes)
-"""
-  d = Dataset(image_set)
-  codebook = e.get_codebook(d, feature_type)  
-  print 'codebook loaded'
-  
-  for img_ind in range(comm_rank,len(d.images),comm_size):
-    img = d.images[img_ind]
-  #for img in d.images:
-    e.get_assignments(np.array([0,0,img.size[0],img.size[1]]), feature_type, codebook, img)
+  e.extract_all_assignments(feature_type, image_sets, all_classes, sizes=sizes, \
+                            step_size=step_size)
    
 #  e.get_codebook(d, 'dsift', 3000, True, True)
-""" 

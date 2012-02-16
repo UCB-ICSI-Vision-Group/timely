@@ -170,20 +170,30 @@ def get_gist_svm_filename(for_cls):
 # Classifier
 #####
 # learning
-def get_classifier_learning_dirname(classifier):
-  return makedirs(join(config.temp_res_dir, classifier.name+'_svm_'+classifier.suffix))
+#def get_classifier_learning_dirname(classifier):
+#  return makedirs(join(temp_res_dir, classifier.name+'_svm_'+classifier.suffix))
+#
+#def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C):
+#  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
+#  return join(dirname, "%s_%d_%d_%d"%(cls,lower,upper,C))
+#    
+#def get_classifier_learning_eval_filename(classifier,cls,kernel,intervals,lower,upper,C)
+#  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
+#  return join(dirname, "eval_%d_%d_%d"%(lower,upper,C))
+#
+## final
+#def get_classifier_dirname(classifier):
+#  return makedirs(join(config.res_dir, classifier.name+'_svm_'+classifier.suffix))
+#
+#def get_classifier_filename(classifier,cls):
+#  return join(config.get_classifier_dirname, cls)
 
-def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C)
-  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
-  return join(dirname, "%s_%d_%d_%d"%(cls,lower,upper,C))
-    
-def get_classifier_learning_eval_filename(classifier,cls,kernel,intervals,lower,upper,C)
-  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
-  return join(dirname, "eval_%d_%d_%d"%(lower,upper,C))
+#####
+# Feature Extraction
+#####
+def get_image_path(image):
+  return join(VOC_dir, 'JPEGImages/', image.name)
 
-# final
-def get_classifier_dirname(classifier):
-  return makedirs(join(config.res_dir, classifier.name+'_svm_'+classifier.suffix))
-
-def get_classifier_filename(classifier,cls):
-  return join(config.get_classifier_dirname, cls)
+def get_assignments_path(feature, image):
+  dirname = makedirs(join(data_dir, feature, '/assignments/'))
+  return join(dirname, image.name[0:-4])
