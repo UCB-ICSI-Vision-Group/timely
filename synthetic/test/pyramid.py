@@ -69,7 +69,7 @@ def test_extract_horiz_slices():
   image = Image(size=(5,5))
   num_words = 4
   slices = extract_horiz_sclices(3, assignments, image, num_words)
-  corr_stack = np.matrix([[7, 3, 0, 0], [2, 0, 3, 0], [7, 0, 0, 3]])
+  corr_stack = np.matrix([[.7, .3, 0, 0], [.4, 0, .6, 0], [.7, 0, 0, .3]])
   slice_stack = np.vstack(slices)
   np.testing.assert_array_equal(corr_stack, slice_stack)
   

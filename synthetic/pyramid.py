@@ -68,7 +68,10 @@ def extract_horiz_sclices(num_bins, assignments, image, num_words):
   im_height = image.size[1]
   slices = []
   for i in range(num_bins):
-    slices.append(count_histogram_for_slice(assignments, im_width, im_height, num_bins, i, num_words)[1])
+    hist = np.matrix(count_histogram_for_slice(assignments, im_width, im_height, \
+                        num_bins, i, num_words)[1])
+    hist_sum = float(np.sum(hist))
+    slices.append(hist/hist_sum)
   return slices
 
 if __name__ =='__main__':

@@ -298,14 +298,16 @@ class Dataset:
   def get_pos_samples_for_fold_class(self, cls, include_diff=False,
       include_trun=True):
     if not hasattr(self, 'train'):
-      raise RuntimeError('No current fold selected. Forgot to run next_folds()?')
+      return self.get_pos_samples_for_class(cls, include_diff, include_trun)
     all_pos = self.get_pos_samples_for_class(cls, include_diff, include_trun)
     return np.intersect1d(all_pos, self.train)
   
   def get_neg_samples_for_fold_class(self, cls, num_samples, include_diff=False,
       include_trun=True):
     if not hasattr(self, 'train'):
-      raise RuntimeError('No current fold selected. Forgot to run next_folds()?')
-    all_neg = self.get_neg_samples_for_class(cls, include_diff=include_diff, 
-                                             include_trun=include_trun)
-    return np.array(ut.random_subset(np.intersect1d(all_neg, self.train), num_samples))
+      return self.get_neg_samples_for_class(cls, include_diff, include_trun)
+    all_neg = self.get_neg_samples_for_class(cls, include_diff, include_trun)
+    intersect = np.intersect1d(all_neg, self.train)
+    if intersect.size == 0:
+      return np.array([])
+    return np.array(ut.random_subset(intersect, num_samples))

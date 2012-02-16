@@ -190,10 +190,10 @@ def get_classifier_dirname(classifier):
   makedirs(dirname)
   return dirname
 
-def get_classifier_svm_name(cls):
+def get_classifier_svm_name(cls, C, gamma):
   dirname = join(res_dir, 'classify_svm')
   makedirs(dirname) 
-  return join(dirname, cls)
+  return join(dirname, '%s_%f_%f'%(cls, C, gamma))
 
 def get_classifier_featvect_name(img, L):
   dirname = join(res_dir, 'classify_featvects', str(L))

@@ -1,11 +1,13 @@
 from synthetic.common_imports import *
 from synthetic.common_mpi import *
 
-from synthetic.pyramid import extract_pyramid, get_pyr_feat_size
+from synthetic.pyramid import extract_pyramid, get_pyr_feat_size,\
+  extract_horiz_sclices
 from synthetic.dataset import Dataset
 from synthetic.extractor import Extractor
 from util import TicToc
-from synthetic.training import train_svm, save_svm, load_svm, svm_proba
+from synthetic.training import train_svm, save_svm, load_svm, svm_proba,\
+  svm_predict
 from synthetic import config
 from sklearn.cross_validation import KFold
 
@@ -18,7 +20,7 @@ class ClassifierConfig():
     self.d = Dataset(dataset)
     self.e = Extractor()
     self.dense_codebook = self.e.get_codebook(self.d, 'dsift')
-    self.local_codebook = self.e.get_codebook(self.d, 'sift')
+    self.sparse_codebook = self.e.get_codebook(self.d, 'sift')
     self.tictocer = TicToc()
     self.L = L
     self.numfolds = numfolds
@@ -39,60 +41,122 @@ def get_feature_vector(cc, img, quiet=False):
     cPickle.dump(feat_vect, open(savefilename,'w'))
   return feat_vect
     
-def compute_feature_vector(cc, img, quiet=False):
+def compute_feature_vector(cc, img_idx, quiet=False):
   cc.tictocer.tic('image')
   if not quiet:
-    print 'Pos image', img
-  image = cc.d.images[img]
+    print 'Pos image', img_idx
+  image = cc.d.images[img_idx]
+  
   cc.tictocer.tic()
   dense_assignments = cc.e.get_assignments(np.array([0, 0, image.size[0]+1, image.size[1]+1]),\
                                   'dsift', cc.dense_codebook, image, \
                                   sizes=[16,24,32],step_size=4)
   if not quiet:
-    print '\t %f'%cc.tictocer.toc(quiet=True)
+    print '\tdns_ass %d took %f'%(img_idx, cc.tictocer.toc(quiet=True))
+    
   cc.tictocer.tic()
   sparse_assignments = cc.e.get_assignments([0,0,image.size[0]+1,image.size[1]+1], \
-                                         'sift', cc.local_codebook, image)
+                                         'sift', cc.sparse_codebook, image)
   if not quiet:
-    print '\t %f'%cc.tictocer.toc(quiet=True)
+    print '\tsp_ass %d took %f'%(img_idx, cc.tictocer.toc(quiet=True))
+    
   positions = dense_assignments[:, 0:2]  
+  
+  # Extract dense Pyramid
   cc.tictocer.tic()
   pyramid = extract_pyramid(cc.L, positions, dense_assignments, cc.dense_codebook, image)
   if not quiet:
-    print '\textr pyramid %f'%cc.tictocer.toc(quiet=True)  
+    print '\textract pyramid %f'%cc.tictocer.toc(quiet=True)  
+  
+  # Extract sparse Bag of Words
   cc.tictocer.tic()
-  bow = cc.e.get_bow_for_image(cc.d, cc.local_codebook.shape[0], sparse_assignments, image)
+  bow = cc.e.get_bow_for_image(cc.d, cc.sparse_codebook.shape[0], sparse_assignments, image)
   if not quiet:
-    print '\textr bow %f'%cc.tictocer.toc(quiet=True)  
-    print '\t%f seconds for image %s'%(cc.tictocer.toc('image', quiet=True),img)  
-  return np.hstack((bow,pyramid))
+    print '\textract bow %f'%cc.tictocer.toc(quiet=True)  
+        
+  # Extract dense slices
+  num_slices = 3
+  cc.tictocer.tic()
+  slices = extract_horiz_sclices(num_slices, dense_assignments, image, cc.sparse_codebook.shape[0])
+  slices = np.hstack(slices)
+  if not quiet:
+    print '\textract slices %f'%cc.tictocer.toc(quiet=True)
+  
+  if not quiet:
+    print '\t%f seconds for image %s'%(cc.tictocer.toc('image', quiet=True),img_idx)
+  return np.hstack((bow, pyramid, slices))
 
-def train_image_classifier(cc):
+def cross_valid_training(cc, Cs, gammas, numfolds=4):
+  cc.d.create_folds(numfolds)
+  for _ in range(numfolds):
+    cc.d.next_folds()
+
+    train_image_classifier(cc, Cs, gammas, force_new=True)
+    val_set = cc.d.val
+    for C in Cs:
+      for gamma in gammas:
+        classification = classify_images(cc, val_set, C, gamma)
+        validate_images(val_set, classification)          
+
+  # determine best one
+  # return best C and gamma
+def classify_images(cc, images, C, gamma):
+  res = np.zeros((images.shape[0], len(cc.d.classes)))
+  for cls_idx, cls in enumerate(cc.d.classes):
+    filename = config.get_classifier_svm_name(cls, C, gamma)
+    if not os.path.exists(filename):
+      continue
+    clf = load_svm(filename, probability=False)
+    for idx2, img_idx in enumerate(images):
+      x = compute_feature_vector(cc, img_idx)
+      pred = svm_predict(x, clf)
+      if pred.size > 0:
+        res[idx2, cls_idx] = pred[0]
+  return res    
+
+def validate_images(images, classifications):
+  """
+  images: list of image indidces 
+  classifications: binar classifications (num_img x num_classes) 
+  return (prec, rec)
+  """
+  # TODO: here I need the scores
+  None
+  
+def train_image_classifier(cc, Cs=[1.0], gammas=[0.0], force_new=False):
   for cls in cc.d.classes:
-    train_image_classify_svm(cc, cls, C=1.0, gamma=0.0)
+    train_image_classify_svm(cc, cls, Cs=Cs, gammas=gammas, force_new=force_new)
 
-def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0):  
+def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], force_new=False):  
   pyr_feat_size = get_pyr_feat_size(cc.L, cc.dense_codebook.shape[0])  
   
   cc.tictocer.tic('overall')
-  
-  filename = config.get_classifier_svm_name(cls)
-  if os.path.exists(filename):
-    return
+  if not force_new:
+    all_exist = True
+    for C in Cs:
+      for gamma in gammas:
+        filename = config.get_classifier_svm_name(cls, C, gamma)
+        if not os.path.exists(filename):
+          all_exist = False
+    if all_exist:
+      return
   print 'compute classifier for class', cls
-  pos_images = cc.d.get_pos_samples_for_class(cls)
-  neg_images = cc.d.get_neg_samples_for_class(cls, pos_images.size)
+  pos_images = cc.d.get_pos_samples_for_fold_class(cls)
+  if pos_images.size == 0:
+    return
+  neg_images = cc.d.get_neg_samples_for_fold_class(cls, pos_images.size)
     
   # 1. extract all the pyramids    
   # ======== POSTIVE IMAGES ===========
   print 'compute feature vector for positive images'
-  pos_pyrs = np.zeros((len(pos_images),pyr_feat_size + cc.local_codebook.shape[0]))      
+  num_slices = 3
+  pos_pyrs = np.zeros((len(pos_images),pyr_feat_size + cc.sparse_codebook.shape[0]*(1+num_slices)))      
   for idx, img in enumerate(pos_images):
     pos_pyrs[idx, :] = get_feature_vector(cc, img)
 
   # ======== NEGATIVE IMAGES ===========
   print 'compute feature vector for negative images'
-  neg_pyrs = np.zeros((len(neg_images),pyr_feat_size + cc.local_codebook.shape[0]))  
+  neg_pyrs = np.zeros((len(neg_images),pyr_feat_size + cc.sparse_codebook.shape[0]*(1+num_slices)))  
   for idx, img in enumerate(neg_images):
     neg_pyrs[idx, :] = get_feature_vector(cc, img)
   
@@ -101,19 +165,24 @@ def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0):
   Y = [1]*pos_pyrs.shape[0] + [-1]*neg_pyrs.shape[0] 
   
   if X.shape[0] > 0:
-    print 'train svm for class %s'%cls
-    cc.tictocer.tic()    
-    clf = train_svm(X, Y, kernel='rbf', probab=True, gamma=gamma, C=C)
-    print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
-    
-    print 'save as', filename
-    save_svm(clf, filename)
+    for C in Cs:
+      for gamma in gammas:
+        filename = config.get_classifier_svm_name(cls, C, gamma)
+        if not force_new and os.path.exists(filename):
+          continue
+        print 'train svm for class %s, C=%f, gamma=%f'%(cls,C,gamma)
+        cc.tictocer.tic()    
+        clf = train_svm(X, Y, kernel='rbf', gamma=gamma, C=C)
+        print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
+        
+        print 'save as', filename
+        save_svm(clf, filename)
   else:
     print 'Don\'t compute SVM, no examples given'
   
   print 'training all classifier SVMs took:', cc.tictocer.toc('overall', quiet=True), 'seconds on', mpi_rank
   
-def classify_image(cc, img, cls=None):
+def classify_image(cc, img, C=1.0, gamma=0.0, cls=None):
   """
   Input: ClassifierConfig, img
   Output: Score for given class; 20list of scores if cls=None
@@ -123,13 +192,13 @@ def classify_image(cc, img, cls=None):
     score = {}
     for cls_idx, cls in enumerate(cc.d.classes):
       print '\tclassify %s for %s on %d'%(cc.d.images[img].name, cls, comm_rank)
-      path = config.get_classifier_svm_name(cls)
+      path = config.get_classifier_svm_name(cls, C, gamma)
       if os.path.exists(path):
         clf = load_svm(path)
-        score[cls_idx] = svm_proba(feat_vect, clf)
+        score[cls_idx] = svm_predict(feat_vect, clf)
   else:
     clf = load_svm(config.get_classifier_svm_name(cls))
-    score = svm_proba(feat_vect, clf)
+    score = svm_predict(feat_vect, clf)
   return score
 
 def classify_all_images(cc):
@@ -149,7 +218,7 @@ if __name__=='__main__':
   tictocer = TicToc()
   tictocer.tic('overall')
   
-  test = False
+  test = True
   if test:
     train_dataset = 'test_pascal_train'
     eval_dataset = 'test_pascal_val'
@@ -158,16 +227,19 @@ if __name__=='__main__':
     eval_dataset = 'full_pascal_test'
   
   # Train
-  train = False
-  L = 2
+  train = True
+  L = 1
   if train:       
     cc = ClassifierConfig(train_dataset, L)  
-    train_image_classify_svm(cc)
+    train_image_classifier(cc)
   
   safebarrier(comm)  
   # Evaluate  
-  cc = ClassifierConfig(eval_dataset, L)    
-  classify_all_images(cc)
+  cc = ClassifierConfig(eval_dataset, L)
+  Cs = [1, 10, 50, 100, 200, 500]
+  gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
+  numfolds = 4
+  cross_valid_training(cc, Cs, gammas, numfolds)
   
   print 'Everything done in %f seconds'%tictocer.toc('overall',quiet=True)
   
