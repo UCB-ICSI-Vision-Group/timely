@@ -1,14 +1,9 @@
-'''
-Created on Nov 20, 2011
-
-@author: Tobias Baumgartner
-'''
 import itertools
 
 from common_imports import *
 from common_mpi import *
 
-from synthetic.dpm_classifier import Classifier
+from synthetic.classifier import Classifier
 from synthetic.dataset import Dataset
 import synthetic.config as config
 
@@ -109,16 +104,3 @@ if __name__=='__main__':
       with open(score_file, 'a') as myfile:
           myfile.write(classes[cls_idx] + ' ' + str(acc) + '\n')
       
-    
-    
-    
-    
-    
-    
-    
-    
-
-  
-  
-  
-  

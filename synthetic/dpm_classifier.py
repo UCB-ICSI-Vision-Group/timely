@@ -6,8 +6,9 @@ from synthetic.dataset import Dataset
 import synthetic.config as config
 
 class DPMClassifier(Classifier):
-  def __init__(self):
+  def __init__(self,suffix=''):
     self.name = 'dpm'
+    self.suffix = suffix
     
   def create_vector(self, feats, cls, img, intervals, lower, upper):
     if feats.arr.size == 0:

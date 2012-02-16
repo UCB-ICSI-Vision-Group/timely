@@ -38,25 +38,16 @@ class Evaluation:
 
     # Determine filenames and create directories
     self.results_path = config.get_evals_dp_dir(self.dp)
-
-    # wholeset evaluations
-    self.dashboard_filename = opjoin(self.results_path, 'dashboard_%s.html')
-    self.wholeset_aps_filename = opjoin(self.results_path, 'aps_whole.txt')
-
-    # evals/{name}/wholeset_detailed
-    dirname = opjoin(self.results_path, 'wholeset_detailed')
-    ut.makedirs(dirname)
-    self.pr_whole_png_filename = opjoin(dirname, 'pr_whole_%s.png')
-    self.pr_whole_txt_filename = opjoin(dirname, 'pr_whole_%s.txt')
-    self.apvst_whole_png_filename = opjoin(dirname, 'apvst_wholes.png')
-    self.apvst_whole_txt_filename = opjoin(dirname, 'apvst_whole_%s.txt')
-    self.apvst_whole_data_filename = opjoin(dirname, 'apvst_whole_table.npy')
-    self.apvst_whole_png_filename = opjoin(dirname, 'apvst_whole.png')
     self.apvst_data_filename = opjoin(self.results_path, 'apvst_table.npy')
     self.apvst_png_filename = opjoin(self.results_path, 'apvst.png')
+    self.dashboard_filename = opjoin(self.results_path, 'dashboard_%s.html')
+    self.wholeset_aps_filename = opjoin(self.results_path, 'aps_whole.txt')
+    wholeset_dirname = ut.makedirs(opjoin(self.results_path, 'wholeset_detailed'))
+    self.pr_whole_png_filename = opjoin(wholeset_dirname, 'pr_whole_%s.png')
+    self.pr_whole_txt_filename = opjoin(wholeset_dirname, 'pr_whole_%s.txt')
 
   ##############
-  # Avg- and Whole-set AP vs. Time
+  # AP vs. Time
   ##############
   def evaluate_dets_vs_t(self,dets=None,plot=True,force=False):
     """
@@ -205,9 +196,16 @@ class Evaluation:
     plt.grid(True)
     plt.savefig(filename)
 
+  def evaluate_classification_whole(self,clses=None,force=False):
+    """
+    Output classification evaluations over the whole dataset.
+    """
+    # TODO
+    None
+
   def evaluate_detections_whole(self,dets=None,force=False):
     """
-    Output evaluations over the whole dataset in all formats:
+    Output detection evaluations over the whole dataset in all formats:
     - multi-class (one PR plot)
     - per-class PR plots (only detections of that class are considered)
     """

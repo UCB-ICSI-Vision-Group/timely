@@ -5,10 +5,11 @@ from common_imports import *
 from synthetic.detector import Detector
 import synthetic.config as config
 from synthetic.csc_classifier import CSCClassifier
+from synthetic.dpm_classifier import DPMClassifier
 
 class ExternalDetector(Detector):
   """
-  A mock interface to the Felzenszwalb DPM or the Pendersoli CtF detector.
+  A mock interface to the Felzenszwalb DPM, CSC, or the Pendersoli CtF detector.
   Actually works by pre-loading all the detections and then returning them as
   requested.
   """
@@ -32,9 +33,12 @@ class ExternalDetector(Detector):
     self.detname = detname
     self.dets = dets
     suffix = detname[4:]
-    self.csc_classif = CSCClassifier(suffix)    
-    self.svm = self.csc_classif.load_svm(cls)
-    setting_table = ut.Table.load(os.path.join(config.res_dir,'csc_svm_'+suffix,'best_table'))
+    if self.detname=='dpm':
+      self.classif = DPMClassifier()
+    else:
+      self.classif = CSCClassifier(suffix)
+    self.svm = self.classif.load_svm(cls)
+    setting_table = ut.Table.load(opjoin(config.get_classifier_dirname(self.classif),'best_table'))
     settings = setting_table.arr[config.pascal_classes.index(cls),:]
     self.intervalls = settings[setting_table.cols.index('bins')]
     self.lower = settings[setting_table.cols.index('lower')]
