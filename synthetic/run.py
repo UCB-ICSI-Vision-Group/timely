@@ -19,7 +19,7 @@ from synthetic.extractor import Extractor
 from synthetic.training import *
 from synthetic.jumping_windows import JumpingWindowsDetector,LookupTable,RootWindow
 from synthetic.jumping_windows_with_grid import JumpingWindowsDetectorGrid,\
-  LookupTable_withgrid,RootWindow_withgrid
+  LookupTable,RootWindow
 
 def main():
   parser = argparse.ArgumentParser(description='Execute different functions of our system')
