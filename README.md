@@ -65,27 +65,49 @@ Tasks
 - code up 'ranking svm policy'
 - include scene context action
 
-### jumping windows
-- ensure performance at published levels
-- is VQ performance adequate? should be pretty fast
-
 ### classification
 - evaluate classification performance
-  - train classifier on top of detection output
-  - train classifier for the whole image (SIFT+SPM)
-  - compare their performances
-
-### window proposals
-- speed up: profile code to see where the speed bottlenecks are. how can they be resolved?
-- try using x_scaled instead of x_frac for window proposal statistics
-
-### window classifier
-- port sub's code into scikits-learn
+- train classifier for the whole image (SIFT+SPM)
 
 ### belief state model
 - refactor the validation method to use MPI instead of IPython.Parallel
-- experiment with smoothing in the empirical model
-- review graphical model solution
-- formulate as CRF, conditioned on the detectors and GIST
+- MRF model
 
 ### on the backburner
+#### window proposals
+- speed up: profile code to see where the speed bottlenecks are. how can they be resolved?
+- try using x_scaled instead of x_frac for window proposal statistics
+#### window classifier
+- port sub's code into scikits-learn
+#### jumping windows
+- ensure performance at published levels
+- is VQ performance adequate? should be pretty fast
+
+Schedule
+---
+Wed Feb 15 - 19 days left
+- classification PR evaluation and vs. Time evaluations done @sergey
+- ColorSIFT BOW image classifier done @tobi
+- write up information gain reward function in draft, with discussion of submodularity @sergey
+
+Fri Feb 17 - 17 days left
+- MRF model trained with GIST and detection classifiers
+- Plot of old value function with new inference
+- Plot of using the information gain reward function-derived manual value function with new inference
+
+Mon Feb 20 - 14 days left
+- Regression to next-step rewards from featurization of the state, for both value functions
+
+Wed Feb 22 - 12 days left
+
+Fri Feb 24 - 10 days left
+
+Mon Feb 27 - 7 days left
+- have draft with full set of results, distribute to group
+
+Wed Feb 29 - 5 days left
+
+Fri Mar 2 - 3 days left
+
+Mon Mar 5 - due
+- final paper submitted
