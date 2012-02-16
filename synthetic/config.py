@@ -156,6 +156,7 @@ def get_ext_dets_filename(dataset, suffix):
 #####
 # GIST
 #####
+gist_dir = makedirs(join(res_dir, 'gist_features'))
 
 # results/gist_features/full_pascal_trainval.npy
 def get_gist_dict_filename(dataset_name):

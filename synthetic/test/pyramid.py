@@ -10,6 +10,7 @@ from os.path import join
 
 import synthetic.config as config
 from synthetic.pyramid import *
+from synthetic.extractor import get_indices_for_pos
 
 
 def create_grid():
@@ -50,6 +51,27 @@ def test_compare_to_original_pyramid():
   
   assert (mat.all() == pyr.all())
 #  io.savemat(spatial_pyr_root + 'python_pyr.mat', {'pyr':pyr})
+  
+def test_extract_horiz_slices():
+  # create a grid that nicely falls into 3 slices
+  assignments = np.zeros((25,3))
+  ind = 0
+  for i in range(5):
+    for j in range(5):
+      ass = 1
+      if (i, j) == (1,1) or (i, j) == (2,1) or (i, j) == (3,1):
+        ass = 2
+      if (i, j) == (1,2) or (i, j) == (2,2) or (i, j) == (3,2):
+        ass = 3
+      if (i, j) == (1,3) or (i, j) == (2,3) or (i, j) == (3,3):
+        ass = 4
+        
+      assignments[ind, :] = np.matrix([[i, j, ass]])
+      ind += 1
+  image = Image(size=(25,25))
+  slices = extract_horiz_sclices(3, assignments, image)
+  print slices
+  
   
 if __name__=='__main__':  
   test_get_indices()

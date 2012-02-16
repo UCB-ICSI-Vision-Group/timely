@@ -10,6 +10,8 @@ from synthetic.dataset import Dataset
 import scipy.cluster.vq as sp
 from scipy import io 
 from synthetic.image import Image
+from synthetic.extractor import count_histogram_for_bin,\
+  count_histogram_for_slice
 
 def get_pyr_feat_size(L, M):
   return (4**(L+1)-1)/3.*M
@@ -61,35 +63,11 @@ def extract_pyramid(L, positions, assignments, codebook, image):
   pyramid = np.matrix(pyramid)
   return pyramid
 
-from synthetic.extractor import Extractor, count_histogram_for_bin
-if __name__=='__main__':
-  # Load codebook and
-  spatial_pyr_root = '/home/tobibaum/Documents/Vision/research/SpatialPyramid/data2/'
-  mdict = {}
-  io.loadmat(spatial_pyr_root + 'p1010843_hist_200.mat', mdict)
-  thehist = mdict['H']
-  io.loadmat(spatial_pyr_root + 'p1010843_texton_ind_200.mat', mdict)
-  data = mdict['texton_ind'][0][0][0]
-  x = mdict['texton_ind'][0][0][1]
-  y = mdict['texton_ind'][0][0][2]
-  ass = np.hstack((x,y,data))
-  image = Image()
-  image.size = (640,480)
-  
-  
-  cls = 'dog'
-  d = Dataset('full_pascal_val')
-  e = Extractor()
-  pos_images = d.get_pos_samples_for_class(cls) 
-  codebook_file = "/home/tobibaum/Documents/Vision/data/features/dsift/codebooks/dog_15_200"
-  #codebook = np.loadtxt(codebook_file) 
-  L = 2
-  codebook = np.zeros((200,6))
-  pyr = extract_pyramid(L, ass[:,0:2], ass, codebook, image)
-  print pyr
-  io.savemat(spatial_pyr_root + 'python_pyr.mat', {'pyr':pyr})
-#  for img_idx in pos_images:
-#    image = d.images[img_idx.astype('int32')]
-#    assignments = e.get_assignments(np.matrix([[0,0],[1000,1000]]),'dsift',codebook,cls,image)
-#    pyr = extract_pyramid(L, assignments[0:2],assignments, codebook, image)
-#    print pyr
+def extract_horiz_sclices(num_bins, positions, assignments, codebook, image):
+  im_width = image.size[0]
+  im_height = image.size[1]
+  slices = []
+  for i in range(num_bins):
+    slices.append(count_histogram_for_slice(positions, assignments, im_width, im_height, num_bins, i, num_words))
+    
+    

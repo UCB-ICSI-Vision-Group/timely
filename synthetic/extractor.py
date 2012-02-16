@@ -381,6 +381,15 @@ def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
     positions = positions[positions[:, 1] <= ymax, :]
   return np.asarray(positions[:, 2], dtype='int32')
 
+def count_histogram(indices, assignments, num_words):  
+  if indices.size == 0:
+    bin_ass = np.matrix([])
+  else:
+    bin_ass = assignments[indices][:,2]    
+  bin_ass = bin_ass.reshape(1,bin_ass.size)[0] - 1
+  counts = Counter(bin_ass)
+  histogram = [counts.get(x,0) for x in range(num_words)]
+  return bin_ass, histogram
 
 def count_histogram_for_bin(positions, assignments, im_width, im_height, num_bins, i, j, num_words):
   xmin = floor(im_width / num_bins * i)
@@ -388,15 +397,15 @@ def count_histogram_for_bin(positions, assignments, im_width, im_height, num_bin
   ymin = floor(im_height / num_bins * j)
   ymax = floor(im_height / num_bins * (j + 1))
   indices = get_indices_for_pos(positions, xmin, xmax, ymin, ymax)
-  if indices.size == 0:
-    bin_ass = np.matrix([])
-  else:
-    bin_ass = assignments[indices][:,2]
-    
-  bin_ass = bin_ass.reshape(1,bin_ass.size)[0] - 1
-  counts = Counter(bin_ass)
-  histogram = [counts.get(x,0) for x in range(num_words)]
-  return bin_ass, histogram
+  return count_histogram(indices, assignments, num_words)
+
+def count_histogram_for_slice(positions, assignments, im_width, im_height, num_bins, i, num_words):
+  xmin = 0
+  xmax = im_width + 1
+  ymin = floor(im_height / num_bins * i)
+  ymax = floor(im_height / num_bins * (i + 1))
+  indices = get_indices_for_pos(positions, xmin, xmax, ymin, ymax)
+  return count_histogram(indices, assignments, num_words)
 
 if __name__ == '__main__':
   e = Extractor()

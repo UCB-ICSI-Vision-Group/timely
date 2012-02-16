@@ -67,8 +67,9 @@ def compute_feature_vector(cc, img, quiet=False):
     print '\t%f seconds for image %s'%(cc.tictocer.toc('image', quiet=True),img)  
   return np.hstack((bow,pyramid))
 
-def train_image_classifier():
-  None
+def train_image_classifier(cc):
+  for cls in cc.d.classes:
+    train_image_classify_svm(cc, cls, C=1.0, gamma=0.0)
 
 def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0):  
   pyr_feat_size = get_pyr_feat_size(cc.L, cc.dense_codebook.shape[0])  
