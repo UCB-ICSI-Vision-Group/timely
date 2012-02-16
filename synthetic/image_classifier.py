@@ -25,7 +25,7 @@ class ClassifierConfig():
     
   def kfold(self):
     train_idx, val_idx = KFold(len(len(self.d.images), self.numfolds))
-    self.train = self.d.images.
+    self.d.create_folds(self.numfolds)
 
 def get_feature_vector(cc, img, quiet=False):
   """
@@ -77,7 +77,7 @@ def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0):
   
   filename = config.get_classifier_svm_name(cls)
   if os.path.exists(filename):
-    continue
+    return
   print 'compute classifier for class', cls
   pos_images = cc.d.get_pos_samples_for_class(cls)
   neg_images = cc.d.get_neg_samples_for_class(cls, pos_images.size)

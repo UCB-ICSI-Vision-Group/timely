@@ -152,7 +152,7 @@ def get_ext_dets_filename(dataset, suffix):
 
 # directory for gist features
 # results/gist_features/
-=======
+
 #####
 # GIST
 #####
