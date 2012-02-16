@@ -86,11 +86,11 @@ Schedule
 ---
 Wed Feb 15 - 19 days left
 - classification PR evaluation and vs. Time evaluations done @sergey
-- ColorSIFT BOW image classifier done @tobi
+- (ColorSIFT) BOW image classifier done @tobi
 - write up information gain reward function in draft, with discussion of submodularity @sergey
 
 Fri Feb 17 - 17 days left
-- MRF model trained with GIST and detection classifiers
+- MRF model trained with GIST and detection classifiers @sergey
 - Plot of old value function with new inference
 - Plot of using the information gain reward function-derived manual value function with new inference
 
