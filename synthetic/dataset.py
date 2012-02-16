@@ -1,4 +1,5 @@
 from PIL import Image as PILImage
+from sklearn.cross_validation import KFold
 
 from common_mpi import *
 from common_imports import *
@@ -261,3 +262,48 @@ class Dataset:
   def get_gt_cols(cls):
     return Image.get_gt_cols() + ['img_ind']
 
+  def create_folds(self, numfolds):
+    """
+    Split the images of dataset in numfolds folds,
+    Dataset has an inner state about current fold (This is like an implicit 
+    generator)
+    """
+    folds = KFold(len(self.images), numfolds)
+    self.folds = []
+    for fold in folds:
+      self.folds.append(fold)
+    self.current_fold = 0
+    
+  def next_folds(self):
+    if self.current_fold < len(self.folds):
+      fold = self.folds[self.current_fold]
+      self.current_fold += 1
+      self.train, self.val = fold 
+      return fold
+    if self.current_fold >= len(self.folds):
+      self.current_fold = 0
+      return 0
+  
+  def get_fold_by_index(self, ind):
+    """
+    Random access to folds
+    """
+    if ind >= len(self.folds):
+      raise RuntimeError('Try to access non-existing fold')
+    else:
+      return self.folds[ind]
+  
+  def get_pos_samples_for_fold_class(self, cls, include_diff=False,
+      include_trun=True):
+    if not hasattr(self, 'train'):
+      raise RuntimeError('No current fold selected. Forgot to run next_folds()?')
+    all_pos = self.get_pos_samples_for_class(cls, include_diff, include_trun)
+    return np.intersect1d(all_pos, self.train)
+  
+  def get_neg_samples_for_fold_class(self, cls, num_samples, include_diff=False,
+      include_trun=True):
+    if not hasattr(self, 'train'):
+      raise RuntimeError('No current fold selected. Forgot to run next_folds()?')
+    all_neg = self.get_neg_samples_for_class(cls, include_diff=include_diff, 
+                                             include_trun=include_trun)
+    return np.array(ut.random_subset(np.intersect1d(all_neg, self.train), num_samples))
