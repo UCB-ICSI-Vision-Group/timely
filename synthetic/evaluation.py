@@ -48,7 +48,7 @@ class Evaluation:
     wholeset_dirname = ut.makedirs(opjoin(self.results_path, 'wholeset_detailed'))
     self.pr_whole_png_filename = opjoin(wholeset_dirname, 'pr_whole_%s.png')
     self.pr_whole_txt_filename = opjoin(wholeset_dirname, 'pr_whole_%s.txt')
-
+    
   ##############
   # AP vs. Time
   ##############
@@ -301,10 +301,6 @@ class Evaluation:
   ##############################
   # Computation of Precision-Recall and Average Precision
   ##############################
-  def compute_cls_pr(self,clses,gt):
-    # TODO
-    return None
-
   def compute_det_pr(self, dets, gt):
     pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)
     return pr_and_hard_neg[:3]
@@ -412,6 +408,25 @@ class Evaluation:
     ap = self.compute_ap(rec,prec)
     return (ap,rec,prec,hard_neg)
 
+  def compute_cls_pr(self,clses,gt):
+    """
+    Take Table of classifications and Table of ground truth.
+    If the results are for multiple classes, we average across per-class APs.
+    There should only be 
+    Ground truth should be of the format in Dataset.get_cls_ground_truth().
+    Return ap,recall,and precision vectors as tuple.
+    """
+    for col in clses.cols:
+      if col=='img_ind' or col=='time':
+        continue
+
+    fp=np.cumsum(fp)
+    tp=np.cumsum(tp)
+    rec=1.*tp/npos
+    prec=1.*tp/(fp+tp)
+    ap = self.compute_ap(rec,prec)
+    return (ap,rec,prec)
+
   def compute_ap(self,rec,prec):
     """
     Takes recall and precision vectors and computes piecewise area under the
@@ -426,4 +441,3 @@ class Evaluation:
     i = np.add(np.nonzero(mrec[1:] != mrec[0:-1]),1)
     ap = np.sum((mrec[i]-mrec[np.subtract(i,1)])*mprec[i])
     return ap
-

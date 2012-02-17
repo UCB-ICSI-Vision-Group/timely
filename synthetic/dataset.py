@@ -204,10 +204,16 @@ class Dataset:
     self.classes = config['classes']
     for image in config['images']:
       self.images.append(Image.from_json(self,image))
+  
+  def get_cls_ground_truth(self, include_diff=False,include_trun=True):
+    "Return Table containing classification ground truth."
+    arr = self.get_cls_counts()>0
+    cols = self.classes + ['img_ind']
+    return ut.Table(arr,cols)
       
   def get_ground_truth(self, include_diff=False, include_trun=True):
     """
-    Return Table object containing ground truth of the dataset.
+    Return Table object containing detection ground truth of the dataset.
     If include_diff or include_trun are False, those column names are omitted.
     """
     gt = ut.Table(arr=self.get_gt_arr(),cols=self.get_gt_cols())
@@ -233,12 +239,13 @@ class Dataset:
       gt = gt.filter_on_column('cls_ind',cls_ind)
     return gt
 
-  def get_cls_counts(self):
+  def get_cls_counts(self,include_diff=False,include_trun=True):
     """
     Return ndarray of size (num_images,num_classes), with counts of each class
     in each image.
     """
-    return ut.collect(self.images, Image.get_cls_counts)
+    kwargs = {'include_diff':include_diff,'include_trun':include_trun}
+    return ut.collect(self.images, Image.get_cls_counts, kwargs)
 
   def get_ground_truth_for_class(self, cls, include_diff=False,
       include_trun=True):
@@ -253,7 +260,7 @@ class Dataset:
     return gt.filter_on_column('cls_ind', self.get_ind(cls))
 
   def get_gt_arr(self):
-    return ut.collect_with_index_column(self.images, Image.get_gt_arr)
+    return ut.collect_with_index(self.images, Image.get_gt_arr)
 
   @classmethod
   def get_gt_cols(cls):

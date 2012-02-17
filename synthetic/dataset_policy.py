@@ -77,7 +77,6 @@ class DatasetPolicy:
     self.__dict__.update(config)
     print("DatasetPolicy running with config:")
     pprint(self.__dict__)
-    self.priors = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
     self.ev = Evaluation(self)
 
     # Construct the actions list
@@ -125,8 +124,9 @@ class DatasetPolicy:
     # The default weights are just identity weights on the corresponding class
     # priors
     # TODO: load from something: filename constructed from config_name
+    b = self.init_belief_state()
     if self.learn_policy == 'manual':
-      self.weights = np.zeros((len(self.actions),len(self.get_feature_vec())))
+      self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
       # The gist action is first, so offset the weights
       if self.gist:
         np.fill_diagonal(self.weights[1:,:],1)
@@ -139,7 +139,7 @@ class DatasetPolicy:
         np.fill_diagonal(self.weights,naive_aps)
       self.write_out_weights()
     elif self.learn_policy == 'greedy':
-      self.weights = np.zeros((len(self.actions),len(self.get_feature_vec())))
+      self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
       # The gist action is first, so offset the weights
       if self.gist:
         np.fill_diagonal(self.weights[1:,:],1)
@@ -152,7 +152,7 @@ class DatasetPolicy:
       None
     else:
       raise RuntimeError('Not yet implemented')
-  
+
   def get_ext_dets(self):
     "Return external detections straight from their cache."
     return self.all_dets
@@ -301,8 +301,8 @@ class DatasetPolicy:
             det_other = self.actions[ind-20].obj
             taken_other = b['taken'][ind-20]
           #print det.cls_ind
-          P = self.priors.priors[det.cls_ind]
-          time_to_deadline = max(0,self.bounds[1]-b['t'])
+          P = b['priors'].priors[det.cls_ind]
+          time_to_deadline = max(0,b['bounds'][1]-b['t'])
           if self.learn_policy=='slope' or self.learn_policy == 'slope_pair':
             val =  P * det.config['naive_ap|present']
             if self.learn_policy=='slope_pair':
@@ -328,14 +328,13 @@ class DatasetPolicy:
         else:
           b['values'][ind] = np.random.rand() 
     else:
-      b['values'] = np.dot(self.weights,self.get_feature_vec())
+      b['values'] = np.dot(self.weights,self.get_feature_vec(b))
 
   def reset_actions(self, b):
     "Zero the 'taken' info and the computed values of the actions."
     b['taken'] = np.zeros(len(self.actions))
     b['values'] = np.zeros(len(self.actions))
 
-  # TODO: rename 'pick max untaken action'
   def pick_max_untaken_action(self, b):
     """
     Return the index of the untaken action with the max value.
@@ -370,6 +369,20 @@ class DatasetPolicy:
     #features += [time_to_deadline]
     return np.array(features)
 
+  def init_belief_state(self,image=None):
+    b = {}
+    if image:
+      b['img_ind'] = self.dataset.get_img_ind(image)
+    else:
+      b['img_ind'] = -1
+    # TODO: separate NGramModel from ClassPriors, to maintain the benefit of
+    # caching answers
+    b['priors'] = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
+    b['t'] = 0
+    b['bounds'] = self.bounds
+    self.reset_actions(b)
+    return b
+
   def run_on_image(self, image):
     """
     Return
@@ -379,16 +392,9 @@ class DatasetPolicy:
     """
     gt = image.get_ground_truth(include_diff=True)
     tt = ut.TicToc().tic()
-    b = {} # belief state
-    b['img_ind'] = self.dataset.get_img_ind(image)
-    # TODO: separate NGramModel from ClassPriors, to maintain the benefit of
-    # caching answers
-    b['priors'] = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
-    b['t'] = 0
-    b['bounds'] = self.bounds
-    self.reset_actions(b)
+    b = self.init_belief_state(image)
     self.update_actions(b)
-
+    
     all_detections = []
     all_clses = []
     samples = []
@@ -445,7 +451,7 @@ class DatasetPolicy:
       else: 
         # gist scene context action
         gist_obj = action.obj
-        gist_priors = gist_obj.get_priors_lam(image, self.priors.priors)
+        gist_priors = gist_obj.get_priors_lam(image, b['priors'].priors)
         b['priors'].update_with_gist(gist_priors)
         time_gist = 1
         b['t'] += time_gist
@@ -617,7 +623,7 @@ class DatasetPolicy:
         cls_dets[:,:4] = BoundingBox.clipboxes_arr(cls_dets[:,:4], (0,0,image.size[0],image.size[1]))
         dets_seq.append(cls_dets)
     cols = ['x','y','w','h','score','time','cls_ind'] 
-    dets_mc = ut.collect(dets_seq, Detector.nms_detections, cols)
+    dets_mc = ut.collect(dets_seq, Detector.nms_detections, {'cols':cols})
     time_elapsed = time.time()-t
     print("On image %s, took %.3f s"%(image.name, time_elapsed))
     return dets_mc
@@ -657,7 +663,7 @@ class DatasetPolicy:
         dets_seq.append(cls_dets)
     cols = ['x','y','w','h','dummy','dummy','dummy','dummy','score','time','cls_ind'] 
     # NMS detections per class individually
-    dets_mc = ut.collect(dets_seq, Detector.nms_detections, cols)
+    dets_mc = ut.collect(dets_seq, Detector.nms_detections, {'cols':cols})
     dets_mc[:,:4] = BoundingBox.clipboxes_arr(dets_mc[:,:4],(0,0,image.size[0]-1,image.size[1]-1))
     time_elapsed = time.time()-t
     print("On image %s, took %.3f s"%(image.name, time_elapsed))

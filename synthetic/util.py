@@ -156,19 +156,18 @@ def filter_on_column(arr, ind, val, op=operator.eq, omit=False):
     arr = arr[:,final_ind]
   return arr
 
-# TODO: allow arbitrary arguments to be passed to func
-def collect(seq,func,cols=None,with_index=False):
+def collect(seq, func, kwargs=None, with_index=False):
   """
   Take a sequence seq of arguments to function func.
     - func should return an np.array.
-    - cols are passed to func if given
+    - kwargs is a dictionary of arguments that will be passed to func if given
   Return the outputs of func concatenated vertically into an np.array
   (thereby making copies of the collected data).
   If with_index is True, append index column to the outputs.
   """
   all_results = []
   for index,image in enumerate(seq):
-    results = func(image, cols) if cols else func(image)
+    results = func(image, **kwargs) if kwargs else func(image)
     if results != None and max(results.shape)>0:
       if with_index:
         all_results.append(append_index_column(results,index))
@@ -176,11 +175,11 @@ def collect(seq,func,cols=None,with_index=False):
         all_results.append(results)
   return np.vstack(all_results)
 
-def collect_with_index_column(seq, func, cols=None):
+def collect_with_index(seq, func, kwargs=None):
   """See collect()."""
-  return collect(seq,func,cols,with_index=True)
+  return collect(seq,func,kwargs,with_index=True)
 
-def sort_by_column(arr,ind,mode='ascend'):
+def sort_by_column(arr, ind, mode='ascend'):
   """Return the array row-sorted by column at ind."""
   if mode == 'descend':
     arr = arr[np.argsort(-arr[:,ind]),:]

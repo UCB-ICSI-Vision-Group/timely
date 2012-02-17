@@ -20,7 +20,8 @@ class TestDataset:
        [ 2.,  2.,  2.,  2.,  2.,  0.],
        [ 1.,  1.,  1.,  1.,  0.,  1.],
        [ 0.,  0.,  0.,  0.,  1.,  2.],
-       [ 0.,  0.,  0.,  0.,  2.,  3.]])
+       [ 0.,  0.,  0.,  0.,  2.,  3.],
+       [ 1.,  1.,  1.,  1.,  2.,  3.]])
     cols = ['x','y','w','h','cls_ind','img_ind']
     assert(np.all(gt.arr == arr))
     assert(gt.cols == cols)
@@ -30,7 +31,7 @@ class TestDataset:
       [ [ 1, 1, 1],
         [ 1, 0, 0],
         [ 0, 1, 0],
-        [ 0, 0, 1]])
+        [ 0, 0, 2]])
     print(self.d.get_cls_counts())
     assert(np.all(self.d.get_cls_counts() == arr))
 
