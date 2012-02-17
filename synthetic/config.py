@@ -133,8 +133,12 @@ def get_evals_dp_dir(dataset_policy):
   return makedirs(join(dirname, dataset_policy.get_config_name()))
 
 # ./results/evaluations/{dataset_name}/{dp_config_name}/cached_dets.npy
-def get_dp_detections_filename(dataset_policy):
+def get_dp_dets_filename(dataset_policy):
   return join(get_evals_dp_dir(dataset_policy), 'cached_dets.npy')
+
+# ./results/evaluations/{dataset_name}/{dp_config_name}/cached_clses.npy
+def get_dp_clses_filename(dataset_policy):
+  return join(get_evals_dp_dir(dataset_policy), 'cached_clses.npy')
 
 # results/evaluations/{dataset_name}/{dp_config_name}/weights/
 def get_dp_weights_dirname(dataset_policy):

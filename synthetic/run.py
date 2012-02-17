@@ -25,7 +25,6 @@ def main():
   parser = argparse.ArgumentParser(description='Execute different functions of our system')
   parser.add_argument('mode',
     choices=[
-      'detect','evaluate',
       'window_stats', 'evaluate_metaparams', 'evaluate_jw',
       'evaluate_get_pos_windows', 'train_svm',
       'extract_sift','extract_assignments','extract_codebook',
@@ -106,33 +105,6 @@ def main():
     Compute and plot the statistics of ground truth window parameters.
     """
     results = SlidingWindows.get_dataset_window_stats(train_dataset,plot=True)
-
-  if args.mode=='detect' or args.mode=='evaluate':
-    tables = []
-    for prior in args.priors:
-      dp = DatasetPolicy(dataset=dataset, train_dataset=train_dataset,
-          sw=sw, detector=args.detector, class_priors_mode=prior,
-          suffix=args.name, bounds=args.bounds, gist=args.gist)
-
-      all_dets = None
-      if args.mode=='detect':
-        all_dets = dp.detect_in_dataset(force=args.force)
-        ev.evaluate_detections_whole(all_dets,force=args.force)
-
-      if args.mode=='evaluate':
-        ev = Evaluation(dp)
-        table = ev.evaluate_dets_vs_t(all_dets,force=args.force)
-        if comm_rank==0:
-          tables.append(table)
-
-    # If asked to, and did more than one condition, plot comparison as well
-    if args.compare_evals and len(args.priors)>1 and comm_rank==0:
-      filename = os.path.join(config.evals_dir, '%s_%s_%s_%s.png'%(
-            dataset.get_name(),
-            '-'.join(args.priors),
-            args.detector,
-            args.name))
-      Evaluation.plot_ap_vs_t(tables,filename,args.bounds)
 
   if args.mode=='ctfdet':
     """Run Pedersoli's detector on the dataset and assemble into one Table."""

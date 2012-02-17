@@ -31,7 +31,7 @@ class TestEvaluationPerfect:
     # make sure gt and gt_cols aren't modified
     gt_arr_copy = gt.arr.copy()
     gt_cols_copy = list(gt.cols)
-    ap,rec,prec = self.evaluation.compute_pr(dets, gt)
+    ap,rec,prec = self.evaluation.compute_det_pr(dets, gt)
     assert(np.all(gt.arr == gt_arr_copy))
     assert(gt_cols_copy == gt.cols)
 
@@ -51,7 +51,7 @@ class TestEvaluationPerfect:
           [10,10,10,10,-1,-1,1,0] ]) 
     dets = ut.Table(dets_arr,dets_cols)
 
-    ap,rec,prec = self.evaluation.compute_pr(dets, gt)
+    ap,rec,prec = self.evaluation.compute_det_pr(dets, gt)
     correct_rec = np.array([0.5,1,1,1])
     correct_prec = np.array([1,1,2./3,0.5])
     print((ap, rec, prec))
@@ -59,7 +59,7 @@ class TestEvaluationPerfect:
     assert(np.all(correct_prec==prec))
 
     # confirm that running on the same dets gives the same answer
-    ap,rec,prec = self.evaluation.compute_pr(dets, gt)
+    ap,rec,prec = self.evaluation.compute_det_pr(dets, gt)
     correct_rec = np.array([0.5,1,1,1])
     correct_prec = np.array([1,1,2./3,0.5])
     print((ap, rec, prec))
@@ -73,7 +73,7 @@ class TestEvaluationPerfect:
           [20,20,10,10,0,2,0],
           [30,30,10,10,0,2,0] ])
     gt = ut.Table(arr,cols)
-    ap,rec,prec = self.evaluation.compute_pr(dets, gt)
+    ap,rec,prec = self.evaluation.compute_det_pr(dets, gt)
     correct_rec = np.array([0.25,0.5,0.5,0.5])
     correct_prec = np.array([1,1,2./3,0.5])
     print((ap, rec, prec))
@@ -83,7 +83,7 @@ class TestEvaluationPerfect:
     # now call it with empty detections
     dets_arr = np.array([])
     dets = ut.Table(dets_arr,dets_cols)
-    ap,rec,prec = self.evaluation.compute_pr(dets, gt)
+    ap,rec,prec = self.evaluation.compute_det_pr(dets, gt)
     correct_ap = 0
     correct_rec = np.array([0])
     correct_prec = np.array([0])

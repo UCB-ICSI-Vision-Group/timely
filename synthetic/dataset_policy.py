@@ -37,7 +37,7 @@ class DatasetPolicy:
   }
 
   def get_name(self):
-    return "%s_%s"%(self.dataset.get_name(), self.get_config_name()) 
+    return "%s_%s"%(self.dataset.get_name(), self.get_config_name())
 
   def get_config_name(self):
     """All params except for dataset."""
@@ -60,8 +60,11 @@ class DatasetPolicy:
     return name
 
   @classmethod
-  def get_cols(cls):
+  def get_det_cols(cls):
     return Detector.get_cols() + ['cls_ind','img_ind','time']
+
+  def get_cls_cols(self):
+    return self.dataset.classes + ['img_ind','time']
 
   def __init__(self, dataset, train_dataset, **kwargs):
     "**kwargs update the default config"
@@ -119,9 +122,6 @@ class DatasetPolicy:
     else:
       raise RuntimeError("Unknown mode for detectors")
 
-    # oh baby we're starting soon
-    self.time_elapsed = 0
-
     # The default weights are just identity weights on the corresponding class
     # priors
     # TODO: load from something: filename constructed from config_name
@@ -152,44 +152,52 @@ class DatasetPolicy:
       None
     else:
       raise RuntimeError('Not yet implemented')
-    
-    # And now we're ready to start
-    self.reset_actions()
   
   def get_ext_dets(self):
     "Return external detections straight from their cache."
     return self.all_dets
 
-  def detect_in_dataset(self,force=False):
+  def run_on_dataset(self,force=False):
     """
-    Return list of detections for the whole dataset.
-    Check for cached file first.
+    Return list of detections and classifications for the whole dataset.
+    Check for cached files first.
     """
-    # check for cached detections
-    filename = config.get_dp_detections_filename(self)
+    # check for cached results
+    det_filename = config.get_dp_dets_filename(self)
+    cls_filename = config.get_dp_clses_filename(self)
     dets_table = None
-    if not force and os.path.exists(filename):
-      dets_table = np.load(filename)[()]
-      print("DatasetPolicy: Loaded whole-set dets from cache.")
-      return dets_table
-    images = self.dataset.images
-    results = []
-    for i in range(comm_rank,len(images),comm_size):
-      dets = self.detect_in_image(images[i])
-      results.append(dets)
-    all_results = None
+    if not force and opexists(det_filename) and opexists(cls_filename):
+      dets_table = np.load(det_filename)[()]
+      clses_table = np.load(cls_filename)[()]
+      print("DatasetPolicy: Loaded dets and clses from cache.")
+      return dets_table,clses_table
+    
+    all_dets = []
+    all_clses = []
+    for i in range(comm_rank,len(self.dataset.images),comm_size):
+      dets,clses,samples = self.run_on_image(self.dataset.images[i])
+      all_dets.append(dets)
+      all_clses.append(clses)
+    final_dets = None
+    final_clses = None
     if comm_rank == 0:
-      all_results = []
+      final_dets = []
+      final_clses = []
     safebarrier(comm)
-    all_results = comm.reduce(results, op=MPI.SUM, root=0)
+    final_dets = comm.reduce(all_dets, op=MPI.SUM, root=0)
+    final_clses = comm.reduce(all_clses, op=MPI.SUM, root=0)
     if comm_rank==0:
-      dets_table = ut.Table(cols=self.get_cols())
-      dets_table.arr = np.vstack(all_results)
-      np.save(filename,dets_table)
+      dets_table = ut.Table(cols=self.get_det_cols())
+      dets_table.arr = np.vstack(final_dets)
+      np.save(det_filename,dets_table)
+      clses_table = ut.Table(cols=self.get_cls_cols())
+      clses_table.arr = np.vstack(final_clses)
+      np.save(cls_filename,clses_table)
       print("Found %d dets"%dets_table.shape()[0])
     safebarrier(comm)
     dets_table = comm.bcast(dets_table,root=0)
-    return dets_table
+    clses_table = comm.bcast(clses_table,root=0)
+    return dets_table,clses_table
 
   def learn_weights(self):
     """
@@ -205,24 +213,18 @@ class DatasetPolicy:
   def output_det_statistics(self):
     # collect samples and display the statistics of times and naive and
     # actual_ap increases for each class 
-    # TODO: increase sample size
     det_configs = {}
     all_samples = self.collect_samples(sample_size=-1)
     if all_samples:
-      # construct ndarray of this stuff
-      action_inds = reduce(lambda x,y: x+y,
-          (samples['action_ind'] for samples in all_samples))
-      times = reduce(lambda x,y: x+y,
-          (samples['time'] for samples in all_samples))
-      naive_aps = reduce(lambda x,y: x+y,
-          (samples['naive_ap'] for samples in all_samples))
-      actual_aps = reduce(lambda x,y: x+y,
-          (samples['actual_ap'] for samples in all_samples))
-      img_inds = reduce(lambda x,y: x+y,
-          (samples['img_ind'] for samples in all_samples))
-      sample_array = np.array((action_inds,times,naive_aps,actual_aps,img_inds)).T
-      cols = ['action_ind','time','naive_ap','actual_ap','img_ind']
+      sample_array = np.array((
+        [s['a'] for s in samples],
+        [s['dt'] for s in samples],
+        [s['det_naive_ap'] for s in samples],
+        [s['det_actual_ap'] for s in samples],
+        [s['img_ind'] for s in samples])).T
+      cols = ['action_ind','dt','det_naive_ap','det_actual_ap','img_ind']
       table = ut.Table(sample_array,cols)
+
       # go through actions
       for ind,action in enumerate(self.actions):
         st = table.filter_on_column('action_ind', ind)
@@ -263,12 +265,10 @@ class DatasetPolicy:
     """
     sample_images = self.dataset.images
     if not sample_size<0:
-      images = self.dataset.images
-      rand_ind = np.random.permutation(len(images))
-      sample_images = np.take(images, rand_ind[:sample_size])
+      sample_images = ut.random_subset(self.dataset.image,sample_size)
     all_samples = []
     for i in range(comm_rank,len(sample_images),comm_size):
-      dets, samples = self.detect_in_image(sample_images[i],with_samples=True)
+      dets, clses, samples = self.run_on_image(sample_images[i])
       all_samples.append(samples)
     final_samples = None
     if comm_rank==0:
@@ -279,13 +279,13 @@ class DatasetPolicy:
 
   def write_out_weights(self, name='default'):
     """Write self.weights out to canonical filename given the name."""
-    filename = os.path.join(config.get_dp_weights_dirname(self), name+'.txt')
+    filename = opjoin(config.get_dp_weights_dirname(self), name+'.txt')
     np.savetxt(filename, self.weights, fmt='%.2f') 
 
   ################
   # Image Policy stuff
   ################
-  def update_actions(self):
+  def update_actions(self,b):
     """Update the values of actions according to the current belief state."""
     if self.learn_policy=='advanced' or \
         self.learn_policy=='advanced_pair' or \
@@ -296,14 +296,13 @@ class DatasetPolicy:
           taken_other = 0
           if ind+20 < len(self.actions):
             det_other = self.actions[ind+20].obj
-            taken_other = self.taken[ind+20]
+            taken_other = b['taken'][ind+20]
           elif ind-20 >= 0:
             det_other = self.actions[ind-20].obj
-            taken_other = self.taken[ind-20]
+            taken_other = b['taken'][ind-20]
           #print det.cls_ind
           P = self.priors.priors[det.cls_ind]
-          time_to_deadline = max(0,self.bounds[1]-self.time_elapsed)
-          norm_constant = self.y_to_go * time_to_deadline
+          time_to_deadline = max(0,self.bounds[1]-b['t'])
           if self.learn_policy=='slope' or self.learn_policy == 'slope_pair':
             val =  P * det.config['naive_ap|present']
             if self.learn_policy=='slope_pair':
@@ -312,7 +311,6 @@ class DatasetPolicy:
             val /= det.config['avg_time']
             val *= time_to_deadline
           else:
-            # TODO: in the future, use norm_constant maybe
             #val = time_to_deadline * P * det.config['actual_ap|present']
             #val += time_to_deadline * (1-P) * det.config['actual_ap|absent']
             val = time_to_deadline * P * det.config['naive_ap|present']
@@ -326,136 +324,108 @@ class DatasetPolicy:
                 val += P * det_other.config['actual_ap|present'] * det.config['avg_time']
                 val += (1-P) * det_other.config['actual_ap|absent'] * det.config['avg_time']
                 val += P * det_other.config['actual_ap|present'] * det.config['avg_time']
-            #val /= norm_constant
-          self.values[ind] = val
-          self.ap_estimates[ind] = P*det.config['naive_ap|present']
-          if self.learn_policy=='advanced_pair':
-            if not taken_other == 0:
-              self.ap_estimates[ind] -= P * det_other.config['actual_ap|present']
-              self.ap_estimates[ind] -= (1-P) * det_other.config['actual_ap|absent']
-          if self.learn_policy == 'slope_pair':
-            if not taken_other == 0:
-              self.ap_estimates[ind] -= P*det_other.config['naive_ap|present']
+          b['values'][ind] = val
         else:
-          self.values[ind] = np.random.rand() 
-          self.ap_estimates[ind] = 0
+          b['values'][ind] = np.random.rand() 
     else:
-      self.values = np.dot(self.weights,self.get_feature_vec())
+      b['values'] = np.dot(self.weights,self.get_feature_vec())
 
-  def reset_actions(self):
-    self.taken = np.zeros(len(self.actions)) 
-    self.values = np.zeros(len(self.actions)) 
-    self.ap_estimates = np.zeros(len(self.actions))
-    self.y_to_go = 1
+  def reset_actions(self, b):
+    "Zero the 'taken' info and the computed values of the actions."
+    b['taken'] = np.zeros(len(self.actions))
+    b['values'] = np.zeros(len(self.actions))
 
-  def pick_next_action_ind(self):
-    """Return the index of the next action to take."""
-    if np.all(self.taken):
+  # TODO: rename 'pick max untaken action'
+  def pick_max_untaken_action(self, b):
+    """
+    Return the index of the untaken action with the max value.
+    Return -1 if all actions have been taken.
+    """
+    if np.all(b['taken']):
       return -1
-    untaken_inds = np.flatnonzero(self.taken==0)
-    vals = self.values[untaken_inds]
-    max_untaken_ind = vals.argmax()
-    ap_estimate = self.ap_estimates[max_untaken_ind]
-    self.y_to_go = max(0, self.y_to_go-ap_estimate)
+    untaken_inds = np.flatnonzero(b['taken']==0)
+    max_untaken_ind = b['values'][untaken_inds].argmax()
     return untaken_inds[max_untaken_ind]
 
-  def get_feature_vec(self):
+  def get_feature_vec(self, b):
     """
-    Return featurized representation of self.
-    Feature representation is [P(C_1), ..., P(C_K), 1].
+    Return featurized representation of the current belief state.
     """
-    features = self.priors.priors
-    
-    # TODO: add in the entropy feature
+    features = b['priors'].priors
+
     def mylog(x): return np.log2(x) if not x==0 else 0
     def H(x): return np.sum([-x_i*mylog(x_i) -(1-x_i)*mylog(1-x_i) for x_i in x])
-    entropy = H(self.priors.priors)
+    entropy = H(b['priors'].priors)
     #features += [entropy]
 
-    # TODO: add in the time_to_go features
     time_to_start = 0
-    if self.bounds:
-      if self.bounds[0]>0:
-        time_to_start = max(0, (self.bounds[0]-self.time_elapsed)/self.bounds[0])
-      # TODO: should time_to_deadline be time between deadline and 0 or deadline
-      # and start_time?
-      time_to_deadline = max(0, (self.bounds[1]-self.time_elapsed)/self.bounds[1])
+    if b['bounds']:
+      if b['bounds'][0]>0:
+        time_to_start = max(0, (b['bounds'][0]-b['t'])/b['bounds'][0])
+      time_to_deadline = max(0, (b['bounds'][1]-b['t'])/b['bounds'][1])
     else:
       time_to_start = 0
       time_to_deadline = 1
     #features += [time_to_start,time_to_deadline]
     #features += [time_to_deadline]
-
     return np.array(features)
 
-  def detect_in_image(self, image, with_samples=False):
+  def run_on_image(self, image):
     """
-    Return list of detections in the image, with each row as self.dets_cols.
-    This is what runs the policy.
-    If with_samples=True, also return <s,a,r,s',r_n,time> samples.
+    Return
+    - list of detections in the image, with each row as self.get_det_cols()
+    - list of multi-label classification outputs, with each row as self.get_cls_cols()
+    - list of <s,a,r,s',dt> samples.
     """
     gt = image.get_ground_truth(include_diff=True)
-    actual_time_start = time.time()
-    img_ind = self.dataset.get_img_ind(image)
-    
-    # reset the state
+    tt = ut.TicToc().tic()
+    b = {} # belief state
+    b['img_ind'] = self.dataset.get_img_ind(image)
     # TODO: separate NGramModel from ClassPriors, to maintain the benefit of
     # caching answers
-    self.priors = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
-    self.time_elapsed = 0
-    self.reset_actions()
-    self.update_actions()
+    b['priors'] = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
+    b['t'] = 0
+    b['bounds'] = self.bounds
+    self.reset_actions(b)
+    self.update_actions(b)
 
-    action_sequence = []
     all_detections = []
-
-    samples = {} 
-    # a sample collects
-    samples['state'] = []           # the belief state feature vector
-    samples['action_ind'] = []      # action index
-    samples['naive_ap'] = []        # resulting naive AP increase      
-    samples['actual_ap'] = []       # resulting non-naive AP increase
-    samples['time'] = []            # time taken by the detector
-    samples['next_state'] = []      # next belief state feature vector
-    samples['next_action_ind'] = [] # next action index
-    samples['img_ind'] = []         # sort of stupid, but I need this and this
-    # is easiest right now
+    all_clses = []
+    samples = []
     
     # If gist mode is on, the first action is gist :-)
     if self.gist:
       next_action_ind = 0
     else:
-      next_action_ind = self.pick_next_action_ind()
+      next_action_ind = self.pick_max_untaken_action(b)
 
-    prev_ap = None
+    prev_ap = 0
     while True:
+      sample = {}
+      sample['img_ind'] = b['img_ind']
+      sample['state'] = self.get_feature_vec(b)
+      sample['action_ind'] = next_action_ind
       action = self.actions[next_action_ind]
-      action_sequence.append(action.name)
-      self.taken[next_action_ind] = 1
-
-      samples['state'].append(self.get_feature_vec())
-      samples['action_ind'].append(next_action_ind)
+      b['taken'][next_action_ind] = 1
 
       if isinstance(action.obj, Detector):
         # detector actions
         det = action.obj
-        cls = det.cls
-        cls_ind = self.dataset.classes.index(cls)
-        detections, time_e = det.detect(image)
-        self.time_elapsed += time_e
-        samples['time'].append(time_e)
+        cls_ind = self.dataset.classes.index(det.cls)
+        detections, sample['dt'] = det.detect(image)
+        b['t'] += sample['dt']
 
         if detections.shape[0]>0:
           c_vector = np.tile(cls_ind,(np.shape(detections)[0],1)) 
-          i_vector = np.tile(img_ind,(np.shape(detections)[0],1))
+          i_vector = np.tile(b['img_ind'],(np.shape(detections)[0],1))
           detections = np.hstack((detections, c_vector, i_vector))          
         else:
           detections = np.array([])
         dets_table = ut.Table(detections,det.get_cols()+['cls_ind','img_ind'])
 
         # compute the greedy AP increase
-        ap,rec,prec = self.ev.compute_pr(dets_table,gt)
-        samples['naive_ap'].append(ap)
+        ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)
+        sample['det_naive_ap'] = ap
 
         all_detections.append(detections)
         nonempty_dets = [dets for dets in all_detections if dets.shape[0]>0]
@@ -463,62 +433,56 @@ class DatasetPolicy:
         if len(nonempty_dets)>0:
           all_dets_table = ut.Table(np.concatenate(nonempty_dets,0),dets_table.cols)
         # and the actual AP increase
-        ap,rec,prec = self.ev.compute_pr(all_dets_table,gt)
-        ap_diff = ap
-        if prev_ap:
-          ap_diff = ap-prev_ap
+        # TODO: aren't these non-NMSd?
+        ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
+        ap_diff = ap-prev_ap
+        sample['det_actual_ap'] = ap_diff
         prev_ap = ap
-        samples['actual_ap'].append(ap_diff)
 
         # compute the posterior given these detections, and update the class priors
         posterior = det.compute_posterior(image, dets_table, oracle=False)
-        self.priors.update_with_posterior(cls_ind, posterior)
+        b['priors'].update_with_posterior(cls_ind, posterior)
       else: 
         # gist scene context action
         gist_obj = action.obj
         gist_priors = gist_obj.get_priors_lam(image, self.priors.priors)
-        self.priors.update_with_gist(gist_priors)
+        b['priors'].update_with_gist(gist_priors)
         time_gist = 1
-        self.time_elapsed += time_gist
+        b['t'] += time_gist
         samples['time'].append(time_gist)
-        # does not lead to any detections
-        samples['naive_ap'].append(0)
-        samples['actual_ap'].append(0)
+        sample['det_naive_ap'] = 0
+        sample['det_actual_ap'] = 0
+
+      # TODO
+      clses = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,b['img_ind'],b['t']]
+      all_clses.append(clses)
 
       # pick the next action, having updated the priors
-      self.update_actions()
-      next_action_ind = self.pick_next_action_ind()
-      samples['next_state'].append(self.get_feature_vec())
-      samples['next_action_ind'].append(next_action_ind)
-      samples['img_ind'].append(img_ind)
-
-      #print("vals: %s"%self.values)
-      #print("ap_estimates: %s"%self.ap_estimates)
-      #print("y_to_go: %s"%self.y_to_go)
-      #print("time_elapsed: %s"%self.time_elapsed)
+      self.update_actions(b)
+      next_action_ind = self.pick_max_untaken_action(b)
+      # TODO: concretize b before storing it
+      sample['next_state'] = b
+      samples.append(sample)
 
       # check for stopping conditions
       if next_action_ind < 0:
         break
       if self.bounds and not self.class_priors_mode=='oracle':
-        if self.time_elapsed > self.bounds[1]:
+        if b['t'] > self.bounds[1]:
           break
-
-    # assert that we got the sample number of samples for all dimensions
-    lens = [len(samples[key]) for key in samples.keys()]
-    assert(len(np.unique(lens))==1)
 
     # in case of 'oracle' mode, re-sort the detections and times in order of AP
     # contributions
-    times = samples['time']
+    times = [s['dt'] for s in samples]
     if self.class_priors_mode=='oracle':
-      naive_aps = np.array(samples['naive_ap'])
+      naive_aps = np.array([s['det_naive_ap'] for s in samples])
       sorted_inds = np.argsort(-naive_aps)
       all_detections = np.take(all_detections, sorted_inds)
+      all_clses = np.take(all_clses, sorted_inds)
       times = np.take(times, sorted_inds)
 
     # now construct the final return array, with correct times
-    assert(len(all_detections)==len(times))
+    assert(len(all_detections)==len(all_clses)==len(times))
     cum_times = np.cumsum(times)
     all_times = []
     all_nonempty_detections = []
@@ -540,11 +504,12 @@ class DatasetPolicy:
           all_detections = all_detections[:first_overdeadline_ind,:]
     else:
       all_detections = np.array([])
+    
+    # and for clses:
+    all_clses = np.array(all_clses)
 
-    print("Done with image, took %.3f s"%(time.time()-actual_time_start))
-    if with_samples:
-      return (all_detections, samples)
-    return all_detections
+    print("DatasetPolicy on image took %.3f s"%tt.qtoc())
+    return (all_detections,all_clses,samples)
 
   ###############
   # External detections stuff

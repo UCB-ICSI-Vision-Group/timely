@@ -120,7 +120,8 @@ def main():
   else:
     None # impossible by argparse settings
 
-  tables = []
+  dets_tables = []
+  clses_tables = []
   all_bounds = []
 
   for config_f in configs:
@@ -134,9 +135,10 @@ def main():
 
     # evaluate in the AP vs. Time regime, unless told not to
     if not args.no_apvst:
-      table = ev.evaluate_dets_vs_t(None,force=args.force)
+      dets_table,clses_table = ev.evaluate_vs_t(None,None,force=args.force)
       if comm_rank==0:
-        tables.append(table)
+        dets_tables.append(dets_table)
+        clses_tables.append(clses_table)
 
     # optionally, evaluate in the standard PR regime
     if args.wholeset_prs:
@@ -153,8 +155,8 @@ def main():
     filename = args.config
     ff = os.path.join(dirname, '%s.png'%filename)
     ff_no_legend = os.path.join(dirname, '%s_no_legend.png'%filename)
-    Evaluation.plot_ap_vs_t(tables, ff, all_bounds, with_legend=True)
-    Evaluation.plot_ap_vs_t(tables, ff_no_legend, all_bounds, with_legend=False)
+    Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True)
+    Evaluation.plot_ap_vs_t(dets_tables, ff_no_legend, all_bounds, with_legend=False)
     
 if __name__ == '__main__':
   main()

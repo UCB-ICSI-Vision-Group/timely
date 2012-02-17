@@ -72,5 +72,5 @@ class ExternalDetector(Detector):
       return Detector.compute_posterior(self, image, dets, oracle)
     img = self.dataset.get_img_ind(image)
     cls = config.pascal_classes.index(self.cls)
-    return self.csc_classif.classify_image(self.svm,dets,cls,img, self.intervalls, self.lower, self.upper)
+    return self.classif.classify_image(self.svm,dets,cls,img, self.intervalls, self.lower, self.upper)
 

@@ -38,8 +38,11 @@ class Evaluation:
 
     # Determine filenames and create directories
     self.results_path = config.get_evals_dp_dir(self.dp)
-    self.apvst_data_filename = opjoin(self.results_path, 'apvst_table.npy')
-    self.apvst_png_filename = opjoin(self.results_path, 'apvst.png')
+    self.det_apvst_data_fname = opjoin(self.results_path, 'det_apvst_table.npy')
+    self.det_apvst_png_fname = opjoin(self.results_path, 'det_apvst.png')
+    self.cls_apvst_data_fname = opjoin(self.results_path, 'cls_apvst_table.npy')
+    self.cls_apvst_png_fname = opjoin(self.results_path, 'cls_apvst.png')
+
     self.dashboard_filename = opjoin(self.results_path, 'dashboard_%s.html')
     self.wholeset_aps_filename = opjoin(self.results_path, 'aps_whole.txt')
     wholeset_dirname = ut.makedirs(opjoin(self.results_path, 'wholeset_detailed'))
@@ -49,24 +52,27 @@ class Evaluation:
   ##############
   # AP vs. Time
   ##############
-  def evaluate_dets_vs_t(self,dets=None,plot=True,force=False):
+  def evaluate_vs_t(self,dets=None,clses=None,plot=True,force=False):
     """
-    Evaluate detections in the AP vs Time regime and write out plots to
-    canonical places.
+    Evaluate detections and classifications in the AP vs Time regime,
+    and write out plots to canonical places.
     We evaluate on the whole dataset instead of averaging per-image,
     and so get rid of error bars.
+    Return two tables: one for detection and one for classification evals.
     """
     bounds = self.dp.bounds if self.dp and self.dp.bounds else None
 
-    table = None
-    filename = self.apvst_data_filename
-    if opexists(filename) and not force:
+    tables = None
+    if opexists(self.det_apvst_data_fname) and \
+       opexists(self.cls_apvst_data_fname) and not force:
       if comm_rank==0:
-        table = np.load(filename)[()]
+        tables = (
+          np.load(self.det_apvst_data_fname)[()],
+          np.load(self.cls_apvst_data_fname)[()])
     else:
       if not dets:
-        dets = self.dp.detect_in_dataset()
-
+        dets,clses = self.dp.run_on_dataset()
+      
       # determine time sampling points
       all_times = dets.subset_arr('time')
       num_points = self.time_intervals
@@ -84,39 +90,42 @@ class Evaluation:
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
         img_dets_list.append(dets.filter_on_column('img_ind',img_ind))
 
-      ap_means = np.zeros(num_points)
-      ap_stds = np.zeros(num_points)
-      arr = np.zeros((num_points,3))
+      det_arr = np.zeros((num_points,3))
+      cls_arr = np.zeros((num_points,3))
       for i in range(comm_rank,num_points,comm_size):
         tt = ut.TicToc().tic()
         point = points[i]
-        aps = []
+        det_aps = []
+        cls_aps = []
         num_dets = 0
         for img_ind,image in enumerate(self.dataset.images):
           gt_for_image = gt_for_image_list[img_ind]
           img_dets = img_dets_list[img_ind]
           dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)
+          #clses_to_this_point = img_clses.filter_on_column('time',point,operator.le)
           num_dets += dets_to_this_point.shape()[0]
-          ap,rec,prec = self.compute_pr(dets_to_this_point,gt_for_image)
-          aps.append(ap)
-        arr[i,:] = [point,np.mean(aps),np.std(aps)]
-        print("Calculating avg-image AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
-          np.mean(aps),num_dets,point,tt.qtoc()))
-      arr_all = None
+          det_ap,rec,prec = self.compute_det_pr(dets_to_this_point, gt_for_image)
+          #cls_ap,rec,prec = self.compute_cls_pr(clses_to_this_point, gt_for_image)
+          det_aps.append(det_ap)
+        det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
+        print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
+          np.mean(det_aps),num_dets,point,tt.qtoc()))
+      det_arr_all = None
       if comm_rank == 0:
-        arr_all = np.zeros((num_points,3))
+        det_arr_all = np.zeros((num_points,3))
       safebarrier(comm)
-      comm.Reduce(arr,arr_all)
+      comm.Reduce(det_arr,det_arr_all)
       if comm_rank==0:
-        table = ut.Table(arr_all, ['time','ap_mean','ap_std'], self.name)
-        np.save(filename,table)
+        table = ut.Table(det_arr_all, ['time','ap_mean','ap_std'], self.name)
+        np.save(self.det_apvst_data_fname,table)
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([table],self.apvst_png_filename, bounds)
+        Evaluation.plot_ap_vs_t([table],self.det_apvst_png_fname, bounds)
       except:
         print("Could not plot")
-    return table
+    # TODO
+    return (table,table)
 
   @classmethod
   def compute_auc(cls,times,vals,bounds=None):
@@ -196,13 +205,6 @@ class Evaluation:
     plt.grid(True)
     plt.savefig(filename)
 
-  def evaluate_classification_whole(self,clses=None,force=False):
-    """
-    Output classification evaluations over the whole dataset.
-    """
-    # TODO
-    None
-
   def evaluate_detections_whole(self,dets=None,force=False):
     """
     Output detection evaluations over the whole dataset in all formats:
@@ -211,7 +213,7 @@ class Evaluation:
     """
     if not dets:
       assert(self.dp != None)
-      dets = self.dp.detect_in_dataset()
+      dets,clses = self.dp.run_on_dataset()
 
     # Per-Class
     num_classes = len(self.dataset.classes)
@@ -233,11 +235,8 @@ class Evaluation:
       gt = self.dataset.get_ground_truth(include_diff=True)
       filename = opjoin(self.results_path, 'pr_whole_multiclass')
       if force or not opexists(filename):
-        t = time.time()
         print("Evaluating %d dets in the multiclass setting..."%dets.shape()[0])
         ap_mc = self.compute_and_plot_pr(dets, gt, 'multiclass')
-        time_elapsed = time.time()-t
-        print("...took %.3fs"%time_elapsed)
 
       # Write out the information to a single overview file
       with open(self.wholeset_aps_filename, 'w') as f:
@@ -251,16 +250,13 @@ class Evaluation:
       names.append('multiclass')
       aps = aps.tolist()
       aps.append(ap_mc)
-
-      eval_type = 'whole'
       template = Template(filename=config.eval_template_filename)
-      filename = self.dashboard_filename%eval_type
+      filename = self.dashboard_filename%'whole'
       names = list(self.dataset.classes)
       names.append('avg')
       aps.append(np.mean(aps))
       with open(filename, 'w') as f:
         f.write(template.render(
-          title=eval_type,
           names=names, aps=aps))
     safebarrier(comm)
 
@@ -272,7 +268,7 @@ class Evaluation:
     """
     filename = self.pr_whole_txt_filename%name
     if force or not opexists(filename):
-      [ap,rec,prec] = self.compute_pr(dets, gt)
+      [ap,rec,prec] = self.compute_det_pr(dets, gt)
       try:
         self.plot_pr(ap,rec,prec,name,self.pr_whole_png_filename%name)
       except:
@@ -305,15 +301,19 @@ class Evaluation:
   ##############################
   # Computation of Precision-Recall and Average Precision
   ##############################
-  def compute_pr(self, dets, gt):
-    pr_and_hard_neg = self.compute_pr_and_hard_neg(dets, gt)
+  def compute_cls_pr(self,clses,gt):
+    # TODO
+    return None
+
+  def compute_det_pr(self, dets, gt):
+    pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)
     return pr_and_hard_neg[:3]
   
-  def compute_hard_neg(self, dets, gt):
-    pr_and_hard_neg = self.compute_pr_and_hard_neg(dets, gt)
+  def compute_det_hard_neg(self, dets, gt):
+    pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)
     return pr_and_hard_neg[4]
     
-  def compute_pr_and_hard_neg(self, dets, gt):
+  def compute_det_pr_and_hard_neg(self, dets, gt):
     """
     Take Table of detections and Table of ground truth.
     Ground truth can be for a single image or a whole dataset.
