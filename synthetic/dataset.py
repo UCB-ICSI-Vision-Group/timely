@@ -263,7 +263,7 @@ class Dataset:
   @classmethod
   def get_gt_cols(cls):
     return Image.get_gt_cols() + ['img_ind']
-
+      
   def create_folds(self, numfolds):
     """
     Split the images of dataset in numfolds folds,

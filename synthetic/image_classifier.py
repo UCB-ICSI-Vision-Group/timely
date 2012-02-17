@@ -10,6 +10,7 @@ from synthetic.training import train_svm, save_svm, load_svm, svm_proba,\
   svm_predict
 from synthetic import config
 from sklearn.cross_validation import KFold
+from synthetic.image import Image
 
 comm = MPI.COMM_WORLD
 mpi_rank = comm.Get_rank()
@@ -88,15 +89,24 @@ def compute_feature_vector(cc, img_idx, quiet=False):
 
 def cross_valid_training(cc, Cs, gammas, numfolds=4):
   cc.d.create_folds(numfolds)
-  for _ in range(numfolds):
-    cc.d.next_folds()
-
-    train_image_classifier(cc, Cs, gammas, force_new=True)
-    val_set = cc.d.val
-    for C in Cs:
-      for gamma in gammas:
+  for C in Cs:
+    for gamma in gammas:
+      class_corr = 0
+      overall = 0
+      for _ in range(numfolds):
+        cc.d.next_folds()
+        train_image_classifier(cc, Cs, gammas, force_new=True)
+        val_set = cc.d.val
+        
         classification = classify_images(cc, val_set, C, gamma)
-        validate_images(val_set, classification)          
+        overall += classification.size
+        class_corr += validate_images(cc, val_set, classification)
+      accuracy = class_corr/float(overall)
+      filename = config.get_classifier_crossval()
+      writef = open(filename, 'a')
+      writef.write('%f %f - %f\n'%(C, gamma, accuracy))
+      cc.d.create_folds(numfolds)          
+      
 
   # determine best one
   # return best C and gamma
@@ -114,14 +124,36 @@ def classify_images(cc, images, C, gamma):
         res[idx2, cls_idx] = pred[0]
   return res    
 
-def validate_images(images, classifications):
+def validate_images(cc, image_inds, classifications):
   """
   images: list of image indidces 
   classifications: binar classifications (num_img x num_classes) 
-  return (prec, rec)
+  return accuracy
   """
-  # TODO: here I need the scores
-  None
+  gt = get_gt_classification(cc, image_inds)
+  comb = np.where(gt + classifications)[0].size
+  return comb
+  
+
+def get_gt_classification(cc, image_inds):
+  """
+  For given image_inds return classification matrix: num_img x num_classes
+  with 1 and -1
+  """
+  res = np.zeros((len(image_inds), len(cc.d.classes)))
+  images = (cc.d.images[int(ind)] for ind in image_inds)
+  gts = []
+  for img_idx, img in enumerate(images): 
+    coll =  ut.collect([img], Image.get_gt_arr)
+    gt_app = np.hstack((coll, np.tile(img_idx,(coll.shape[0], 1))))    
+    gts.append(gt_app)
+  gts = np.vstack(gts)
+  for row_idx in range(gts.shape[0]):
+    row = gts[row_idx, :]
+    res[row[-1], row[4]] = 1  
+  res = res*2 - 1
+  return res
+  
   
 def train_image_classifier(cc, Cs=[1.0], gammas=[0.0], force_new=False):
   for cls in cc.d.classes:
@@ -218,13 +250,15 @@ if __name__=='__main__':
   tictocer = TicToc()
   tictocer.tic('overall')
   
-  test = True
+  test = False
   if test:
     train_dataset = 'test_pascal_train'
     eval_dataset = 'test_pascal_val'
+    numfolds = 2
   else:
     train_dataset = 'full_pascal_trainval'
     eval_dataset = 'full_pascal_test'
+    numfolds = 4
   
   # Train
   train = True
@@ -236,10 +270,17 @@ if __name__=='__main__':
   safebarrier(comm)  
   # Evaluate  
   cc = ClassifierConfig(eval_dataset, L)
-  Cs = [1, 10, 50, 100, 200, 500]
+  Cs = [1, 2, 5, 10, 50, 100, 200, 500]
   gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
-  numfolds = 4
+  
   cross_valid_training(cc, Cs, gammas, numfolds)
+#  gt = get_gt_classification(cc, [0,1])
+#  classific = -np.ones(gt.shape)
+#  
+#  val = validate_images(cc, [0,1], classific)
+#  print gt
+#  print val
+  
   
   print 'Everything done in %f seconds'%tictocer.toc('overall',quiet=True)
   
