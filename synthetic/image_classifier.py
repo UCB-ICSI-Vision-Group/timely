@@ -6,8 +6,7 @@ from synthetic.pyramid import extract_pyramid, get_pyr_feat_size,\
 from synthetic.dataset import Dataset
 from synthetic.extractor import Extractor
 from util import TicToc
-from synthetic.training import train_svm, save_svm, load_svm, svm_proba,\
-  svm_predict
+from synthetic.training import train_svm, save_svm, load_svm, svm_predict
 from synthetic import config
 from sklearn.cross_validation import KFold
 from synthetic.image import Image
@@ -45,7 +44,7 @@ def get_feature_vector(cc, img, quiet=False):
 def compute_feature_vector(cc, img_idx, quiet=False):
   cc.tictocer.tic('image')
   if not quiet:
-    print 'Pos image', img_idx
+    print 'Image', cc.d.images[img_idx].name
   image = cc.d.images[img_idx]
   
   cc.tictocer.tic()
@@ -95,7 +94,7 @@ def cross_valid_training(cc, Cs, gammas, numfolds=4):
       overall = 0
       for _ in range(numfolds):
         cc.d.next_folds()
-        train_image_classifier(cc, Cs, gammas, force_new=True)
+        train_image_classifier(cc, C, gamma, force_new=True)
         val_set = cc.d.val
         
         classification = classify_images(cc, val_set, C, gamma)
@@ -155,24 +154,21 @@ def get_gt_classification(cc, image_inds):
   return res
   
   
-def train_image_classifier(cc, Cs=[1.0], gammas=[0.0], force_new=False):
+def train_image_classifier(cc, C=1.0, gamma=0.0, force_new=False):
   for cls in cc.d.classes:
-    train_image_classify_svm(cc, cls, Cs=Cs, gammas=gammas, force_new=force_new)
+    train_image_classify_svm(cc, cls, C=C, gamma=gamma, force_new=force_new)
 
-def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], force_new=False):  
+def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0, force_new=False):
+  filename = config.get_classifier_svm_name(cls, C, gamma)
+  if not force_new and os.path.exists(filename):
+    print 'svm for class %s, C=%f, gamma=%f exists already'%(cls,C,gamma)
+    return
+      
   pyr_feat_size = get_pyr_feat_size(cc.L, cc.dense_codebook.shape[0])  
   
   cc.tictocer.tic('overall')
-  if not force_new:
-    all_exist = True
-    for C in Cs:
-      for gamma in gammas:
-        filename = config.get_classifier_svm_name(cls, C, gamma)
-        if not os.path.exists(filename):
-          all_exist = False
-    if all_exist:
-      return
-  print 'compute classifier for class', cls
+  
+  print 'compute classifier(C=%f, gamma=%f) for class %s'%(C, gamma, cls)
   pos_images = cc.d.get_pos_samples_for_fold_class(cls)
   if pos_images.size == 0:
     return
@@ -197,18 +193,13 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], force_new=False):
   Y = [1]*pos_pyrs.shape[0] + [-1]*neg_pyrs.shape[0] 
   
   if X.shape[0] > 0:
-    for C in Cs:
-      for gamma in gammas:
-        filename = config.get_classifier_svm_name(cls, C, gamma)
-        if not force_new and os.path.exists(filename):
-          continue
-        print 'train svm for class %s, C=%f, gamma=%f'%(cls,C,gamma)
-        cc.tictocer.tic()    
-        clf = train_svm(X, Y, kernel='rbf', gamma=gamma, C=C)
-        print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
-        
-        print 'save as', filename
-        save_svm(clf, filename)
+    print 'train svm for class %s, C=%f, gamma=%f'%(cls,C,gamma)
+    cc.tictocer.tic()    
+    clf = train_svm(X, Y, kernel='rbf', gamma=gamma, C=C)
+    print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
+    
+    print 'save as', filename
+    save_svm(clf, filename)
   else:
     print 'Don\'t compute SVM, no examples given'
   
