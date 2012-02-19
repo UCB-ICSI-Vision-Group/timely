@@ -624,13 +624,14 @@ class DatasetPolicy:
     name = os.path.splitext(image.name)[0]
     # if test dataset, use HOS's detections. if not, need to output my own
     if re.search('test', self.dataset.name):
-      dirname = '/u/vis/song/rl_detection/datadir/voc-release4/2007/tmp/dets_test_original_cascade_wholeset/'
-      filename = dirname+'%s_dets_all_test_original_cascade_wholeset.mat'%name
+      dirname = config.get_dets_test_wholeset_dir()
+      filename = os.path.join(dirname,'%s_dets_all_test_original_cascade_wholeset.mat'%name)
     else:
-      dirname = '/u/vis/x1/sergeyk/rl_detection/voc-release4/2007/tmp/dets_nov19/'
-      filename = dirname+'%s_dets_all_nov19.mat'%name
+      dirname = config.get_dets_nov19()
+      filename = os.path.join(dirname, '%s_dets_all_nov19.mat'%name)
+    print filename
     if not os.path.exists(filename):
-      print("File does not exist!")
+      raise RuntimeError("File %s does not exist!"%filename)
       return None
     mat = scipy.io.loadmat(filename)
     dets = mat['dets_mc']
