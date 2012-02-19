@@ -117,3 +117,6 @@ class TestDataset:
       assert(pos.shape[0] == sizes[i])
       assert(neg.shape[0] == sizes[i])
 
+if __name__=='__main__':
+  tester = TestDataset()
+  tester.test_kfold()
