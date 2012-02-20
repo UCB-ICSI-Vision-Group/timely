@@ -21,8 +21,6 @@ class TestDatasetPolicy:
     dets = dets.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
     gt = self.dataset.get_ground_truth()
     gt = gt.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
-    dets.arr = ut.sort_by_column(dets.arr, 0)
-    gt.arr = ut.sort_by_column(gt.arr, 0)
     assert(dets == gt)
 
   def test_load_dpm_detections(self):
