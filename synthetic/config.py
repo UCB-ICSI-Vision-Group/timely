@@ -198,3 +198,12 @@ def get_classifier_dirname(classifier):
 
 def get_classifier_filename(classifier,cls):
   return join(get_classifier_dirname(classifier), cls)
+
+#####
+# External detections
+#####
+def get_dets_test_wholeset_dir():
+  return join(res_dir, 'dets_test_original_wholeset')
+
+def get_dets_nov19():
+  return join(res_dir, 'dets_nov19')

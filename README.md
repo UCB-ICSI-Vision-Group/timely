@@ -85,10 +85,6 @@ Tasks
 
 Schedule
 ---
-Fri Feb 17 - 7 days left
-- classification PR evaluation and vs. Time evaluations done @sergey
-- RBF and linear ColorSIFT BOW image classifier done @tobi
-
 Mon Feb 20 - 4 days left
 - write up information gain reward function in draft, with discussion of submodularity @sergey
 - MRF model trained with GIST and detection classifiers
