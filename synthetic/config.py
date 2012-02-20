@@ -70,6 +70,8 @@ VOC_dir = join(data_dir, 'VOC%(year)s/')%{'year':VOCyear}
 pascal_paths = {
     'test_pascal_train':    join(test_support_dir,'train.txt'),
     'test_pascal_val':      join(test_support_dir,'val.txt'),
+    'test_pascal_train_tobi':    join(test_support_dir,'train_tobi.txt'),
+    'test_pascal_val_tobi':      join(test_support_dir,'val_tobi.txt'),
     'full_pascal_train':    join(VOC_dir,'ImageSets/Main/train.txt'),
     'full_pascal_val':      join(VOC_dir,'ImageSets/Main/val.txt'),
     'full_pascal_trainval': join(VOC_dir,'ImageSets/Main/trainval.txt'),

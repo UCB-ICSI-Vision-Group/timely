@@ -36,6 +36,7 @@ def get_feature_vector(cc, img, quiet=False):
   """
   savefilename = config.get_classifier_featvect_name(cc.d.images[img])  
   if os.path.isfile(savefilename):
+    print 'load feat_vect %s'%(cc.d.images[img].name)
     feat_vect = cPickle.load(open(savefilename,'r'))
   else:
     feat_vect = compute_feature_vector(cc, img, quiet=quiet)
@@ -89,30 +90,32 @@ def compute_feature_vector(cc, img_idx, quiet=False):
 
 def cross_valid_training(cc, Cs, gammas, numfolds=4):
   cc.d.create_folds(numfolds)
-  all_settings = list(itertools.product(Cs, gammas))
+  all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
 
   for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
     curr_set = all_settings[set_idx]
     C = curr_set[0]
     gamma = curr_set[1]
-    print C, gamma
+    cls = curr_set[2]
     class_corr = 0
     overall = 0
+    
     for _ in range(numfolds):
       cc.d.next_folds()
-      train_image_classifier(cc, C, gamma, force_new=True)
-      val_set = np.where(cc.d.val)[0]
-      print 'val_set', val_set
-      
+      train_image_classify_svm(cc, cls=cls, C=C, gamma=gamma)
+      val_set = np.where(cc.d.val)[0]     
       
       classification = classify_images(cc, val_set, C, gamma)
       overall += classification.size
       class_corr += validate_images(cc, val_set, classification)
-    accuracy = class_corr/float(overall)
+      print 'correct:', class_corr
+      #break
+    accuracy = float(class_corr)/float(overall)
     filename = config.get_classifier_crossval()
     writef = open(filename, 'a')
     writef.write('%f %f - %f\n'%(C, gamma, accuracy))
-    cc.d.create_folds(numfolds)          
+    cc.d.create_folds(numfolds)
+    #return          
       
 
   # determine best one
@@ -125,11 +128,11 @@ def classify_images(cc, images, C, gamma):
       continue
     clf = load_svm(filename, probability=False)
     for idx2, img_idx in enumerate(images):
-      x = compute_feature_vector(cc, img_idx)
+      x = get_feature_vector(cc, img_idx)
       pred = svm_predict(x, clf)
       if pred.size > 0:
-        res[idx2, cls_idx] = pred[0]
-  return res    
+        res[idx2, cls_idx] = 1
+  return res*2-1
 
 def validate_images(cc, image_inds, classifications):
   """
@@ -138,6 +141,9 @@ def validate_images(cc, image_inds, classifications):
   return accuracy
   """
   gt = get_gt_classification(cc, image_inds)
+  print gt
+  print classifications
+  print gt+classifications
   comb = np.where(gt + classifications)[0].size
   return comb
   
@@ -162,10 +168,6 @@ def get_gt_classification(cc, image_inds):
   return res
   
   
-def train_image_classifier(cc, C=1.0, gamma=0.0, force_new=False):
-  for cls in cc.d.classes:
-    train_image_classify_svm(cc, cls, C=C, gamma=gamma, force_new=force_new)
-
 def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0, force_new=False):
   filename = config.get_classifier_svm_name(cls, C, gamma)
   if not force_new and os.path.exists(filename):
@@ -251,8 +253,8 @@ if __name__=='__main__':
   
   test = False
   if test:
-    train_dataset = 'test_pascal_train'
-    eval_dataset = 'test_pascal_val'
+    train_dataset = 'test_pascal_train_tobi'
+    eval_dataset = 'test_pascal_val_tobi'
     numfolds = 2
   else:
     train_dataset = 'full_pascal_trainval'
@@ -260,11 +262,7 @@ if __name__=='__main__':
     numfolds = 4
   
   # Train
-  train = True
-  L = 1
-  if train:       
-    cc = ClassifierConfig(train_dataset, L)  
-    train_image_classifier(cc)
+  L = 1  
   
   safebarrier(comm)  
   # Evaluate  
