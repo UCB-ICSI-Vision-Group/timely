@@ -10,6 +10,7 @@ from synthetic.training import train_svm, save_svm, load_svm, svm_predict
 from synthetic import config
 from sklearn.cross_validation import KFold
 from synthetic.image import Image
+import itertools
 
 comm = MPI.COMM_WORLD
 mpi_rank = comm.Get_rank()
@@ -33,7 +34,7 @@ def get_feature_vector(cc, img, quiet=False):
   """
   return feature vector for given image, load precomputed vector if possible
   """
-  savefilename = config.get_classifier_featvect_name(cc.d.images[img], L)  
+  savefilename = config.get_classifier_featvect_name(cc.d.images[img])  
   if os.path.isfile(savefilename):
     feat_vect = cPickle.load(open(savefilename,'r'))
   else:
@@ -88,23 +89,30 @@ def compute_feature_vector(cc, img_idx, quiet=False):
 
 def cross_valid_training(cc, Cs, gammas, numfolds=4):
   cc.d.create_folds(numfolds)
-  for C in Cs:
-    for gamma in gammas:
-      class_corr = 0
-      overall = 0
-      for _ in range(numfolds):
-        cc.d.next_folds()
-        train_image_classifier(cc, C, gamma, force_new=True)
-        val_set = cc.d.val
-        
-        classification = classify_images(cc, val_set, C, gamma)
-        overall += classification.size
-        class_corr += validate_images(cc, val_set, classification)
-      accuracy = class_corr/float(overall)
-      filename = config.get_classifier_crossval()
-      writef = open(filename, 'a')
-      writef.write('%f %f - %f\n'%(C, gamma, accuracy))
-      cc.d.create_folds(numfolds)          
+  all_settings = list(itertools.product(Cs, gammas))
+
+  for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
+    curr_set = all_settings[set_idx]
+    C = curr_set[0]
+    gamma = curr_set[1]
+    print C, gamma
+    class_corr = 0
+    overall = 0
+    for _ in range(numfolds):
+      cc.d.next_folds()
+      train_image_classifier(cc, C, gamma, force_new=True)
+      val_set = np.where(cc.d.val)[0]
+      print 'val_set', val_set
+      
+      
+      classification = classify_images(cc, val_set, C, gamma)
+      overall += classification.size
+      class_corr += validate_images(cc, val_set, classification)
+    accuracy = class_corr/float(overall)
+    filename = config.get_classifier_crossval()
+    writef = open(filename, 'a')
+    writef.write('%f %f - %f\n'%(C, gamma, accuracy))
+    cc.d.create_folds(numfolds)          
       
 
   # determine best one
