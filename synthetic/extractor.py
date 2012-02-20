@@ -7,13 +7,13 @@ import scipy.cluster.vq as sp
 from sklearn import cluster
 
 import util as ut
-import config as cfg
+from synthetic.config import *
 from dataset import *
 from common_mpi import *
 
 class Extractor():
   def __init__(self):
-    self.save_dir = config.save_dir + 'features/'   
+    self.save_dir = config.data_dir + 'features/'   
     
     if not os.path.isdir(self.save_dir):
       os.mkdir(self.save_dir)
@@ -154,13 +154,14 @@ class Extractor():
 
   
   def process_img(self, img, feature, sizes=[16,24,32], step_size=4):
-    filename = self.save_dir + feature + '/' + img.name[0:-4]               
+    filename = self.save_dir + feature + '/' + img.name[0:-4]
+    print filename               
     # since our parallelism just uses different images, we don't check the file 
     # for correct size.
     if not os.path.isfile(filename):
       # extract featues and write to file
       print 'extracting',feature,'for',img.name[0:-4],'...'
-      feature_type = self.dense_extract(cfg.config.VOC_dir + 'JPEGImages/' + img.name,
+      feature_type = self.dense_extract(config.VOC_dir + 'JPEGImages/' + img.name,
                       feature, (0, 0, img.size[0], img.size[1]),sizes, step_size)
       if feature[0:4] == 'phog':
         np.savetxt(filename, feature_type.view(float))
@@ -351,22 +352,23 @@ class Extractor():
         img_idx = cls_gt.arr[:,cls_gt.cols.index('img_ind')]
         for img in range(comm_rank, len(img_idx), comm_size): # PARALLEL
           image = images[img_idx[img].astype(Int)]
-          pos_bounds = np.matrix([[0,0],[image.size[0],image.size[1]]])
-          self.get_assignments(pos_bounds, feature, codebook, cls, image)
+          pos_bounds = np.array([0,0,image.size[0]+1,image.size[1]+1])
+          self.get_assignments(pos_bounds, feature, codebook, image)
         
     
   
 if __name__ == '__main__':
   e = Extractor()
-  image_set = 'full_pascal_test'
-  feature_type = 'dsift'
+  image_sets = ['full_pascal_trainval','full_pascal_test']
+  feature_type = 'sift'
   sizes = [16,24,32]
   step_size = 4
   
-  #e.extract_all(feature_type,image_sets, sizes, step_size)
+  #e.extract_all(feature_type,image_set, sizes, step_size)
   all_classes = config.pascal_classes
 #  all_classes = ['cat']
-#  e.extract_all_assignments('dsift', image_sets, all_classes)
+  e.extract_all_assignments('sift', image_sets, all_classes)
+"""
   d = Dataset(image_set)
   codebook = e.get_codebook(d, feature_type)  
   print 'codebook loaded'
@@ -377,4 +379,4 @@ if __name__ == '__main__':
     e.get_assignments(np.array([0,0,img.size[0],img.size[1]]), feature_type, codebook, img)
    
 #  e.get_codebook(d, 'dsift', 3000, True, True)
-  
+""" 

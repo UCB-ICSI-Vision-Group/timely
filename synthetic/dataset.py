@@ -170,6 +170,8 @@ class Dataset:
       for gt in gts.arr:
         overlaps = BoundingBox.get_overlap(windows[:,:4],gt[:4])
         windows = windows[overlaps <= max_overlap,:]
+      if windows.shape[0] == 0:
+        continue
       ind_to_take = ut.random_subset_up_to_N(windows.shape[0], num_per_image)
       all_windows.append(np.hstack(
         (windows[ind_to_take,:],np.tile(ind, (ind_to_take.shape[0],1)))))
