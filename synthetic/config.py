@@ -161,3 +161,11 @@ def get_gist_dict_filename(dataset_name):
 def get_gist_svm_filename(for_cls):
   dirname = makedirs(join(gist_dir,'svm'))
   return join(dirname,for_cls)
+
+
+# external classifier
+def get_dets_test_wholeset_dir():
+  return join(res_dir, 'dets_test_original_wholeset')
+
+def get_dets_nov19():
+  return join(res_dir, 'dets_nov19')
