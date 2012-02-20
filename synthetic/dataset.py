@@ -208,7 +208,7 @@ class Dataset:
   def get_cls_ground_truth(self, include_diff=False,include_trun=True):
     "Return Table containing classification ground truth."
     arr = self.get_cls_counts()>0
-    cols = self.classes + ['img_ind']
+    cols = self.classes
     return ut.Table(arr,cols)
       
   def get_ground_truth(self, include_diff=False, include_trun=True):
@@ -227,6 +227,7 @@ class Dataset:
     """
     Return Table object containing ground truth for the given image indices.
     """
+    img_inds = np.unique(img_inds)
     images = (self.images[int(ind)] for ind in img_inds)
     arr = ut.collect(images, Image.get_gt_arr)
     gt = ut.Table(arr,Image.get_gt_cols())

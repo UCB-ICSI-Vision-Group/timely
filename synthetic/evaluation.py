@@ -102,22 +102,29 @@ class Evaluation:
           gt_for_image = gt_for_image_list[img_ind]
           img_dets = img_dets_list[img_ind]
           dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)
+          # TODO
           #clses_to_this_point = img_clses.filter_on_column('time',point,operator.le)
           num_dets += dets_to_this_point.shape()[0]
           det_ap,rec,prec = self.compute_det_pr(dets_to_this_point, gt_for_image)
-          #cls_ap,rec,prec = self.compute_cls_pr(clses_to_this_point, gt_for_image)
           det_aps.append(det_ap)
+          cls_aps.append(self.compute_cls_map(clses_to_this_point, gt_for_image)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
+        cls_arr[i,:] = [point,np.mean(cls_aps),np.std(cls_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
           np.mean(det_aps),num_dets,point,tt.qtoc()))
       det_arr_all = None
+      cls_arr_all = None
       if comm_rank == 0:
         det_arr_all = np.zeros((num_points,3))
+        cls_arr_all = np.zeros((num_points,3))
       safebarrier(comm)
       comm.Reduce(det_arr,det_arr_all)
+      comm.Reduce(cls_arr,cls_arr_all)
       if comm_rank==0:
-        table = ut.Table(det_arr_all, ['time','ap_mean','ap_std'], self.name)
-        np.save(self.det_apvst_data_fname,table)
+        dets_table = ut.Table(det_arr_all, ['time','ap_mean','ap_std'], self.name)
+        np.save(self.det_apvst_data_fname,dets_table)
+        clses_table = ut.Table(cls_arr_all, ['time','ap_mean','ap_std'], self.name)
+        np.save(self.cls_apvst_data_fname,clses_table)
     # Plot the table
     if plot and comm_rank==0:
       try:
@@ -125,7 +132,58 @@ class Evaluation:
       except:
         print("Could not plot")
     # TODO
-    return (table,table)
+    return (dets_table,clses_table)
+
+  def evaluate_dets_vs_t_whole(self,dets=None,force=False):
+    """
+    Evaluate detections in the AP vs Time regime and write out plots to
+    canonical places.
+    - dets must be on self.dataset
+    This version evaluates on the whole dataset instead of averaging per-image
+    performances, and so gets rid of error bars.
+    """
+    # TODO: this method is out of date, should update with changes from
+    # evaluate_dets_vs_t_avg
+    bounds = None
+    if self.dataset_policy and self.dataset_policy.bounds:
+      bounds = self.dataset_policy.bounds
+    if os.path.exists(self.apvst_whole_data_filename) and not force:
+      table = np.load(self.apvst_whole_data_filename)[()]
+    else:
+      # must have dets then, so generate if not given
+      if not dets:
+        dets = self.dataset_policy.detect_in_dataset()
+
+      # determine time sampling points
+      all_times = dets.subset_arr('time')
+      num_points = self.time_intervals
+      points = ut.importance_sample(all_times,num_points)
+      # make sure bounds are included in the sampling points if given
+      if bounds:
+        points = np.sort(np.array(points.tolist() + bounds))
+        num_points += 2
+      table = ut.Table(np.zeros((num_points,3)), ['time','ap','max_rec'], self.name)
+      aps = np.zeros(num_points)
+      for i in range(1,num_points):
+        t = time.time()
+        point = points[i]
+        dets_to_this_point = dets.filter_on_column('time',point,operator.le)
+        img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
+        gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
+        ap,rec,prec = self.compute_pr(dets_to_this_point,gt)
+        max_rec = rec[-1] 
+        table.arr[i,:] = [point,ap,max_rec]
+        elapsed_time = time.time()-t
+        print("Calculating AP (%.3f) of %d dets (up to %.3f s) took %.3f s"%(
+          ap,dets_to_this_point.shape()[0],point,elapsed_time))
+      np.save(self.apvst_whole_data_filename,table)
+    # Plot the table
+    try:
+      Evaluation.plot_ap_vs_t([table],self.apvst_whole_png_filename, bounds)
+    except:
+      print("Could not plot")
+
+   
 
   @classmethod
   def compute_auc(cls,times,vals,bounds=None):
@@ -404,22 +462,37 @@ class Evaluation:
     tp=np.cumsum(tp)
     rec=1.*tp/npos
     prec=1.*tp/(fp+tp)
-
+    
     ap = self.compute_ap(rec,prec)
     return (ap,rec,prec,hard_neg)
 
-  def compute_cls_pr(self,clses,gt):
+  def compute_cls_map(self,clses,gt):
     """
+    Compute classification mean AP.
     Take Table of classifications and Table of ground truth.
-    If the results are for multiple classes, we average across per-class APs.
-    There should only be 
+    The results should be for multiple classes, and we average per-class APs.
+    There should only be one instance of each img_ind in clses.
     Ground truth should be of the format in Dataset.get_cls_ground_truth().
-    Return ap,recall,and precision vectors as tuple.
     """
+    img_inds = clses.subset_arr('img_ind')
+    assert(len(img_inds)==len(unique(img_inds)))
+    gt.arr = gt.arr[img_inds,:]
+    aps = []
     for col in clses.cols:
       if col=='img_ind' or col=='time':
         continue
+      ap,rec,prec=self.compute_cls_pr(clses.subset_arr(col),gt.subset_arr(col))
+      aps.append(ap)
+    return np.mean(aps)
 
+  def compute_cls_pr(self,confidences,gt):
+    """
+    Take vector of classification confidences and vector of ground truth.
+    Return ap,recall,and precision vectors as tuple.
+    """
+    ind = np.argsort(-confidences)
+    tp = gt[ind]==True
+    fp = gt[ind]==False
     fp=np.cumsum(fp)
     tp=np.cumsum(tp)
     rec=1.*tp/npos

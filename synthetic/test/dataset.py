@@ -35,6 +35,17 @@ class TestDataset:
     print(self.d.get_cls_counts())
     assert(np.all(self.d.get_cls_counts() == arr))
 
+  def test_get_cls_ground_truth_json(self):
+    arr = np.array(
+      [ [ True, True, True],
+        [ True, False, False],
+        [ False, True, False],
+        [ False, False, True]])
+    cols = ["A","B","C"]
+    print(self.d.get_cls_ground_truth())
+    assert(np.all(self.d.get_cls_ground_truth().arr == arr))
+    assert(np.all(self.d.get_cls_ground_truth().cols == cols))
+
   def test_ground_truth_for_class_json(self):
     gt = self.d.get_ground_truth_for_class("A",include_diff=True,include_trun=True)
     arr = np.array(
