@@ -103,7 +103,7 @@ def cross_valid_training(cc, Cs, gammas, numfolds=4):
     for _ in range(numfolds):
       cc.d.next_folds()
       train_image_classify_svm(cc, cls=cls, C=C, gamma=gamma)
-      val_set = np.where(cc.d.val)[0]     
+      val_set = cc.d.val     
       
       classification = classify_images(cc, val_set, C, gamma)
       overall += classification.size

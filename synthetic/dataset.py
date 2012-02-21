@@ -280,7 +280,10 @@ class Dataset:
     if self.current_fold < len(self.folds):
       fold = self.folds[self.current_fold]
       self.current_fold += 1
-      self.train, self.val = fold 
+      self.train, self.val = fold
+      if type(self.train[0]) == type(np.array([True])[0]):
+        self.train = np.where(self.train)[0]
+        self.val = np.where(self.val)[0]
       return fold
     if self.current_fold >= len(self.folds):
       self.current_fold = 0
