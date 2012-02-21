@@ -171,7 +171,7 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
     C = setting[0]
     gamma = setting[1]
     for current_fold in range(numfolds):
-      filename = config.get_classifier_svm_name(cls, C, gamma, current_fold)
+      filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel)
       if not os.path.isfile(filename):
         all_exist = False
         break
@@ -278,7 +278,7 @@ if __name__=='__main__':
   tictocer = TicToc()
   tictocer.tic('overall')
   
-  test = True
+  test = False
   if test:
     train_dataset = 'test_pascal_train_tobi'
     eval_dataset = 'test_pascal_val_tobi'
@@ -300,7 +300,7 @@ if __name__=='__main__':
   
   #train_image_classify_svm(cc, 'dog', Cs, gammas)
   for kernel in ['rbf', 'linear']:
-    cross_valid_training(cc, Cs, gammas, kernel = kernel, numfolds)
+    cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
 #  
