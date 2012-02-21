@@ -460,7 +460,7 @@ class DatasetPolicy:
         sample['det_actual_ap'] = 0
 
       # TODO
-      clses = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,b['img_ind'],b['t']]
+      clses = b['priors'].priors + [b['img_ind'],b['t']]
       all_clses.append(clses)
 
       # pick the next action, having updated the priors

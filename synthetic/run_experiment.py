@@ -136,6 +136,7 @@ def main():
     # evaluate in the AP vs. Time regime, unless told not to
     if not args.no_apvst:
       dets_table,clses_table = ev.evaluate_vs_t(None,None,force=args.force)
+      dets_table_whole,clses_table_whole = ev.evaluate_vs_t_whole(None,None,force=args.force)
       if comm_rank==0:
         dets_tables.append(dets_table)
         clses_tables.append(clses_table)

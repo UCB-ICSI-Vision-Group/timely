@@ -39,9 +39,14 @@ class Evaluation:
     # Determine filenames and create directories
     self.results_path = config.get_evals_dp_dir(self.dp)
     self.det_apvst_data_fname = opjoin(self.results_path, 'det_apvst_table.npy')
-    self.det_apvst_png_fname = opjoin(self.results_path, 'det_apvst.png')
     self.cls_apvst_data_fname = opjoin(self.results_path, 'cls_apvst_table.npy')
+    self.det_apvst_data_whole_fname = opjoin(self.results_path, 'det_apvst_table_whole.npy')
+    self.cls_apvst_data_whole_fname = opjoin(self.results_path, 'cls_apvst_table_whole.npy')
+
+    self.det_apvst_png_fname = opjoin(self.results_path, 'det_apvst.png')
     self.cls_apvst_png_fname = opjoin(self.results_path, 'cls_apvst.png')
+    self.det_apvst_png_whole_fname = opjoin(self.results_path, 'det_apvst_whole.png')
+    self.cls_apvst_png_whole_fname = opjoin(self.results_path, 'cls_apvst_whole.png')
 
     self.dashboard_filename = opjoin(self.results_path, 'dashboard_%s.html')
     self.wholeset_aps_filename = opjoin(self.results_path, 'aps_whole.txt')
@@ -59,6 +64,7 @@ class Evaluation:
     We evaluate on the whole dataset instead of averaging per-image,
     and so get rid of error bars.
     Return two tables: one for detection and one for classification evals.
+    This version average per-image results.
     """
     bounds = self.dp.bounds if self.dp and self.dp.bounds else None
 
@@ -66,9 +72,8 @@ class Evaluation:
     if opexists(self.det_apvst_data_fname) and \
        opexists(self.cls_apvst_data_fname) and not force:
       if comm_rank==0:
-        tables = (
-          np.load(self.det_apvst_data_fname)[()],
-          np.load(self.cls_apvst_data_fname)[()])
+        dets_table = np.load(self.det_apvst_data_fname)[()]
+        clses_table = np.load(self.cls_apvst_data_fname)[()]
     else:
       if not dets:
         dets,clses = self.dp.run_on_dataset()
@@ -85,10 +90,13 @@ class Evaluation:
       # do this now to save time in the inner loop later
       gt_for_image_list = []
       img_dets_list = []
+      img_clses_list = []
       gt = self.dataset.get_ground_truth(include_diff=True)
+      cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
         img_dets_list.append(dets.filter_on_column('img_ind',img_ind))
+        img_clses_list.append(clses.filter_on_column('img_ind',img_ind))
 
       det_arr = np.zeros((num_points,3))
       cls_arr = np.zeros((num_points,3))
@@ -101,13 +109,19 @@ class Evaluation:
         for img_ind,image in enumerate(self.dataset.images):
           gt_for_image = gt_for_image_list[img_ind]
           img_dets = img_dets_list[img_ind]
+          img_clses = img_clses_list[img_ind]
           dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)
-          # TODO
-          #clses_to_this_point = img_clses.filter_on_column('time',point,operator.le)
+          # take the latest before the cut-off time
+          clses_to_this_point = img_clses.filter_on_column('time',point,operator.le)
+          clses_at_this_point = ut.Table(arr=np.array([]),cols=clses.cols)
+          if clses_to_this_point.shape()[0]>0:
+            clses_to_this_point = clses_to_this_point.sort_by_column('time')
+            clses_at_this_point.set_arr(clses_to_this_point.arr[-1,:])
+          cls_aps.append(self.compute_cls_map(clses_at_this_point, cls_gt))
+
           num_dets += dets_to_this_point.shape()[0]
           det_ap,rec,prec = self.compute_det_pr(dets_to_this_point, gt_for_image)
           det_aps.append(det_ap)
-          cls_aps.append(self.compute_cls_map(clses_to_this_point, gt_for_image)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
         cls_arr[i,:] = [point,np.mean(cls_aps),np.std(cls_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
@@ -128,13 +142,13 @@ class Evaluation:
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([table],self.det_apvst_png_fname, bounds)
+        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_fname, bounds)
+        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_fname, bounds)
       except:
         print("Could not plot")
-    # TODO
     return (dets_table,clses_table)
 
-  def evaluate_dets_vs_t_whole(self,dets=None,force=False):
+  def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False):
     """
     Evaluate detections in the AP vs Time regime and write out plots to
     canonical places.
@@ -142,17 +156,16 @@ class Evaluation:
     This version evaluates on the whole dataset instead of averaging per-image
     performances, and so gets rid of error bars.
     """
-    # TODO: this method is out of date, should update with changes from
-    # evaluate_dets_vs_t_avg
-    bounds = None
-    if self.dataset_policy and self.dataset_policy.bounds:
-      bounds = self.dataset_policy.bounds
-    if os.path.exists(self.apvst_whole_data_filename) and not force:
-      table = np.load(self.apvst_whole_data_filename)[()]
+    bounds = self.dp.bounds if self.dp and self.dp.bounds else None
+
+    if opexists(self.det_apvst_data_whole_fname) and \
+       opexists(self.cls_apvst_data_whole_fname) and not force:
+      if comm_rank==0:
+        dets_table = np.load(self.det_apvst_data_whole_fname)[()]
+        clses_table = np.load(self.cls_apvst_data_whole_fname)[()]
     else:
-      # must have dets then, so generate if not given
       if not dets:
-        dets = self.dataset_policy.detect_in_dataset()
+        dets,clses = self.dp.run_on_dataset()
 
       # determine time sampling points
       all_times = dets.subset_arr('time')
@@ -162,28 +175,57 @@ class Evaluation:
       if bounds:
         points = np.sort(np.array(points.tolist() + bounds))
         num_points += 2
-      table = ut.Table(np.zeros((num_points,3)), ['time','ap','max_rec'], self.name)
-      aps = np.zeros(num_points)
-      for i in range(1,num_points):
-        t = time.time()
+
+      cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
+      det_arr = np.zeros((num_points,2))
+      cls_arr = np.zeros((num_points,2))
+      for i in range(comm_rank,num_points,comm_size):
+        tt = ut.TicToc().tic()
         point = points[i]
         dets_to_this_point = dets.filter_on_column('time',point,operator.le)
+
         img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
         gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
-        ap,rec,prec = self.compute_pr(dets_to_this_point,gt)
-        max_rec = rec[-1] 
-        table.arr[i,:] = [point,ap,max_rec]
-        elapsed_time = time.time()-t
-        print("Calculating AP (%.3f) of %d dets (up to %.3f s) took %.3f s"%(
-          ap,dets_to_this_point.shape()[0],point,elapsed_time))
-      np.save(self.apvst_whole_data_filename,table)
-    # Plot the table
-    try:
-      Evaluation.plot_ap_vs_t([table],self.apvst_whole_png_filename, bounds)
-    except:
-      print("Could not plot")
+        ap,rec,prec = self.compute_det_pr(dets_to_this_point,gt)
+        det_arr[i,:] = [point,ap]
 
-   
+        # go through the per-image classifications and only keep the latest time
+        # for each cut-off time
+        clses_at_this_point = []
+        for img_ind in range(0,self.dataset.num_images()):
+          img_clses = clses.filter_on_column('img_ind',img_ind)
+          clses_to_this_point = img_clses.filter_on_column('time',
+            point,operator.le)
+          if clses_to_this_point.shape()[0]>0:
+            clses_to_this_point = clses_to_this_point.sort_by_column('time')
+            clses_at_this_point.append(clses_to_this_point.arr[-1,:])
+        clses_at_this_point = ut.Table(arr=np.array(clses_at_this_point),
+          cols=clses.cols)
+        cls_arr[i,:] = [point, self.compute_cls_map(clses_at_this_point, cls_gt)]
+
+        print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
+          det_arr[i,1],dets_to_this_point.shape()[0],point,tt.qtoc()))
+      det_arr_all = None
+      cls_arr_all = None
+      if comm_rank == 0:
+        det_arr_all = np.zeros((num_points,2))
+        cls_arr_all = np.zeros((num_points,2))
+      safebarrier(comm)
+      comm.Reduce(det_arr,det_arr_all)
+      comm.Reduce(cls_arr,cls_arr_all)
+      if comm_rank==0:
+        dets_table = ut.Table(det_arr_all, ['time','ap'], self.name)
+        np.save(self.det_apvst_data_whole_fname,dets_table)
+        clses_table = ut.Table(cls_arr_all, ['time','ap'], self.name)
+        np.save(self.cls_apvst_data_whole_fname,clses_table)
+    # Plot the table
+    if plot and comm_rank==0:
+      try:
+        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_whole_fname, bounds)
+        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_whole_fname, bounds)
+      except:
+        print("Could not plot")
+    return (dets_table,clses_table)
 
   @classmethod
   def compute_auc(cls,times,vals,bounds=None):
@@ -235,7 +277,7 @@ class Evaluation:
         if len(tables)==1:
           plt.fill_between(times,vals-stdevs,vals+stdevs,color='#4084ff',alpha=0.3)
       else:
-        vals = table.subset_arr('ap_mean')
+        vals = table.subset_arr('ap')
       auc = Evaluation.compute_auc(times,vals,bounds)
 
       high_bound_val = vals[-1]
@@ -473,10 +515,13 @@ class Evaluation:
     The results should be for multiple classes, and we average per-class APs.
     There should only be one instance of each img_ind in clses.
     Ground truth should be of the format in Dataset.get_cls_ground_truth().
+    NOTE: ground truth must be for the whole dataset!
     """
+    if not clses.shape()[0]>0:
+      return 0
     img_inds = clses.subset_arr('img_ind')
-    assert(len(img_inds)==len(unique(img_inds)))
-    gt.arr = gt.arr[img_inds,:]
+    assert(len(img_inds)==len(np.unique(img_inds)))
+    gt = gt.row_subset(img_inds)
     aps = []
     for col in clses.cols:
       if col=='img_ind' or col=='time':
@@ -495,7 +540,8 @@ class Evaluation:
     fp = gt[ind]==False
     fp=np.cumsum(fp)
     tp=np.cumsum(tp)
-    rec=1.*tp/npos
+    npos = np.sum(gt==True)
+    rec=1.*tp/(npos+0.000000001) # to avoid dividing by 0
     prec=1.*tp/(fp+tp)
     ap = self.compute_ap(rec,prec)
     return (ap,rec,prec)

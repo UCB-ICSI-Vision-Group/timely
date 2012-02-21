@@ -190,6 +190,8 @@ def collect(seq, func, kwargs=None, with_index=False):
         all_results.append(append_index_column(results,index))
       else:
         all_results.append(results)
+  if len(all_results)<1:
+    return np.array([])
   return np.vstack(all_results)
 
 def collect_with_index(seq, func, kwargs=None):
