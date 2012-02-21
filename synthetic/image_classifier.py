@@ -88,8 +88,25 @@ def compute_feature_vector(cc, img_idx, quiet=False):
     print '\t%f seconds for image %s'%(cc.tictocer.toc('image', quiet=True),img_idx)
   return np.hstack((bow, pyramid, slices))
 
-def cross_valid_training(cc, Cs, gammas, numfolds=4):
+def train_all_svms(cc, Cs, gammas, numfolds=4):
   cc.d.create_folds(numfolds)
+  all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
+
+  for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
+    curr_set = all_settings[set_idx]
+    C = curr_set[0]
+    gamma = curr_set[1]
+    cls = curr_set[2]
+    
+    for _ in range(numfolds):
+      cc.d.next_folds()
+      train_image_classify_svm(cc, cls=cls, C=C, gamma=gamma)
+    cc.d.create_folds(numfolds)
+
+
+def cross_valid_training(cc, Cs, gammas, numfolds=4):
+  train_all_svms(cc, Cs, gammas, numfolds=numfolds)
+  
   all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
 
   for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
@@ -99,10 +116,9 @@ def cross_valid_training(cc, Cs, gammas, numfolds=4):
     cls = curr_set[2]
     class_corr = 0
     overall = 0
-    
+        
     for _ in range(numfolds):
       cc.d.next_folds()
-      train_image_classify_svm(cc, cls=cls, C=C, gamma=gamma)
       val_set = cc.d.val     
       
       classification = classify_images(cc, val_set, C, gamma)
@@ -115,15 +131,11 @@ def cross_valid_training(cc, Cs, gammas, numfolds=4):
     writef = open(filename, 'a')
     writef.write('%f %f - %f\n'%(C, gamma, accuracy))
     cc.d.create_folds(numfolds)
-    #return          
-      
 
-  # determine best one
-  # return best C and gamma
 def classify_images(cc, images, C, gamma):
   res = np.zeros((images.shape[0], len(cc.d.classes)))
   for cls_idx, cls in enumerate(cc.d.classes):
-    filename = config.get_classifier_svm_name(cls, C, gamma)
+    filename = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold)
     if not os.path.exists(filename):
       continue
     clf = load_svm(filename, probability=False)
@@ -169,14 +181,15 @@ def get_gt_classification(cc, image_inds):
   
   
 def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0, force_new=False):
-  filename = config.get_classifier_svm_name(cls, C, gamma)
+  current_fold = cc.d.current_fold
+  filename = config.get_classifier_svm_name(cls, C, gamma, current_fold)
   if not force_new and os.path.exists(filename):
     print 'svm for class %s, C=%f, gamma=%f exists already'%(cls,C,gamma)
     return
       
   pyr_feat_size = get_pyr_feat_size(cc.L, cc.dense_codebook.shape[0])  
   
-  cc.tictocer.tic('overall')
+  cc.tictocer.tic('overall') 
   
   print 'compute classifier(C=%f, gamma=%f) for class %s'%(C, gamma, cls)
   pos_images = cc.d.get_pos_samples_for_fold_class(cls)
@@ -270,7 +283,8 @@ if __name__=='__main__':
   Cs = [1, 2, 5, 10, 50, 100, 200, 500]
   gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
   
-  cross_valid_training(cc, Cs, gammas, numfolds)
+  train_all_svms(cc, Cs, gammas, numfolds=4)
+  #cross_valid_training(cc, Cs, gammas, numfolds)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
 #  

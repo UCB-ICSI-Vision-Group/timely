@@ -62,6 +62,7 @@ class Dataset:
     self.classes = []
     self.images = []
     self.name = name
+    self.current_fold = -1
     if re.search('pascal', name):
       self.load_from_pascal(name,force)
     elif name == 'data1':
