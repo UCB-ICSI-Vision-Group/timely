@@ -85,10 +85,12 @@ def compute_feature_vector(cc, img_idx, quiet=False):
   return np.hstack((bow, pyramid, slices))
 
 
-def cross_valid_training(cc, Cs, gammas, numfolds=4):
+def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4):
   #train_all_svms(cc, Cs, gammas, numfolds=numfolds)
-  for cls in cc.classes:
-    train_image_classify_svm(cc, cls=cls, Cs=Cs, gammas=gammas)
+  
+  for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
+    cls = cc.d.classes[cls_idx]
+    train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
   
   safebarrier(comm)
   all_settings = list(itertools.product(Cs, gammas, cc.d.classes))
@@ -137,9 +139,6 @@ def validate_images(cc, image_inds, classifications):
   return accuracy
   """
   gt = get_gt_classification(cc, image_inds)
-  print gt
-  print classifications
-  print gt+classifications
   comb = np.where(gt + classifications)[0].size
   return comb
   
@@ -164,7 +163,7 @@ def get_gt_classification(cc, image_inds):
   return res
   
   
-def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], numfolds=4, force_new=False):
+def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numfolds=4, force_new=False):
   
   all_exist = True
   all_settings = list(itertools.product(Cs, gammas))
@@ -222,19 +221,22 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], numfolds=4, force_
     
     for C in Cs:
       for gamma in gammas:
-        filename = config.get_classifier_svm_name(cls, C, gamma, current_fold)
+        filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel)
         
         X = np.vstack((pos_pyrs_fold, neg_pyrs_fold))
         Y = [1]*pos_pyrs_fold.shape[0] + [-1]*neg_pyrs_fold.shape[0] 
         
         if X.shape[0] > 0:
-          print 'train svm for class %s, C=%f, gamma=%f'%(cls,C,gamma)
+          print 'train svm for class %s, C=%f, gamma=%f, %s'%(cls,C,gamma,kernel)
           cc.tictocer.tic()    
-          clf = train_svm(X, Y, kernel='rbf', gamma=gamma, C=C)
+          clf = train_svm(X, Y, kernel=kernel, gamma=gamma, C=C)
           print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
           
           print 'save as', filename
-          save_svm(clf, filename)
+          try:
+            save_svm(clf, filename)
+          except:
+            print 'svm %s could not be saved :/'%filename
         else:
           print 'Don\'t compute SVM, no examples given'
         
@@ -276,7 +278,7 @@ if __name__=='__main__':
   tictocer = TicToc()
   tictocer.tic('overall')
   
-  test = False
+  test = True
   if test:
     train_dataset = 'test_pascal_train_tobi'
     eval_dataset = 'test_pascal_val_tobi'
@@ -297,7 +299,8 @@ if __name__=='__main__':
   cc = ClassifierConfig(eval_dataset, L)
   
   #train_image_classify_svm(cc, 'dog', Cs, gammas)
-  cross_valid_training(cc, Cs, gammas, numfolds)
+  for kernel in ['rbf', 'linear']:
+    cross_valid_training(cc, Cs, gammas, kernel = kernel, numfolds)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
 #  
