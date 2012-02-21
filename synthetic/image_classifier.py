@@ -85,12 +85,12 @@ def compute_feature_vector(cc, img_idx, quiet=False):
   return np.hstack((bow, pyramid, slices))
 
 
-def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4):
-  #train_all_svms(cc, Cs, gammas, numfolds=numfolds)
-  
-  for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
-    cls = cc.d.classes[cls_idx]
-    train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
+def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
+    
+  if train:
+    for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
+      cls = cc.d.classes[cls_idx]
+      train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
   
   safebarrier(comm)
   all_settings = list(itertools.product(Cs, gammas, cc.d.classes))
@@ -113,7 +113,7 @@ def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4):
       print 'correct:', class_corr
       #break
     accuracy = float(class_corr)/float(overall)
-    filename = config.get_classifier_crossval()
+    filename = config.get_classifier_crossval(cls)
     writef = open(filename, 'a')
     writef.write('%f %f - %f\n'%(C, gamma, accuracy))
     cc.d.create_folds(numfolds)
@@ -302,7 +302,7 @@ if __name__=='__main__':
   
   #train_image_classify_svm(cc, 'dog', Cs, gammas)
   for kernel in ['rbf', 'linear']:
-    cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds)
+    cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds, train=False)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
 #  
