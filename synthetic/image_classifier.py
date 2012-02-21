@@ -25,11 +25,7 @@ class ClassifierConfig():
     self.tictocer = TicToc()
     self.L = L
     self.numfolds = numfolds
-    
-  def kfold(self):
-    train_idx, val_idx = KFold(len(len(self.d.images), self.numfolds))
-    self.d.create_folds(self.numfolds)
-
+  
 def get_feature_vector(cc, img, quiet=False):
   """
   return feature vector for given image, load precomputed vector if possible
@@ -88,28 +84,16 @@ def compute_feature_vector(cc, img_idx, quiet=False):
     print '\t%f seconds for image %s'%(cc.tictocer.toc('image', quiet=True),img_idx)
   return np.hstack((bow, pyramid, slices))
 
-def train_all_svms(cc, Cs, gammas, numfolds=4):
-  cc.d.create_folds(numfolds)
-  all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
-
-  for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
-    curr_set = all_settings[set_idx]
-    C = curr_set[0]
-    gamma = curr_set[1]
-    cls = curr_set[2]
-    
-    for _ in range(numfolds):
-      cc.d.next_folds()
-      train_image_classify_svm(cc, cls=cls, C=C, gamma=gamma)
-    cc.d.create_folds(numfolds)
-
 
 def cross_valid_training(cc, Cs, gammas, numfolds=4):
-  train_all_svms(cc, Cs, gammas, numfolds=numfolds)
+  #train_all_svms(cc, Cs, gammas, numfolds=numfolds)
+  for cls in cc.classes:
+    train_image_classify_svm(cc, cls=cls, Cs=Cs, gammas=gammas)
   
-  all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
+  safebarrier(comm)
+  all_settings = list(itertools.product(Cs, gammas, cc.d.classes))
 
-  for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
+  for set_idx in range(mpi_rank, len(all_settings), mpi_size): # Parallel
     curr_set = all_settings[set_idx]
     C = curr_set[0]
     gamma = curr_set[1]
@@ -180,22 +164,30 @@ def get_gt_classification(cc, image_inds):
   return res
   
   
-def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0, force_new=False):
-  current_fold = cc.d.current_fold
-  filename = config.get_classifier_svm_name(cls, C, gamma, current_fold)
-  if not force_new and os.path.exists(filename):
-    print 'svm for class %s, C=%f, gamma=%f exists already'%(cls,C,gamma)
-    return
-      
+def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], numfolds=4, force_new=False):
+  
+  all_exist = True
+  all_settings = list(itertools.product(Cs, gammas))
+  for setting in all_settings:
+    C = setting[0]
+    gamma = setting[1]
+    for current_fold in range(numfolds):
+      filename = config.get_classifier_svm_name(cls, C, gamma, current_fold)
+      if not os.path.isfile(filename):
+        all_exist = False
+        break
+  if all_exist:
+    return  
+    
   pyr_feat_size = get_pyr_feat_size(cc.L, cc.dense_codebook.shape[0])  
   
-  cc.tictocer.tic('overall') 
+  cc.tictocer.tic('overall')
+  cc.d.create_folds(numfolds)
   
   print 'compute classifier(C=%f, gamma=%f) for class %s'%(C, gamma, cls)
-  pos_images = cc.d.get_pos_samples_for_fold_class(cls)
+  pos_images = cc.d.get_pos_samples_for_class(cls)
   if pos_images.size == 0:
     return
-  neg_images = cc.d.get_neg_samples_for_fold_class(cls, pos_images.size)
     
   # 1. extract all the pyramids    
   # ======== POSTIVE IMAGES ===========
@@ -205,29 +197,49 @@ def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0, force_new=False):
   for idx, img in enumerate(pos_images):
     pos_pyrs[idx, :] = get_feature_vector(cc, img)
 
-  # ======== NEGATIVE IMAGES ===========
-  print 'compute feature vector for negative images'
-  neg_pyrs = np.zeros((len(neg_images),pyr_feat_size + cc.sparse_codebook.shape[0]*(1+num_slices)))  
-  for idx, img in enumerate(neg_images):
-    neg_pyrs[idx, :] = get_feature_vector(cc, img)
   
   # 2. Compute SVM for class
-  X = np.vstack((pos_pyrs, neg_pyrs))
-  Y = [1]*pos_pyrs.shape[0] + [-1]*neg_pyrs.shape[0] 
+  cc.d.create_folds(numfolds)
   
-  if X.shape[0] > 0:
-    print 'train svm for class %s, C=%f, gamma=%f'%(cls,C,gamma)
-    cc.tictocer.tic()    
-    clf = train_svm(X, Y, kernel='rbf', gamma=gamma, C=C)
-    print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
+  for _ in range(numfolds):
+    cc.d.next_folds()
     
-    print 'save as', filename
-    save_svm(clf, filename)
-  else:
-    print 'Don\'t compute SVM, no examples given'
-  
-  print 'training all classifier SVMs took:', cc.tictocer.toc('overall', quiet=True), 'seconds on', mpi_rank
-  
+    # ======== NEGATIVE IMAGES ===========
+    print 'compute feature vector for negative images'
+    
+    pos_idc = np.intersect1d(cc.d.train, range(pos_pyrs.shape[0]))
+    pos_pyrs_fold = pos_pyrs[pos_idc, :]
+    if pos_pyrs_fold.shape[0] == 0:
+      continue
+    
+    neg_images = cc.d.get_neg_samples_for_fold_class(cls, pos_pyrs_fold.shape[0])
+    neg_pyrs = np.zeros((len(neg_images),pyr_feat_size + cc.sparse_codebook.shape[0]*(1+num_slices)))  
+    for idx, img in enumerate(neg_images):
+      neg_pyrs[idx, :] = get_feature_vector(cc, img)
+    neg_pyrs_fold = neg_pyrs
+    
+    current_fold = cc.d.current_fold
+    
+    for C in Cs:
+      for gamma in gammas:
+        filename = config.get_classifier_svm_name(cls, C, gamma, current_fold)
+        
+        X = np.vstack((pos_pyrs_fold, neg_pyrs_fold))
+        Y = [1]*pos_pyrs_fold.shape[0] + [-1]*neg_pyrs_fold.shape[0] 
+        
+        if X.shape[0] > 0:
+          print 'train svm for class %s, C=%f, gamma=%f'%(cls,C,gamma)
+          cc.tictocer.tic()    
+          clf = train_svm(X, Y, kernel='rbf', gamma=gamma, C=C)
+          print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
+          
+          print 'save as', filename
+          save_svm(clf, filename)
+        else:
+          print 'Don\'t compute SVM, no examples given'
+        
+        print 'training all classifier SVMs took:', cc.tictocer.toc('overall', quiet=True), 'seconds on', mpi_rank
+    
 def classify_image(cc, img, C=1.0, gamma=0.0, cls=None):
   """
   Input: ClassifierConfig, img
@@ -269,22 +281,23 @@ if __name__=='__main__':
     train_dataset = 'test_pascal_train_tobi'
     eval_dataset = 'test_pascal_val_tobi'
     numfolds = 2
+    Cs = [2]
+    gammas = [0.4]
   else:
     train_dataset = 'full_pascal_trainval'
     eval_dataset = 'full_pascal_test'
     numfolds = 4
+    Cs = [1, 2, 5, 10, 50, 100, 200, 500]
+    gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
   
-  # Train
   L = 1  
   
   safebarrier(comm)  
   # Evaluate  
   cc = ClassifierConfig(eval_dataset, L)
-  Cs = [1, 2, 5, 10, 50, 100, 200, 500]
-  gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
   
-  train_all_svms(cc, Cs, gammas, numfolds=4)
-  #cross_valid_training(cc, Cs, gammas, numfolds)
+  #train_image_classify_svm(cc, 'dog', Cs, gammas)
+  cross_valid_training(cc, Cs, gammas, numfolds)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
 #  
