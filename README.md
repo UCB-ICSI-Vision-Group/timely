@@ -62,6 +62,7 @@ Tasks
 - include values for object classes (reference some paper by Ashish if can find) @sergey
 - learn regression on policy samples, and replace the weight vectors of action with the results. @sergey
 - code up LSPI and try to improve on the 1-step policy @sergey
+- code up 'ranking svm policy'
 - include scene context action
 
 ### classification
