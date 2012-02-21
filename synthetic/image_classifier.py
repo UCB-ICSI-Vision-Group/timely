@@ -236,7 +236,7 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
           try:
             save_svm(clf, filename)
           except:
-            print 'svm %s could not be saved :/'%filename
+            print 'EXCEPT: svm %s could not be saved :/'%filename
         else:
           print 'Don\'t compute SVM, no examples given'
         
