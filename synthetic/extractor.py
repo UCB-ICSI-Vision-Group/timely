@@ -361,9 +361,15 @@ class Extractor():
   def get_bow_for_image(self, d, num_words, ass, image):
     width = image.size[0]
     height = image.size[1]
-    _, histogram = count_histogram_for_bin(ass[:,0:2], ass, width, height, \
+    if ass.size == 0:
+      return np.zeros()
+    try:
+      _, histogram = count_histogram_for_bin(ass[:,0:2], ass, width, height, \
                                         num_bins=1, i=0, j=0, \
                                         num_words=num_words)
+    except:
+      print 'Error in count_histo.'
+      print '\t** ass', ass
     return np.asmatrix(histogram)/float(ass.shape[0])    
 
 
