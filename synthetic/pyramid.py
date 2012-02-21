@@ -8,25 +8,13 @@ import numpy as np
 import os
 from synthetic.dataset import Dataset
 import scipy.cluster.vq as sp
-from collections import Counter
-from numpy.ma.core import floor
 from scipy import io 
 from synthetic.image import Image
+from synthetic.extractor import count_histogram_for_bin,\
+  count_histogram_for_slice
 
-
-def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
-  indices = np.matrix(np.arange(positions.shape[0]))
-  indices = indices.reshape(positions.shape[0], 1)
-  positions = np.asarray(np.hstack((positions, indices)))
-  if not positions.size == 0:  
-    positions = positions[positions[:, 0] > xmin, :]
-  if not positions.size == 0:
-    positions = positions[positions[:, 0] <= xmax, :]
-  if not positions.size == 0:  
-    positions = positions[positions[:, 1] > ymin, :]
-  if not positions.size == 0:
-    positions = positions[positions[:, 1] <= ymax, :]
-  return np.asarray(positions[:, 2], dtype='int32')
+def get_pyr_feat_size(L, M):
+  return (4**(L+1)-1)/3.*M
 
 # This code should be in Extractor!
 def extract_pyramid(L, positions, assignments, codebook, image):
@@ -39,19 +27,7 @@ def extract_pyramid(L, positions, assignments, codebook, image):
   #finest level
   for i in range(num_bins):
     for j in range(num_bins):
-      xmin = floor(im_width / num_bins * i)
-      xmax = floor(im_width / num_bins * (i + 1))
-      ymin = floor(im_height / num_bins * j)
-      ymax = floor(im_height / num_bins * (j + 1))
-      indices = get_indices_for_pos(positions, xmin, xmax, ymin, ymax)
-      if indices.size == 0:
-        bin_ass = np.matrix([])
-      else:
-        bin_ass = assignments[indices][:,2]
-        
-      bin_ass = bin_ass.reshape(1,bin_ass.size)[0] - 1
-      counts = Counter(bin_ass)
-      histogram = [counts.get(x,0) for x in range(codebook.shape[0])]
+      [bin_ass, histogram] = count_histogram_for_bin(positions, assignments, im_width, im_height, num_bins, i, j, M)
       if not len(bin_ass) == 0:
         histogram_level[i,j,:] = np.divide(histogram,float(assignments.shape[0]))
       else:
@@ -87,35 +63,37 @@ def extract_pyramid(L, positions, assignments, codebook, image):
   pyramid = np.matrix(pyramid)
   return pyramid
 
-from synthetic.extractor import Extractor
-if __name__=='__main__':
-  # Load codebook and
-  spatial_pyr_root = '/home/tobibaum/Documents/Vision/research/SpatialPyramid/data2/'
-  mdict = {}
-  io.loadmat(spatial_pyr_root + 'p1010843_hist_200.mat', mdict)
-  thehist = mdict['H']
-  io.loadmat(spatial_pyr_root + 'p1010843_texton_ind_200.mat', mdict)
-  data = mdict['texton_ind'][0][0][0]
-  x = mdict['texton_ind'][0][0][1]
-  y = mdict['texton_ind'][0][0][2]
-  ass = np.hstack((x,y,data))
-  image = Image()
-  image.size = (640,480)
-  
-  
-  cls = 'dog'
-  d = Dataset('full_pascal_val')
-  e = Extractor()
-  pos_images = d.get_pos_samples_for_class(cls) 
-  codebook_file = "/home/tobibaum/Documents/Vision/data/features/dsift/codebooks/dog_15_200"
-  #codebook = np.loadtxt(codebook_file) 
-  L = 2
-  codebook = np.zeros((200,6))
-  pyr = extract_pyramid(L, ass[:,0:2], ass, codebook, image)
-  print pyr
-  io.savemat(spatial_pyr_root + 'python_pyr.mat', {'pyr':pyr})
-#  for img_idx in pos_images:
-#    image = d.images[img_idx.astype('int32')]
-#    assignments = e.get_assignments(np.matrix([[0,0],[1000,1000]]),'dsift',codebook,cls,image)
-#    pyr = extract_pyramid(L, assignments[0:2],assignments, codebook, image)
-#    print pyr
+def extract_horiz_sclices(num_bins, assignments, image, num_words):
+  im_width = image.size[0]
+  im_height = image.size[1]
+  slices = []
+  for i in range(num_bins):
+    hist = np.matrix(count_histogram_for_slice(assignments, im_width, im_height, \
+                        num_bins, i, num_words)[1])
+    hist_sum = float(np.sum(hist))
+    slices.append(hist/hist_sum)
+  return slices
+
+if __name__ =='__main__':
+  assignments = np.zeros((25,3))
+  ind = 0
+  for i in range(5):
+    for j in range(5):
+      ass = 1
+      if (i, j) == (1,1) or (i, j) == (2,1) or (i, j) == (3,1):
+        ass = 2
+      if (i, j) == (1,2) or (i, j) == (2,2) or (i, j) == (3,2):
+        ass = 3
+      if (i, j) == (1,3) or (i, j) == (2,3) or (i, j) == (3,3):
+        ass = 4
+      assignments[ind, :] = np.matrix([[i, j, ass]])
+      ind += 1
+  image = Image(size=(5,5))
+  num_words = 4
+  slices = extract_horiz_sclices(3, assignments, image, num_words)
+  corr_stack = np.matrix([[7, 3, 0, 0],[2, 0, 3, 0],[7, 0, 0, 3]])
+  slice_stack = np.vstack(slices)
+  assert(corr_stack.all() == slice_stack.all())
+  #print slices
+    
+    

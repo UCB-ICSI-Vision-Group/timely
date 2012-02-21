@@ -104,3 +104,22 @@ class TestDataset:
           [ 239.,  156.,   69.,   50.,    8.,   1.]])
     print(gt)
     assert np.all(gt == correct)
+
+  def test_get_pos_windows(self):
+    d = Dataset('test_pascal_val')
+    
+  def test_kfold(self):
+    """
+    'sizes' here are empirical values over the trainval set.
+    """
+    d = Dataset('full_pascal_trainval')
+    numfolds = 4
+    d.create_folds(numfolds)
+    cls = 'dog'
+    sizes = [314, 308, 321, 320]
+    for i in range(len(d.folds)):
+      d.next_folds()
+      pos = d.get_pos_samples_for_fold_class(cls)
+      neg = d.get_neg_samples_for_fold_class(cls, pos.shape[0])
+      assert(pos.shape[0] == sizes[i])
+      assert(neg.shape[0] == sizes[i])

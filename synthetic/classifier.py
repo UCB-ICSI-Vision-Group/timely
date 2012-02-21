@@ -84,7 +84,7 @@ class Classifier():
     return ret
   
   def load_svm(self, cls):
-    model = load_svm(config.get_classifier_filename(self,cls))
+    model = load_svm(config.get_classifier_svm_filename(self,cls))
     return model
   
   def test_svm(self, test_dataset, feats, intervals, kernel, lower, upper, \
@@ -175,7 +175,7 @@ class Classifier():
       cls = classes[int(row[6])]
       svm_name = cls + '_' + str(row[2]) + '_' + \
         str(row[3]) + '_' + str(row[4])
-      os.system('cp ' + config.save_dir + self.name+ '_svm_'+self.suffix+'/' + str(kernels[int(row[0])]) +\
+      os.system('cp ' + config.data_dir + self.name+ '_svm_'+self.suffix+'/' + str(kernels[int(row[0])]) +\
                 '/' + str(int(row[1])) + '/' + svm_name + ' ' + svm_save_dir + cls)
       score = row[5]
       score_sum += score

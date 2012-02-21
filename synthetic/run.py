@@ -143,7 +143,7 @@ def main():
     for cls in dataset.classes:
       dirname = config.get_jumping_windows_dir(dataset.get_name())
       filename = os.path.join(dirname,'%s'%cls)
-      if os.path.isfile(config.save_dir + 'JumpingWindows/'+cls):
+      if os.path.isfile(config.data_dir + 'JumpingWindows/'+cls):
         sw.evaluate_recall(cls, filename, metaparams=None, mode='jw', plot=True)
 
   if args.mode=='train_svm':
@@ -166,9 +166,9 @@ def main():
     kernel = args.kernel
     
     if mpi_rank == 0:
-      ut.makedirs(config.save_dir + 'features/' + feature_type + '/times/')
-      ut.makedirs(config.save_dir + 'features/' + feature_type + '/codebooks/times/')
-      ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/train_times/')
+      ut.makedirs(config.data_dir + 'features/' + feature_type + '/times/')
+      ut.makedirs(config.data_dir + 'features/' + feature_type + '/codebooks/times/')
+      ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/train_times/')
       
     for cls_idx in range(mpi_rank, len(classes), mpi_size): 
     #for cls in classes:

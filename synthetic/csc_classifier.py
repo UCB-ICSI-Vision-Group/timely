@@ -65,7 +65,7 @@ def csc_classifier_train():
     cls_idx = params[4]
     C = params[5]
     cls = config.pascal_classes[cls_idx]
-    filename = config.save_dir + csc_classif.name + '_svm_'+csc_classif.suffix+'/'+ kernel + '/' + str(intervalls) + '/'+ \
+    filename = config.data_dir + csc_classif.name + '_svm_'+csc_classif.suffix+'/'+ kernel + '/' + str(intervalls) + '/'+ \
       cls + '_' + str(lower) + '_' + str(upper) + '_' + str(C)
     
     if not os.path.isfile(filename):

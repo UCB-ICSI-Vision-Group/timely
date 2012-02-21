@@ -281,6 +281,7 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
     numcenters = a.shape[0]
   ccmat = np.zeros((numcenters, len(d.classes)*grids*grids+1))
   e = Extractor()
+
   #first_visit = True
   print 'Read all features to create weights'
   tocer.tic()
@@ -456,7 +457,7 @@ def generate_jwin(bbinfo, im, cls, codes, pts, feature = 'sift'):
     
   elif feature == 'sift':
     annots = codes
-  
+ 
   return bbinfo.compute_top_boxes(annots, annots[:,0:2], K=3000, cut_tolerance = 0.5, feature_type = 'llc')
   
 
@@ -493,9 +494,11 @@ if __name__=='__main__':
     codebook = e.get_codebook(d, 'sift')
     ut.makedirs(join(config.data_dir, 'jumping_window','lookup'))
     train_jumping_windows(d, codebook, use_scale=use_scale,trun=True,diff=False, feature=feature)
+
   
   debug = True
   just_eval = True
+
   if just_eval:
     basedir = join(config.data_dir, 'jumping_window')
     foldname_det = join(basedir, 'detections')    

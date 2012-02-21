@@ -70,6 +70,8 @@ VOC_dir = join(data_dir, 'VOC%(year)s/')%{'year':VOCyear}
 pascal_paths = {
     'test_pascal_train':    join(test_support_dir,'train.txt'),
     'test_pascal_val':      join(test_support_dir,'val.txt'),
+    'test_pascal_train_tobi':    join(test_support_dir,'train_tobi.txt'),
+    'test_pascal_val_tobi':      join(test_support_dir,'val_tobi.txt'),
     'full_pascal_train':    join(VOC_dir,'ImageSets/Main/train.txt'),
     'full_pascal_val':      join(VOC_dir,'ImageSets/Main/val.txt'),
     'full_pascal_trainval': join(VOC_dir,'ImageSets/Main/trainval.txt'),
@@ -160,6 +162,10 @@ def get_ext_dets_filename(dataset, suffix):
 # GIST
 #####
 # results/gist_features/
+
+#####
+# GIST
+#####
 gist_dir = makedirs(join(res_dir, 'gist_features'))
 
 # results/gist_features/full_pascal_trainval.npy
@@ -198,6 +204,47 @@ def get_classifier_dirname(classifier):
 
 def get_classifier_filename(classifier,cls):
   return join(get_classifier_dirname(classifier), cls)
+
+def get_classifier_svm_name(cls, C, gamma, current_fold):
+  dirname = join(res_dir, 'classify_svm')
+  makedirs(dirname) 
+  if current_fold == -1: 
+    filename = join(dirname, '%s_%f_%f'%(cls, C, gamma))
+  else:
+    filename = join(dirname, '%s_%f_%f_%d'%(cls, C, gamma, current_fold))
+      
+  return filename
+
+def get_classifier_featvect_name(img):
+  dirname = join(res_dir, 'classify_featvects')
+  makedirs(dirname) 
+  return join(dirname, img.name[:-4])
+
+def get_classifier_score_name(img):
+  dirname = join(res_dir, 'classify_scores')
+  makedirs(dirname) 
+  return join(dirname, img.name[:-4])
+
+def get_classifier_crossval():
+  dirname = join(res_dir, 'classify_scores')
+  makedirs(dirname) 
+  return join(dirname, 'crossval.txt')
+
+#####
+# Feature Extraction
+#####
+def get_image_path(image):
+  return join(VOC_dir, 'JPEGImages/', image.name)
+
+def get_assignments_path(feature, image):
+  dirname = join(data_dir, feature, 'assignments/')
+  makedirs(dirname)
+  return join(dirname, image.name[0:-4])
+
+def get_codebook_path(feature):
+  dirname = join(data_dir, feature, 'codebooks')
+  makedirs(dirname)
+  return join(dirname, 'codebook')
 
 #####
 # External detections
