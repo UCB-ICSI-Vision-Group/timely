@@ -104,8 +104,9 @@ def train_all_svms(cc, Cs, gammas, numfolds=4):
     cc.d.create_folds(numfolds)
 
 
-def cross_valid_training(cc, Cs, gammas, numfolds=4):
-  train_all_svms(cc, Cs, gammas, numfolds=numfolds)
+def cross_valid_training(cc, Cs, gammas, numfolds=4, train=True):
+  if train:
+    train_all_svms(cc, Cs, gammas, numfolds=numfolds)
   
   all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
 
@@ -127,7 +128,7 @@ def cross_valid_training(cc, Cs, gammas, numfolds=4):
       print 'correct:', class_corr
       #break
     accuracy = float(class_corr)/float(overall)
-    filename = config.get_classifier_crossval()
+    filename = config.get_classifier_crossval(cls)
     writef = open(filename, 'a')
     writef.write('%f %f - %f\n'%(C, gamma, accuracy))
     cc.d.create_folds(numfolds)
@@ -283,8 +284,8 @@ if __name__=='__main__':
   Cs = [1, 2, 5, 10, 50, 100, 200, 500]
   gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
   
-  train_all_svms(cc, Cs, gammas, numfolds=4)
-  #cross_valid_training(cc, Cs, gammas, numfolds)
+  #train_all_svms(cc, Cs, gammas, numfolds=4)
+  cross_valid_training(cc, Cs, gammas, numfolds, train=False)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
 #  
