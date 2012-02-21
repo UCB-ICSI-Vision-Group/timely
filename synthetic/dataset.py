@@ -1,4 +1,5 @@
 from PIL import Image as PILImage
+from sklearn.cross_validation import KFold
 
 from common_mpi import *
 from common_imports import *
@@ -61,6 +62,7 @@ class Dataset:
     self.classes = []
     self.images = []
     self.name = name
+    self.current_fold = -1
     if re.search('pascal', name):
       self.load_from_pascal(name,force)
     elif name == 'data1':
@@ -193,6 +195,8 @@ class Dataset:
     """
     Return array of indices of self.images that contain no objects of this class.
     """
+    if number == 0:
+      return np.array([])
     pos_indices = self.get_pos_samples_for_class(cls,include_diff,include_trun)
     neg_indices = np.setdiff1d(np.arange(len(self.images)),pos_indices,assume_unique=True)
     # TODO tobi: why do these have to be ordered?
@@ -260,4 +264,54 @@ class Dataset:
   @classmethod
   def get_gt_cols(cls):
     return Image.get_gt_cols() + ['img_ind']
-
+      
+  def create_folds(self, numfolds):
+    """
+    Split the images of dataset in numfolds folds,
+    Dataset has an inner state about current fold (This is like an implicit 
+    generator)
+    """
+    folds = KFold(len(self.images), numfolds)
+    self.folds = []
+    for fold in folds:
+      self.folds.append(fold)
+    self.current_fold = 0
+    
+  def next_folds(self):
+    if self.current_fold < len(self.folds):
+      fold = self.folds[self.current_fold]
+      self.current_fold += 1
+      self.train, self.val = fold
+      if type(self.train[0]) == type(np.array([True])[0]):
+        self.train = np.where(self.train)[0]
+        self.val = np.where(self.val)[0]
+      return fold
+    if self.current_fold >= len(self.folds):
+      self.current_fold = 0
+      return 0
+  
+  def get_fold_by_index(self, ind):
+    """
+    Random access to folds
+    """
+    if ind >= len(self.folds):
+      raise RuntimeError('Try to access non-existing fold')
+    else:
+      return self.folds[ind]
+  
+  def get_pos_samples_for_fold_class(self, cls, include_diff=False,
+      include_trun=True):
+    if not hasattr(self, 'train'):
+      return self.get_pos_samples_for_class(cls, include_diff, include_trun)
+    all_pos = self.get_pos_samples_for_class(cls, include_diff, include_trun)
+    return np.intersect1d(all_pos, self.train)
+  
+  def get_neg_samples_for_fold_class(self, cls, num_samples, include_diff=False,
+      include_trun=True):
+    if not hasattr(self, 'train'):
+      return self.get_neg_samples_for_class(cls, include_diff=include_diff, include_trun=include_trun)
+    all_neg = self.get_neg_samples_for_class(cls, include_diff=include_diff, include_trun=include_trun)
+    intersect = np.intersect1d(all_neg, self.train)
+    if intersect.size == 0:
+      return np.array([])
+    return np.array(ut.random_subset(intersect, num_samples))

@@ -60,7 +60,7 @@ def chi_square_kernel(x, y):
       chi_sum += 2*(x[i] - y[i])**2/(x[i] + y[i])
   return chi_sum
 
-def train_svm(x, y, kernel='chi2',C=1.0,probab=False):
+def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=False):
   """
   Train a svm.
   x - n x features data
@@ -80,8 +80,11 @@ def train_svm(x, y, kernel='chi2',C=1.0,probab=False):
     t_gram = time.time() - t_gram
     print 'computed gram-matrix in',t_gram,'seconds'
     clf.fit(gram, y)
-  elif kernel == 'rbf' or kernel == 'linear':
-    clf = SVC(kernel=kernel,C=C, probability=probab)
+  elif kernel == 'rbf':
+    clf = SVC(kernel=kernel, C=C, probability=probab, gamma=gamma)
+    clf.fit(x, y)
+  elif kernel == 'linear':
+    clf = SVC(kernel=kernel, C=C, probability=probab)
     clf.fit(x, y)
   else:
     raise RuntimeError("Unknown kernel passed to train_svm")  
@@ -189,9 +192,9 @@ def train_with_hard_negatives(d, dtest,cbwords, cbsamps, codebook, cls, pos_tabl
   
   classification = np.asarray([1]*pos_table.arr.shape[0] + [-1]*neg_table.arr.shape[0])
   
-  filename = config.save_dir + 'features/' + feature_type + '/svms/' + kernel + \
+  filename = config.data_dir + 'features/' + feature_type + '/svms/' + kernel + \
         '/'+ cls
-  ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/' + kernel)
+  ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/' + kernel)
   
     
   # with that we now determined our whole dataset D  
@@ -323,9 +326,9 @@ if __name__=='__main__':
 #  num_pos = 1
 
   if mpi_rank == 0:
-    ut.makedirs(config.save_dir + 'features/' + feature_type + '/times/')
-    ut.makedirs(config.save_dir + 'features/' + feature_type + '/codebooks/times/')
-    ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/train_times/')
+    ut.makedirs(config.data_dir + 'features/' + feature_type + '/times/')
+    ut.makedirs(config.data_dir + 'features/' + feature_type + '/codebooks/times/')
+    ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/train_times/')
     
   for cls_idx in range(mpi_rank, len(classes), mpi_size): 
   #for cls in classes:
