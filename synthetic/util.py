@@ -17,6 +17,10 @@ class Table:
     self.cols = cols
     self.name = name
 
+  def set_arr(self,arr):
+    "Make sure that arr is at least 2d and set self.arr to it."
+    self.arr = np.atleast_2d(arr)
+
   def __deepcopy__(self):
     "Make a deep copy of the Table and return it."
     ret = Table()
@@ -93,6 +97,16 @@ class Table:
   ###################
   # Filtering
   ###################
+  def row_subset(self,row_inds):
+    "Return Table with only the specified rows."
+    return Table(arr=self.row_subset_arr(row_inds), cols=self.cols)
+
+  def row_subset_arr(self,row_inds):
+    "Return self.arr with only the specified rows."
+    if isinstance(row_inds,np.ndarray):
+      row_inds = row_inds.tolist()
+    return np.take(self.arr,row_inds,axis=0)
+
   def subset(self,col_names):
     "Return Table with only the specified col_names, in order."
     return Table(arr=self.subset_arr(col_names), cols=col_names)
@@ -106,12 +120,15 @@ class Table:
     return self.arr[:,inds]
 
   def sort_by_column(self,ind_name,descending=False):
-    "Modifies self to sort arr by column."
+    """
+    Modify self to sort arr by column. Return self.
+    """
     if descending:
       sorted_inds = np.argsort(-self.arr[:,self.cols.index(ind_name)])
     else:
       sorted_inds = np.argsort(self.arr[:,self.cols.index(ind_name)])
     self.arr = self.arr[sorted_inds,:]
+    return self
 
   def filter_on_column(self,ind_name,val,op=operator.eq,omit=False):
     """
