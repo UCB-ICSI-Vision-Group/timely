@@ -223,6 +223,8 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
       for gamma in gammas:
         filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel)
         
+        if os.path.isfile(filename):
+          continue
         X = np.vstack((pos_pyrs_fold, neg_pyrs_fold))
         Y = [1]*pos_pyrs_fold.shape[0] + [-1]*neg_pyrs_fold.shape[0] 
         
