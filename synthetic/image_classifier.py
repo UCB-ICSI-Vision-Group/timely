@@ -291,7 +291,7 @@ if __name__=='__main__':
   tictocer = TicToc()
   tictocer.tic('overall')
   
-  test = True
+  test = False
   if test:
     train_dataset = 'test_pascal_train_tobi'
     eval_dataset = 'test_pascal_val_tobi'
