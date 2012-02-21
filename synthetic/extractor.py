@@ -225,7 +225,7 @@ class Extractor():
     try:
       feature = np.loadtxt(filename)
     except ValueError:
-      print 'loading feature for', img.name[0:-4],'failed, redoing it!...'
+      print 'EXCEPT: loading feature for', img.name[0:-4],'failed, redoing it!...'
       os.remove(filename)
       return self.get_feature_with_pos(feature, img, bound_box)
     
@@ -368,7 +368,7 @@ class Extractor():
                                         num_bins=1, i=0, j=0, \
                                         num_words=num_words)
     except:
-      print 'Error in count_histo.'
+      print 'EXCEPT: Error in count_histo.'
       print '\t** ass', ass
     return np.asmatrix(histogram)/float(ass.shape[0])    
 

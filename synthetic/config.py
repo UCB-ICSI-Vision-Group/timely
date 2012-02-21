@@ -202,8 +202,11 @@ def get_classifier_svm_name(cls, C, gamma, current_fold, kernel):
       
   return filename
 
-def get_classifier_featvect_name(img):
-  dirname = join(res_dir, 'classify_featvects')
+def get_classifier_featvect_name(img, temp=True):
+  if temp:
+    dirname = join(temp_data_dir, 'classify_featvects')
+  else:
+    dirname = join(res_dir, 'classify_featvects')
   makedirs(dirname) 
   return join(dirname, img.name[:-4])
 
