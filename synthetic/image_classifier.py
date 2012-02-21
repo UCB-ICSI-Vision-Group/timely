@@ -25,6 +25,17 @@ class ClassifierConfig():
     self.tictocer = TicToc()
     self.L = L
     self.numfolds = numfolds
+    self.ff = FeatVectory(self)
+
+class FeatVectory():
+  def __init__(self, cc):
+    self.feat_vectors = {}
+    self.cc = cc
+  
+  def get_feature_vector(self, img_idx):
+    if not img_idx in self.feat_vectors:
+      self.feat_vectors[img_idx] = get_feature_vector(self.cc, img_idx)      
+    return self.feat_vectors[img_idx]
   
 def get_feature_vector(cc, img, quiet=False):
   """
@@ -86,7 +97,7 @@ def compute_feature_vector(cc, img_idx, quiet=False):
 
 
 def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
-    
+  cc.d.create_folds(numfolds)
   if train:
     for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
       cls = cc.d.classes[cls_idx]
@@ -107,7 +118,7 @@ def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
       cc.d.next_folds()
       val_set = cc.d.val     
       
-      classification = classify_images(cc, val_set, C, gamma)
+      classification = classify_images(cc, val_set, C, gamma, kernel=kernel)
       overall += classification.size
       class_corr += validate_images(cc, val_set, classification)
       print 'correct:', class_corr
@@ -118,15 +129,15 @@ def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
     writef.write('%f %f - %f\n'%(C, gamma, accuracy))
     cc.d.create_folds(numfolds)
 
-def classify_images(cc, images, C, gamma):
+def classify_images(cc, images, C, gamma, kernel='rbf'):
   res = np.zeros((images.shape[0], len(cc.d.classes)))
   for cls_idx, cls in enumerate(cc.d.classes):
-    filename = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold)
+    filename = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel)
     if not os.path.exists(filename):
       continue
     clf = load_svm(filename, probability=False)
     for idx2, img_idx in enumerate(images):
-      x = get_feature_vector(cc, img_idx)
+      x = cc.ff.get_feature_vector(img_idx)
       pred = svm_predict(x, clf)
       if pred.size > 0:
         res[idx2, cls_idx] = 1
@@ -280,7 +291,7 @@ if __name__=='__main__':
   tictocer = TicToc()
   tictocer.tic('overall')
   
-  test = False
+  test = True
   if test:
     train_dataset = 'test_pascal_train_tobi'
     eval_dataset = 'test_pascal_val_tobi'
