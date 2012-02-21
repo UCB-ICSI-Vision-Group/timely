@@ -195,6 +195,15 @@ def get_classifier_learning_eval_filename(classifier,cls,kernel,intervals,lower,
   dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))
   return join(dirname, "eval_%d_%d_%d"%(lower,upper,C))
 
+def get_classifier_svm_name(cls, C, gamma, current_fold):
+  dirname = join(res_dir, 'classify_svm')
+  makedirs(dirname) 
+  if current_fold == -1: 
+    filename = join(dirname, '%s_%f_%f'%(cls, C, gamma))
+  else:
+    filename = join(dirname, '%s_%f_%f_%d'%(cls, C, gamma, current_fold)) 
+  return filename
+
 # final
 def get_classifier_dirname(classifier):
   name = classifier.name+'_svm'
@@ -204,16 +213,6 @@ def get_classifier_dirname(classifier):
 
 def get_classifier_filename(classifier,cls):
   return join(get_classifier_dirname(classifier), cls)
-
-def get_classifier_svm_name(cls, C, gamma, current_fold):
-  dirname = join(res_dir, 'classify_svm')
-  makedirs(dirname) 
-  if current_fold == -1: 
-    filename = join(dirname, '%s_%f_%f'%(cls, C, gamma))
-  else:
-    filename = join(dirname, '%s_%f_%f_%d'%(cls, C, gamma, current_fold))
-      
-  return filename
 
 def get_classifier_featvect_name(img):
   dirname = join(res_dir, 'classify_featvects')
