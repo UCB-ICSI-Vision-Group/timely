@@ -245,10 +245,8 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
           print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
           
           print 'save as', filename
-          try:
-            save_svm(clf, filename)
-          except:
-            print 'EXCEPT: svm %s could not be saved :/'%filename
+          save_svm(clf, filename)
+          
         else:
           print 'Don\'t compute SVM, no examples given'
         
