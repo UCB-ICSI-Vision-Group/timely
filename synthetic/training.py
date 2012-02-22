@@ -99,10 +99,14 @@ def svm_proba(x, clf):
   return clf.predict_proba(x)
 
 def save_svm(model, filename):
-  dump = pickle.dumps(model)
-  f = open(filename, 'w')
-  f.write(dump)
-  f.close()
+  try:
+    dump = pickle.dumps(model)
+    f = open(filename, 'w')
+    f.write(dump)
+    f.close()
+  except:
+    print 'File %s is too big, split it...'%filename
+    ut.keyboard()
 
 def load_svm(filename, probability=True):
   dump = open(filename).read()
