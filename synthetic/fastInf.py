@@ -67,7 +67,7 @@ def write_out_mrf(table, num_bins, filename, data_filename):
     wm.write('.1 ')
   wm.write('\n')
   for i in range(num_vars):
-    wm.write('mes%d\t2 %d'%(i+1, num_bins))
+    wm.write('mes%d\t2\t2 %d'%(i+1, num_bins))
     wm.write('\t')
     for _ in range(num_bins*2):
       wm.write('.1 ')
@@ -138,7 +138,7 @@ def execute_lbp(filename_mrf, filename_data):
   
 if __name__=='__main__':
   num_clss = 3
-  num_bins = 8
+  num_bins = 2
   filename = config.get_fast_inf_mrf_file()
   data_filename = config.get_fast_inf_data_file()
   
