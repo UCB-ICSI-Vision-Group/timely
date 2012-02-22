@@ -104,13 +104,12 @@ def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
       train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
   
   safebarrier(comm)
-  all_settings = list(itertools.product(Cs, gammas, cc.d.classes))
+  all_settings = list(itertools.product(Cs, gammas))
 
   for set_idx in range(mpi_rank, len(all_settings), mpi_size): # Parallel
     curr_set = all_settings[set_idx]
     C = curr_set[0]
     gamma = curr_set[1]
-    cls = curr_set[2]
     class_corr = 0
     overall = 0
         
@@ -124,7 +123,7 @@ def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
       print 'correct:', class_corr
       #break
     accuracy = float(class_corr)/float(overall)
-    filename = config.get_classifier_crossval(cls)
+    filename = config.get_classifier_crossval()
     writef = open(filename, 'a')
     writef.write('%f %f - %f\n'%(C, gamma, accuracy))
     cc.d.create_folds(numfolds)
