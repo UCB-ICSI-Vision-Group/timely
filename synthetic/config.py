@@ -266,3 +266,8 @@ def get_fast_inf_data_file():
   dirname = join(res_dir, 'mrf')
   makedirs(dirname)
   return join(dirname, 'data.txt')
+
+def get_fast_inf_res_file():
+  dirname = join(res_dir, 'mrf')
+  makedirs(dirname)
+  return join(dirname, 'res.txt')
