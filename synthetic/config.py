@@ -253,3 +253,16 @@ def get_dets_test_wholeset_dir():
 
 def get_dets_nov19():
   return join(res_dir, 'dets_nov19')
+
+#####
+# Inference
+#####
+def get_fast_inf_mrf_file():
+  dirname = join(res_dir, 'mrf')
+  makedirs(dirname)
+  return join(dirname, 'mrf.txt')
+  
+def get_fast_inf_data_file():
+  dirname = join(res_dir, 'mrf')
+  makedirs(dirname)
+  return join(dirname, 'data.txt')
