@@ -99,7 +99,8 @@ def compute_feature_vector(cc, img_idx, quiet=False):
 def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
   cc.d.create_folds(numfolds)
   if train:
-    for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
+    for cls_idx in range(cc.d.classes):
+    #for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
       cls = cc.d.classes[cls_idx]
       train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
   
@@ -185,6 +186,8 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
     for current_fold in range(numfolds):
       filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel)
       if not os.path.isfile(filename):
+        # do this! mark it as mine.
+        open(filename, 'w')
         all_exist = False
         break
   if all_exist:
