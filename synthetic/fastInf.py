@@ -58,7 +58,7 @@ def write_out_mrf(table, num_bins, filename, data_filename):
   #===========
   wd = open(data_filename, 'w')
   for rowdex in range(table.shape[0]):
-    wd.write('(')
+    wd.write('( ')
     for i in range(table.shape[1]):
       wd.write('%d '%table[rowdex, i])    
     wd.write(')\n')
