@@ -104,16 +104,21 @@ def save_svm(model, filename):
   data_size = data.size
   # A model of feature_vect_size 50000000 will be 1.5G big which is close
   # to the max cPickle seems to be able to handle
-  if data_size > 50000000:
-    splits = ceil(data_size/50000000.)
-    #first part gets all the model stuff, the other just hold support vectors
-    model.support_vectors_ = [splits, data.shape]
-    part_size = data_size/float(splits)
-    for split in range(splits):
-      filename_part = '%s_%d'%(filename, split)
-      data_part = data[split*part_size:(split+1)*part_size,:]
-      cPickle.dump(data_part, open(filename_part, 'w'))      
-  cPickle.dump(model, open(filename, 'w'))
+  try:
+    if data_size > 50000000:
+      splits = int(ceil(data_size/50000000.))
+      print 'splits: ', splits
+      #first part gets all the model stuff, the other just hold support vectors
+      model.support_vectors_ = [splits, data.shape]
+      part_size = data_size/float(splits)
+      print 'part_size: ', part_size
+      for split in range(splits):
+        filename_part = '%s_%d'%(filename, split)
+        data_part = data[split*part_size:(split+1)*part_size,:]
+        np.savetxt(filename_part, data_part)      
+    cPickle.dump(model, open(filename, 'w'))
+  except:
+    ut.keyboard()
 
 
 def load_svm(filename, probability=True):
@@ -127,7 +132,7 @@ def load_svm(filename, probability=True):
     part_size = data_size/float(splits)
     for split in splits:
       filename_part = '%s_%d'%(filename, split)
-      data[split*part_size:(split+1)*part_size,:] = cPickle.load(open(filename_part, 'r'))
+      data[split*part_size:(split+1)*part_size,:] = np.loadtxt(filename_part)
     model.support_vectors_ = data
   return model
 

@@ -17,7 +17,7 @@ mpi_rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 
 class ClassifierConfig():
-  def __init__(self, dataset, L, numfolds=4):
+  def __init__(self, dataset, L=1, numfolds=4):
     self.d = Dataset(dataset)
     self.e = Extractor()
     self.dense_codebook = self.e.get_codebook(self.d, 'dsift')
@@ -99,58 +99,58 @@ def compute_feature_vector(cc, img_idx, quiet=False):
 def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
   cc.d.create_folds(numfolds)
   if train:
-    # TODO: switch back!!
-    #for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
-    for cls_idx in [14]:
+    for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
       cls = cc.d.classes[cls_idx]
       train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
   
   safebarrier(comm)
+  print 'completed training all svms'
   all_settings = list(itertools.product(Cs, gammas))
 
-  for set_idx in range(mpi_rank, len(all_settings), mpi_size): # Parallel
-    curr_set = all_settings[set_idx]
-    C = curr_set[0]
-    gamma = curr_set[1]
-    class_corr = 0
-    overall = 0
-        
-    for _ in range(numfolds):
-      cc.d.next_folds()
-      val_set = cc.d.val     
-      
-      classification = classify_images(cc, val_set, C, gamma, kernel=kernel)
-      overall += classification.size
-      class_corr += validate_images(cc, val_set, classification)
-      print 'correct:', class_corr
-      #break
-    accuracy = float(class_corr)/float(overall)
-    filename = config.get_classifier_crossval()
-    writef = open(filename, 'a')
-    writef.write('%f %f - %f\n'%(C, gamma, accuracy))
-    cc.d.create_folds(numfolds)
-
-def classify_images(cc, images, C, gamma, kernel='rbf'):
-  res = np.zeros((images.shape[0], len(cc.d.classes)))
   for cls_idx, cls in enumerate(cc.d.classes):
-    filename = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel)
-    if not os.path.exists(filename):
-      continue
-    clf = load_svm(filename, probability=False)
-    for idx2, img_idx in enumerate(images):
-      x = cc.ff.get_feature_vector(img_idx)
-      pred = svm_predict(x, clf)
-      if pred.size > 0:
-        res[idx2, cls_idx] = 1
+    for set_idx in range(mpi_rank, len(all_settings), mpi_size): # Parallel
+      curr_set = all_settings[set_idx]
+      C = curr_set[0]
+      gamma = curr_set[1]
+      class_corr = 0
+      overall = 0
+        
+      for _ in range(numfolds):
+        cc.d.next_folds()
+        val_set = cc.d.val     
+        
+        classification = classify_images(cc, cls, val_set, C, gamma, kernel=kernel)
+        overall += classification.size
+        class_corr += validate_images(cc, cls_idx, val_set, classification)
+        #break
+      accuracy = float(class_corr)/float(overall)
+      filename = config.get_classifier_crossval(cls)
+      writef = open(filename, 'a')
+      writef.write('%f %f - %f\n'%(C, gamma, accuracy))
+      cc.d.create_folds(numfolds)
+
+def classify_images(cc, cls, images, C, gamma, kernel='rbf'):
+  res = np.zeros((images.shape[0],))
+
+  filename = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel)
+  if not os.path.exists(filename):
+    return res
+  clf = load_svm(filename, probability=False)
+  for idx2, img_idx in enumerate(images):
+    x = cc.ff.get_feature_vector(img_idx)
+    pred = svm_predict(x, clf)
+    if pred.size > 0:
+      res[idx2] = 1
   return res*2-1
 
-def validate_images(cc, image_inds, classifications):
+def validate_images(cc, cls_idx, image_inds, classifications):
   """
   images: list of image indidces 
   classifications: binar classifications (num_img x num_classes) 
   return accuracy
   """
   gt = get_gt_classification(cc, image_inds)
+  gt = gt[:, cls_idx]
   comb = np.where(gt + classifications)[0].size
   return comb
   
@@ -212,15 +212,10 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
   # 2. Compute SVM for class
   cc.d.create_folds(numfolds)
   
-  # TODO: switch back!!
-  #for _ in range(numfolds):
-  for _ in range(1):
+  
+  for _ in range(numfolds):
     cc.d.next_folds()
-    
-    # TODO: switch back!!
-    cc.d.next_folds()
-    cc.d.next_folds()
-    
+        
     # ======== NEGATIVE IMAGES ===========
     print 'compute feature vector for negative images'
     
@@ -307,29 +302,17 @@ if __name__=='__main__':
     train_dataset = 'full_pascal_trainval'
     eval_dataset = 'full_pascal_test'
     numfolds = 4
-    # TODO: switch back!!
-    #Cs = [1, 2, 5, 10, 50, 100, 200, 500]
-    #gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
-    Cs = [1]
-    gammas = [0.8]
-  
-  L = 1  
-  
+    
+    Cs = [1, 2, 5, 10, 50, 100, 200, 500]
+    gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
+    
   safebarrier(comm)  
   # Evaluate  
-  cc = ClassifierConfig(eval_dataset, L)
+  cc = ClassifierConfig(eval_dataset)
   
-  # TODO: switch back!!
-  #for kernel in ['rbf', 'linear']:
-  for kernel in ['rbf']:
+  
+  for kernel in ['rbf', 'linear']:
     cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds, train=True)
-#  gt = get_gt_classification(cc, [0,1])
-#  classific = -np.ones(gt.shape)
-#  
-#  val = validate_images(cc, [0,1], classific)
-#  print gt
-#  print val
   
-  
-  print 'Everything done in %f seconds'%tictocer.toc('overall',quiet=True)
+  print 'Everything done in %f seconds on %d'%(tictocer.toc('overall',quiet=True), mpi_rank)
   
