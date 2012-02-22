@@ -99,7 +99,9 @@ def compute_feature_vector(cc, img_idx, quiet=False):
 def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
   cc.d.create_folds(numfolds)
   if train:
-    for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
+    # TODO: switch back!!
+    #for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
+    for cls_idx in [14]:
       cls = cc.d.classes[cls_idx]
       train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
   
@@ -210,7 +212,13 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
   # 2. Compute SVM for class
   cc.d.create_folds(numfolds)
   
-  for _ in range(numfolds):
+  # TODO: switch back!!
+  #for _ in range(numfolds):
+  for _ in range(1):
+    cc.d.next_folds()
+    
+    # TODO: switch back!!
+    cc.d.next_folds()
     cc.d.next_folds()
     
     # ======== NEGATIVE IMAGES ===========
@@ -239,10 +247,10 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
         Y = [1]*pos_pyrs_fold.shape[0] + [-1]*neg_pyrs_fold.shape[0] 
         
         if X.shape[0] > 0:
-          print 'train svm for class %s, C=%f, gamma=%f, %s'%(cls,C,gamma,kernel)
+          print 'train svm for class %s, C=%f, gamma=%f, %s on %d'%(cls,C,gamma,kernel, mpi_rank)
           cc.tictocer.tic()    
           clf = train_svm(X, Y, kernel=kernel, gamma=gamma, C=C)
-          print '\ttook %f seconds'%cc.tictocer.toc(quiet=True)
+          print '\ttrain svm took %f seconds on %d'%(cc.tictocer.toc(quiet=True),mpi_rank)
           
           print 'save as', filename
           save_svm(clf, filename)
@@ -299,8 +307,11 @@ if __name__=='__main__':
     train_dataset = 'full_pascal_trainval'
     eval_dataset = 'full_pascal_test'
     numfolds = 4
-    Cs = [1, 2, 5, 10, 50, 100, 200, 500]
-    gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
+    # TODO: switch back!!
+    #Cs = [1, 2, 5, 10, 50, 100, 200, 500]
+    #gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
+    Cs = [1]
+    gammas = [0.8]
   
   L = 1  
   
@@ -308,7 +319,9 @@ if __name__=='__main__':
   # Evaluate  
   cc = ClassifierConfig(eval_dataset, L)
   
-  for kernel in ['rbf', 'linear']:
+  # TODO: switch back!!
+  #for kernel in ['rbf', 'linear']:
+  for kernel in ['rbf']:
     cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds, train=True)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
