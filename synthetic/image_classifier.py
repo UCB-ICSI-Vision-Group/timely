@@ -99,9 +99,8 @@ def compute_feature_vector(cc, img_idx, quiet=False):
 def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
   cc.d.create_folds(numfolds)
   if train:
-    for cls_idx in range(cc.d.classes):
+    for cls in cc.d.classes:
     #for cls_idx in range(mpi_rank, len(cc.d.classes), mpi_size): # PARALLEL
-      cls = cc.d.classes[cls_idx]
       train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
   
   safebarrier(comm)
@@ -186,8 +185,6 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
     for current_fold in range(numfolds):
       filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel)
       if not os.path.isfile(filename):
-        # do this! mark it as mine.
-        open(filename, 'w')
         all_exist = False
         break
   if all_exist:
@@ -216,7 +213,7 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
   cc.d.create_folds(numfolds)
   
   
-  for _ in range(numfolds):
+  for fold in range(numfolds):
     cc.d.next_folds()
         
     # ======== NEGATIVE IMAGES ===========
@@ -241,11 +238,14 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
         
         if os.path.isfile(filename):
           continue
+        write = open(filename, 'w')
+        write.write('')
+        write.close()
         X = np.vstack((pos_pyrs_fold, neg_pyrs_fold))
         Y = [1]*pos_pyrs_fold.shape[0] + [-1]*neg_pyrs_fold.shape[0] 
         
         if X.shape[0] > 0:
-          print 'train svm for class %s, C=%f, gamma=%f, %s on %d'%(cls,C,gamma,kernel, mpi_rank)
+          print 'train svm for class %s, C=%f, gamma=%f, %s, fold %d on %d'%(cls,C,gamma,kernel, fold, mpi_rank)
           cc.tictocer.tic()    
           clf = train_svm(X, Y, kernel=kernel, gamma=gamma, C=C)
           print '\ttrain svm took %f seconds on %d'%(cc.tictocer.toc(quiet=True),mpi_rank)

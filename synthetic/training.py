@@ -122,7 +122,11 @@ def save_svm(model, filename):
 
 
 def load_svm(filename, probability=True):
-  model = cPickle.load(open(filename, 'r'))
+  try:
+    model = cPickle.load(open(filename, 'r'))
+  except:
+    print 'could not load svm %s'%filename
+    return
   if os.path.isfile('%s_0'%filename):
     # We have split data here. load all of it.
     splits = model.support_vectors_[0]
