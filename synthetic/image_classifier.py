@@ -310,9 +310,8 @@ if __name__=='__main__':
   # Evaluate  
   cc = ClassifierConfig(eval_dataset, L)
   
-  #train_image_classify_svm(cc, 'dog', Cs, gammas)
   for kernel in ['rbf', 'linear']:
-    cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds, train=False)
+    cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds, train=True)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
 #  
