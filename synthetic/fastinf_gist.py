@@ -24,7 +24,11 @@ def create_gist_model_for_dataset(dataset):
     print 'classify image %s on %d'%(img.name, comm_rank)
     classif = gist.get_priors(img)
     table[idx, :] = np.array(classif)
-    
+  
+  # store individually
+  savefile = '%s_%d'%(config.get_fastinf_data_file(dataset),comm_rank)
+  cPickle.dump(table, open(savefile, 'w'))
+  
   safebarrier(comm)
   if comm_rank == 0:
     print 'computing table took %f seconds'%t.toc(quiet=True)
@@ -69,6 +73,9 @@ def create_tables():
     print table.shape
 
 if __name__=='__main__':
+  create_tables()
+  
+  
   d = Dataset('test_pascal_train_tobi')
   table_gt = d.get_cls_ground_truth().arr.astype(int)
   
