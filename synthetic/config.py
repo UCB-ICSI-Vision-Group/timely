@@ -218,13 +218,13 @@ def get_classifier_score_name(img):
   makedirs(dirname) 
   return join(dirname, img.name[:-4])
 
-def get_classifier_crossval(cls=None):
+def get_classifier_crossval(cls=None,kernel='rbf'):
   dirname = join(res_dir, 'classify_scores')
   makedirs(dirname) 
   if cls == None:
     return join(dirname, 'crossval.txt')
   else:
-    return join(dirname, 'crossval_%s.txt'%cls)
+    return join(dirname, 'crossval_%s_%s.txt'%(cls,kernel))
 #####
 # Feature Extraction
 #####

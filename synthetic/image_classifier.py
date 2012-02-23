@@ -104,7 +104,7 @@ def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
       train_image_classify_svm(cc, cls=cls, Cs=Cs, kernel=kernel, gammas=gammas)
   
   safebarrier(comm)
-  print 'completed training all svms'
+  print 'completed training all svms for kernel %s'%kernel
   all_settings = list(itertools.product(Cs, gammas))
 
   for cls_idx, cls in enumerate(cc.d.classes):
@@ -124,7 +124,7 @@ def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
         class_corr += validate_images(cc, cls_idx, val_set, classification)
         #break
       accuracy = float(class_corr)/float(overall)
-      filename = config.get_classifier_crossval(cls)
+      filename = config.get_classifier_crossval(cls, kernel)
       writef = open(filename, 'a')
       writef.write('%f %f - %f\n'%(C, gamma, accuracy))
       cc.d.create_folds(numfolds)
@@ -133,8 +133,13 @@ def classify_images(cc, cls, images, C, gamma, kernel='rbf'):
   res = np.zeros((images.shape[0],))
 
   filename_orig = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel)
-  filename = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel, temp=True)
-  if not os.path.exists(filename) and not os.path.exists(filename_orig):
+  filename_new = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel, temp=True)
+  
+  if os.path.exists(filename_orig):
+    filename = filename_orig
+  elif os.path.exists(filename_new):
+    filename = filename_new
+  else:
     return res
   clf = load_svm(filename, probability=False)
   for idx2, img_idx in enumerate(images):
@@ -301,7 +306,7 @@ if __name__=='__main__':
   tictocer = TicToc()
   tictocer.tic('overall')
   
-  test = False
+  test = True
   if test:
     train_dataset = 'test_pascal_train_tobi'
     eval_dataset = 'test_pascal_val_tobi'
@@ -322,7 +327,7 @@ if __name__=='__main__':
   
   
   for kernel in ['rbf', 'linear']:
-    cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds, train=True)
+    cross_valid_training(cc, Cs, gammas, kernel=kernel, numfolds=numfolds, train=False)
   
   print 'Everything done in %f seconds on %d'%(tictocer.toc('overall',quiet=True), mpi_rank)
   
