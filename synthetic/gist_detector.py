@@ -29,7 +29,9 @@ class GistPriors():
   def load_all_svms(self):
     svms = {}
     for cls in config.pascal_classes:
-      if os.path.exists(config.get_gist_svm_filename(cls)):
+      filename = config.get_gist_svm_filename(cls)
+      if os.path.exists(filename):
+        print 'load svm %s'%filename
         svms[cls] = load_svm(config.get_gist_svm_filename(cls))
       else:
         print 'gist svm for',cls,'does not exist'
