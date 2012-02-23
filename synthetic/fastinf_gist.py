@@ -7,10 +7,8 @@ from synthetic.gist_detector import GistPriors
 from synthetic.dataset import Dataset
 import cPickle
 
-def create_gist_model_for_dataset(dataset):
-  d = Dataset(dataset)
-  gist = GistPriors(dataset)
-  
+def create_gist_model_for_dataset(gist, d):
+  dataset = d.name  
   images = d.images
   
   table = np.zeros((len(images), len(d.classes)))
@@ -19,7 +17,7 @@ def create_gist_model_for_dataset(dataset):
     t = ut.TicToc()
     t.tic()
   # Some map reduce here!
-  for idx in range(comm_size, len(images), comm_rank):
+  for idx in range(comm_rank, len(images), comm_size):
     img = images[idx]
     print 'classify image %s on %d'%(img.name, comm_rank)
     classif = gist.get_priors(img)
@@ -72,19 +70,35 @@ def create_tables():
     print table
     print table.shape
 
+#def gist_probabilities_for_images(gist, images, num_classes):
+#  table = np.zeros((len(images), num_classes))
+#  for img_idx, img in enumerate(images):
+#    table[img_idx, :] = gist.get_priors(img)
+#  return table
+
 if __name__=='__main__':
   #create_tables()
+  num_bins = 5
+  dataset = 'test_pascal_train_tobi'
   
-  
-  d = Dataset('test_pascal_train_tobi')
+  gist = GistPriors(dataset)
+  d = gist.dataset
   table_gt = d.get_cls_ground_truth().arr.astype(int)
   
-  # replace this
-  table = np.random.random((table_gt.shape[0],20))
-  new_table = discretize_table(table, 5)
+  # replace this with a method to get the probs for each image
+  # ---------------->8-----------------
+  table = create_gist_model_for_dataset(gist, d)
+  #table = plausible_assignments(table_gt)
+  # ----------------8<-----------------
+  discr_table = discretize_table(table, num_bins)  
+  data = np.hstack((table_gt, discr_table))
   
-  print table
-  print new_table
+  filename = config.get_fastinf_mrf_file()
+  data_filename = config.get_fastinf_data_file()
+  write_out_mrf(data, num_bins, filename, data_filename)  
+  result = execute_lbp(filename, data_filename)
+
+  print data
   
   #print table
   

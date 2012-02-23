@@ -180,12 +180,12 @@ def test_gist_one_sample(dataset):
     if vect[idx] > 0.5:
      print config.pascal_classes[idx], vect[idx]
      
-def save_gist_differently():
-  gist_dict = cPickle.load(open(config.res_dir+'gist_features/features','r'))
-  for dataset in ['full_pascal_train','full_pascal_val','full_pascal_test']:
+def save_gist_differently(datasets):
+  gist_dict = cPickle.load(open(join(config.res_dir,'gist_features','features'),'r'))
+  for dataset in datasets:
     d = Dataset(dataset)
     print 'converting set', dataset
-    save_file = config.res_dir+'gist_features/'+dataset
+    save_file = os.path.join(config.res_dir,'gist_features',dataset)
     images = d.images
     gist_tab = np.zeros((len(images), 960))
     for idx in range(len(images)):
@@ -193,8 +193,23 @@ def save_gist_differently():
       print 'on \t', img.name
       gist_tab[idx,:] = gist_dict[img.name[:-3]]
     np.save(save_file, gist_tab)
+    
+def convert_gist_datasets(dataset_origin, datasets_new):
+  data = np.load(config.get_gist_dict_filename(dataset_origin))
+  d_orig = Dataset(dataset_origin)
+  for dataset in datasets_new:
+    savefile = config.get_gist_dict_filename(dataset)
+    d = Dataset(dataset)
+    images = d.images
+    new_data = np.zeros((len(images), data.shape[1]))
+    for img_idx, img in enumerate(images):
+      orig_img = d_orig.get_image_by_filename(img.name)
+      row = d_orig.images.index(orig_img)
+      new_data[img_idx, :] = data[row, :] 
+      
+    np.save(savefile, new_data)
   
-if __name__=='__main__':
+def crossval():
   #save_gist_differently()
   #test_gist_one_sample('full_pascal_test')
   #gist_evaluate_best_svm()
@@ -219,5 +234,7 @@ if __name__=='__main__':
   
   
 if __name__=='__main__':
-  gist = GistPriors()
+  datasets = ['test_pascal_train_tobi','test_pascal_val_tobi']
+  dataset_origin = 'full_pascal_trainval'
+  convert_gist_datasets(dataset_origin, datasets)
   
