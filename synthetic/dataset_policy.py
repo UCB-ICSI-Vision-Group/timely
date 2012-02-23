@@ -9,7 +9,7 @@ import synthetic.config as config
 from synthetic.class_priors import ClassPriors
 from synthetic.dataset import Dataset
 from synthetic.evaluation import Evaluation
-from synthetic.gist_detector import GistPriors
+from synthetic.gist_detector import GistClassifier
 from synthetic.detector import *
 from synthetic.ext_detector import ExternalDetector
 from synthetic.bounding_box import BoundingBox
@@ -84,7 +84,7 @@ class DatasetPolicy:
     
     # GIST, if it is to be added, is the first action
     if self.gist:
-      gist_obj = GistPriors(self.dataset.name)
+      gist_obj = GistClassifier(self.dataset.name)
       self.actions.append(ImageAction('gist', gist_obj))
 
     # synthetic perfect detector

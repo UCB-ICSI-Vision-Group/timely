@@ -132,8 +132,7 @@ def create_meassurement_table(num_clss, func):
    
   return table
 
-def execute_lbp(filename_mrf, filename_data):
-  filename_out = config.get_fastinf_res_file()
+def execute_lbp(filename_mrf, filename_data, filename_out):
   process = subp.Popen(['../fastInf/build/bin/learning', '-i', filename_mrf, 
                          '-e', filename_data, '-o', filename_out], shell=False, stdout=subp.PIPE)
   result = open(filename_out).read()
@@ -161,6 +160,7 @@ if __name__=='__main__':
   num_bins = 5
   filename = config.get_fastinf_mrf_file()
   data_filename = config.get_fastinf_data_file()
+  filename_out = config.get_fastinf_res_file()
   
   #table = create_meassurement_table(num_clss, plausible_assignments)
   table = c_corr_to_a(500, plausible_assignments)  

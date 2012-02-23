@@ -10,8 +10,9 @@ from synthetic.detector import Detector
 from synthetic.image import Image
 from synthetic.training import *
 import time
+from synthetic import Classifier
 
-class GistPriors():
+class GistClassifier(Classifier):
   """
   Compute a likelihood-vector for the classes given a (precomputed) gist detection
   """
@@ -161,9 +162,9 @@ class GistPriors():
     
 def gist_evaluate_best_svm():
   train_d = Dataset('full_pascal_train')
-  train_dect = GistPriors(train_d.name)
+  train_dect = GistClassifier(train_d.name)
   val_d = Dataset('full_pascal_val')
-  val_dect = GistPriors(val_d.name)  
+  val_dect = GistClassifier(val_d.name)  
   
   ranges = np.arange(0.5,10.,0.5)
   for C_idx in range(mpi_rank, len(ranges), mpi_size):
@@ -173,7 +174,7 @@ def gist_evaluate_best_svm():
       val_dect.evaluate_svm(cls, val_d, C)
     
 def test_gist_one_sample(dataset):    
-  dect = GistPriors(dataset)
+  dect = GistClassifier(dataset)
   d = Dataset(dataset)
   vect = dect.get_priors(d.images[1])
   for idx in range(len(vect)):
@@ -213,7 +214,7 @@ def crossval():
   #save_gist_differently()
   #test_gist_one_sample('full_pascal_test')
   #gist_evaluate_best_svm()
-  dect = GistPriors('full_pascal_trainval')
+  dect = GistClassifier('full_pascal_trainval')
   lams = np.arange(0,1,0.025)
   errors = np.zeros((lams.shape[0],1))
   for idx in range(mpi_rank, len(lams),mpi_size):

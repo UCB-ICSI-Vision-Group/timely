@@ -185,7 +185,12 @@ def get_classifier_learning_dirname(classifier):
   name = classifier.name+'_svm'
   if len(classifier.suffix) >= 1:
     name += '_'+classifier.suffix
-  return makedirs(join(temp_res_dir,name))
+  return makedirs(join(res_dir,name))
+
+def get_classifier_svm_learning_filename(classifier, cls,kernel,intervals,lower,upper,C):
+  direct = get_classifier_dirname(classifier)
+  name = '%s_%s_%f_%f_%f_%f'%(cls,kernel,intervals,lower,upper,C)
+  return join(direct,name)
 
 def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C):
   dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))

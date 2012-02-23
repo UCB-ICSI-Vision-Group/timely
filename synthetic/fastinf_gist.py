@@ -3,7 +3,7 @@ from synthetic.common_mpi import *
 
 import synthetic.config as config
 from synthetic.fastInf import *
-from synthetic.gist_detector import GistPriors
+from synthetic.gist_detector import GistClassifier
 from synthetic.dataset import Dataset
 import cPickle
 
@@ -30,7 +30,7 @@ def create_gist_model_for_dataset(gist, d):
   safebarrier(comm)
   if comm_rank == 0:
     print 'computing table took %f seconds'%t.toc(quiet=True)
-  comm.Allreduce(table, table)
+  table = comm.reduce(table)
     
   return table  
 
@@ -79,9 +79,9 @@ def create_tables():
 if __name__=='__main__':
   #create_tables()
   num_bins = 5
-  dataset = 'test_pascal_train_tobi'
+  dataset = 'full_pascal_train'
   
-  gist = GistPriors(dataset)
+  gist = GistClassifier(dataset)
   d = gist.dataset
   table_gt = d.get_cls_ground_truth().arr.astype(int)
   
@@ -90,13 +90,17 @@ if __name__=='__main__':
   table = create_gist_model_for_dataset(gist, d)
   #table = plausible_assignments(table_gt)
   # ----------------8<-----------------
+  print table
+  
   discr_table = discretize_table(table, num_bins)  
   data = np.hstack((table_gt, discr_table))
   
-  filename = config.get_fastinf_mrf_file()
-  data_filename = config.get_fastinf_data_file()
+  filename = config.get_fastinf_mrf_file(dataset)
+  data_filename = config.get_fastinf_data_file(dataset)
+  filename_out = config.get_fastinf_res_file(dataset)
+  
   write_out_mrf(data, num_bins, filename, data_filename)  
-  result = execute_lbp(filename, data_filename)
+  result = execute_lbp(filename, data_filename, filename_out)
 
   print data
   
