@@ -132,8 +132,9 @@ def cross_valid_training(cc, Cs, gammas, kernel='rbf', numfolds=4, train=True):
 def classify_images(cc, cls, images, C, gamma, kernel='rbf'):
   res = np.zeros((images.shape[0],))
 
-  filename = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel)
-  if not os.path.exists(filename):
+  filename_orig = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel)
+  filename = config.get_classifier_svm_name(cls, C, gamma, cc.d.current_fold,kernel=kernel, temp=True)
+  if not os.path.exists(filename) and not os.path.exists(filename_orig):
     return res
   clf = load_svm(filename, probability=False)
   for idx2, img_idx in enumerate(images):
@@ -183,8 +184,9 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
     C = setting[0]
     gamma = setting[1]
     for current_fold in range(numfolds):
-      filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel)
-      if not os.path.isfile(filename):
+      filename_orig = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel)
+      filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel, temp=True)
+      if not os.path.isfile(filename) and not os.path.isfile(filename_orig):
         all_exist = False
         break
   if all_exist:
@@ -234,7 +236,7 @@ def train_image_classify_svm(cc, cls, Cs=[1.0], gammas=[0.0], kernel='rbf', numf
     
     for C in Cs:
       for gamma in gammas:
-        filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel)
+        filename = config.get_classifier_svm_name(cls, C, gamma, current_fold, kernel, temp=True)
         
         if os.path.isfile(filename):
           continue
@@ -272,8 +274,13 @@ def classify_image(cc, img, C=1.0, gamma=0.0, cls=None):
       if os.path.exists(path):
         clf = load_svm(path)
         score[cls_idx] = svm_predict(feat_vect, clf)
+      else:
+        path = config.get_classifier_svm_name(cls, C, gamma, temp=True)
+        if os.path.exists(path):
+          clf = load_svm(path)
+          score[cls_idx] = svm_predict(feat_vect, clf)  
   else:
-    clf = load_svm(config.get_classifier_svm_name(cls))
+    clf = load_svm(config.get_classifier_svm_name(cls, C, gamma))
     score = svm_predict(feat_vect, clf)
   return score
 

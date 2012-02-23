@@ -192,8 +192,11 @@ def get_classifier_dirname(classifier):
   makedirs(dirname)
   return dirname
 
-def get_classifier_svm_name(cls, C, gamma, current_fold, kernel):
-  dirname = join(res_dir, 'classify_svm', kernel)
+def get_classifier_svm_name(cls, C, gamma, current_fold, kernel, temp=False):
+  if temp:
+    dirname = join(temp_data_dir, 'classify_svm', kernel)
+  else:
+    dirname = join(res_dir, 'classify_svm', kernel)
   makedirs(dirname) 
   if current_fold == -1: 
     filename = join(dirname, '%s_%f_%f'%(cls, C, gamma))
