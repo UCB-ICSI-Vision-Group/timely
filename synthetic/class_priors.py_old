@@ -1,19 +1,24 @@
+from IPython.parallel import Client
+from string import atof
+import scipy.stats as st
+import matplotlib.pyplot as plt
+from sklearn.cross_validation import KFold
+
 from common_imports import *
 from common_mpi import *
 
 import synthetic.config as config
+from synthetic.sliding_windows import WindowParams
+from synthetic.priorsJT import PriorsJT
 
 class ClassPriors:
   """
-  Encapsulation of the part of the belief state that keeps track of the object
-  class priors.
-  Methods to initialize the model, update with an observed posterior,
-  condition on observed values, and compute expected information gain.
+  Encapsulation of the part of the belief state that keeps track of the object class priors.
+  Methods to initialize the model, update with an observed posterior, and
+  condition on observed values.
   """
 
-    accepted_modes = [
-    	'random','oracle','fixed_order',
-    	'no_smooth','backoff', 'fastinf']
+  accepted_modes = ['random','oracle','fixed_order','no_smooth','backoff', 'junction_tree']
 
   def __init__(self, dataset, mode='random'):
     self.dataset = dataset
@@ -28,8 +33,8 @@ class ClassPriors:
       self.model = RandomModel(data)
     elif mode in ['fixed_order','no_smooth','backoff']:
       self.model = NGramModel(data,self.mode)
-    elif mode=='fastinf':
-    	self.model = FastInfModel(dataset)
+    elif mode=='junction_tree':
+      self.model = PriorsJT(self.dataset)
     else:
       raise RuntimeError("Unknown mode")
     self.priors = self.model.get_probabilities()
@@ -57,6 +62,98 @@ class ClassPriors:
     for i in range(len(self.priors)):
       new_priors.append(self.priors[i]*gist_priors[i])
     self.priors = new_priors
+  
+  def evaluate_marginal_prob_error(self):
+    # TODO: investigate modes other than the default 'no_smooth' here
+    data = self.dataset.get_cls_counts()
+    num_folds = 4
+    loo = KFold(data.shape[0], num_folds)
+    errors = []
+    for train,val in loo:
+      model = NGramModel(data[train,:])
+      val_data = data[val,:]
+      val_model = NGramModel(val_data)
+      num_unknown = 0
+      for row in val_data:
+        cls_inds = np.flatnonzero(row)
+        pred_prob = model.marg_prob(cls_inds)
+        actual_prob = val_model.marg_prob(cls_inds)
+        error = abs(pred_prob-actual_prob)
+        errors.append(error)
+        if pred_prob == 0:
+          num_unknown += 1
+      print("Num unknown: %d/%d"%(num_unknown,val_model.shape()[0]))
+    filename = config.class_priors_plot%'marginal_prob_error'
+    title = "Error of predicted vs. true marginal probability for 4-fold validation on the trainval set"
+    self.plot_dist(errors,filename,title=title)
+
+  def evaluate_method(self,lam1, lam2, parallel=False):
+    data = self.dataset.get_cls_counts()
+    num_folds = 4
+    loo = KFold(data.shape[0], num_folds)
+    
+    modes={}
+    #modes['no_smooth'] = [(data,train,val,'no_smooth') for train, val in loo]
+    modes['backoff'] = [(data,train,val,'backoff',lam1,lam2) for train, val in loo]
+    #modes['random'] = [(data,train,val,'random') for train, val in loo]
+    for mode,params in modes.items():
+      t = time.time()
+      if parallel:
+        rc = Client()
+        lview = rc.load_balanced_view()
+        lview.block = True
+        results = lview.map(predict_rows_split, params)
+      else:
+        results = map(predict_rows_split,params)
+
+      all_losses = [x[0] for x in results]
+      all_taken = [x[1] for x in results]
+
+      # turn from a list of list of lists to a list of lists :-)
+      all_losses = reduce(lambda x,y: x+y, all_losses)
+      all_taken = reduce(lambda x,y: x+y, all_taken)
+
+      all_losses = np.vstack(all_losses)
+      all_taken = np.vstack(all_taken)
+      print("time elapsed: %.3f"%(time.time()-t))
+
+#      print(all_taken[:5,:])
+
+      # plot
+      means = np.mean(all_losses,0)
+      x = np.arange(data.shape[1])
+      auc = np.trapz(means,x)
+      if mpi_rank == 0:
+        plt.errorbar(x, y=means, yerr=np.std(all_losses,0), label="%s: %.3f"%(mode,auc))
+    if mpi_rank == 0:
+      plt.legend()
+      plt.title('Perfect Class Prediction Loss, 4-Fold Cross-Validation')
+      plt.xlabel('# actions taken',size='large')
+      plt.ylabel('loss (fraction of ground truth correctly covered)',size='large')
+      plt.savefig(os.path.join(config.res_dir,'cross_val_lam1_lam2/')+'fig_'+str(lam1)+'_'+str(lam2)+'.png')
+    return auc
+
+def predict_rows_split(params):
+  """
+  Params should be a tuple of
+    - data: ndarray of image-object counts
+    - train: indicator ndarray for training rows
+    - val: indicator ndarray for val rows
+    - mode: which mode to use in predict_row()
+  """
+  print 'predict with params', params[4], params[5]
+  from synthetic.class_priors import NGramModel
+  data = params[0]
+  train = params[1]
+  val = params[2]
+  mode = params[3]
+  model = NGramModel(data[train,:], mode=mode)
+  lam1 = params[4]
+  lam2 = params[5]
+  results = [model.predict_row(row, lam1, lam2) for row in data[val,:]]
+  losses = [x[0] for x in results]
+  taken = [x[1] for x in results]
+  return (losses,taken)
 
 class RandomModel:
   def __init__(self,data):
@@ -65,14 +162,12 @@ class RandomModel:
   def get_probabilities(self, cond_inds=None, cond_vals=None): 
     return np.random.rand(self.num_classes)
 
-class FastinfModel:
-	def __init__(self,dataset):
-		self.fname = config.get_fastinf_filename(dataset)
-
 class NGramModel:
-  accepted_modes = ['fixed_order','no_smooth','smooth','backoff']
+  # TODO: does not use random mode in the cond_prob and marg_prob methods
 
-  def __init__(self,data,mode='fixed_order'):
+  accepted_modes = ['random','fixed_order','no_smooth','smooth','backoff']
+
+  def __init__(self,data,mode='random'):
     self.data = data
     self.cache = {}
     assert(mode in NGramModel.accepted_modes)
@@ -88,6 +183,42 @@ class NGramModel:
       return [self.cond_prob(cls_ind) for cls_ind in self.cls_inds]
     else:
       return [self.cond_prob(cls_ind, cond_inds, cond_vals) for cls_ind in self.cls_inds]
+
+  def predict_row(self, row, lam1, lam2):
+    """
+    Predict the value of the row element-by-element.
+    After each prediction:
+      - the value of the loss function is recorded;
+      - the ground truth for that element is revealed.
+    Return list of the loss function values (always 20, because every element
+    is investigated.
+    """
+    num_actions = self.shape()[1]
+    actions = list(range(num_actions))
+    taken = []
+    observed_inds = []
+    observed_vals = []
+    losses = []
+    while len(taken)<num_actions:
+      # pick best action
+      if self.mode=='no_smooth' or self.mode=='smooth' or self.mode=='backoff':
+        values = [self.cond_prob(cls_ind, observed_inds, observed_vals, lam1=lam1, lam2=lam2) for cls_ind in actions] 
+        values_vec = -np.ones(num_actions)
+        values_vec[actions] = values
+        action = np.argmax(values_vec)
+      elif self.mode=='random':
+        action = actions[np.random.randint(0,len(actions))]
+      taken.append(action)
+      actions.remove(action)
+      # get loss, which is the ratio of ground truth that we haven't found to
+      # total ground truth
+      loss = 1.*(np.count_nonzero(row) - np.sum(observed_vals))/np.count_nonzero(row)
+      losses.append(loss)
+      # get ground truth
+      observed_inds.append(action)
+      val = 1 if row[action]>0 else 0
+      observed_vals.append(val)
+    return (losses,taken)
 
   def marg_prob(self, cls_inds, vals=None):
     """
@@ -188,6 +319,41 @@ class NGramModel:
     self.cache[hash_string] = ans
     return ans
 
+  @classmethod
+  def test_self(cls):
+    data = np.array([
+      [1,0,0,0], #A
+      [0,1,0,0], #B
+      [1,1,0,0], #AB
+      [1,1,1,0], #ABC
+      [0,0,0,1]  #D
+      ])
+
+    model = NGramModel(data,'no_smooth')
+
+    # some marginals
+    assert(model.marg_prob(0) == 0.6)
+    assert(model.marg_prob([0]) == 0.6)
+    assert(model.marg_prob([1]) == 0.6)
+    assert(model.marg_prob([0,1]) == 0.4)
+    assert(model.marg_prob([2]) == 0.2)
+    assert(model.marg_prob([3]) == 0.2)
+
+    # now some conditional probabilities
+    assert(ut.fequal(model.cond_prob([1],[0]), 0.666666666))
+    # B | A=1
+    assert(ut.fequal(model.cond_prob(1,0), 0.666666666))
+    # B | A=0
+    assert(ut.fequal(model.cond_prob(1,0,0), 0.5))
+    # C | A=1,B=1
+    assert(ut.fequal(model.cond_prob([2],[0,1]), 0.5))
+    # C | A=1,B=0
+    assert(ut.fequal(model.cond_prob([2],[0,1], [1,0]), 0))
+
+    # now a never-before seen marginal
+    assert(model.marg_prob([3]) == 0.2)
+    assert(model.marg_prob([0,3]) == 0)
+
 def find_best_lam1_lam2(filename):
   infile = open(filename,'r').readlines()
   minimum = 100000.
@@ -220,3 +386,6 @@ if __name__ == '__main__':
 #    lam = lams[lamdex]
 #    auc = cp.evaluate_method(lam[0], lam[1])
 #    auc_file.write(str(lam[0])+' '+str(lam[1])+ ' '+str(auc)+'\n')
+
+
+

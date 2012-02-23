@@ -374,6 +374,10 @@ int main(int argc, char* argv[])
       cerr << "The first " << _printMarginals << " marginals after evidence is set: " << endl;
       inf->getInferenceMonitor()->printMarginals(cerr, _printMarginals);
     }
+    if (_printBeliefs > 0) {
+      cerr << endl << endl << "The first " << _printBeliefs << " beliefs after evidence is set: " << endl;
+      inf->getInferenceMonitor()->printBeliefs(cerr, _printBeliefs);
+    }
   }
 
   if (success) {
