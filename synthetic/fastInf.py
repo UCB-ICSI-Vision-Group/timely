@@ -17,7 +17,11 @@ def correct_assignments(assignments):
   None
 
 def discretize_table(table, num_bins):
-  d_table = np.hstack((table[:,:table.shape[1]/2],np.divide(np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins)),float(num_bins)) + 1/float(2*num_bins))) 
+  float_values = False
+  if float_values:
+    d_table = np.hstack((table[:,:table.shape[1]/2],np.divide(np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins)),float(num_bins)) + 1/float(2*num_bins)))
+  else:
+    d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins))))  
   return d_table
 
 def write_out_mrf(table, num_bins, filename, data_filename):
@@ -141,7 +145,7 @@ def c_corr_to_a(num_lines, func):
   table = np.zeros((num_lines, 6))
   for i in range(num_lines):
     rand = np.random.random((4,))
-    assignment[0] = rand[0] > .5
+    assignment[0] = rand[0] > .7
     assignment[1] = rand[1] > .5
     if rand[2] > 0.2:
       assignment[2] = assignment[0]

@@ -9,6 +9,7 @@ import synthetic.config as config
 from synthetic.detector import Detector
 from synthetic.image import Image
 from synthetic.training import *
+import time
 
 class GistPriors():
   """
@@ -215,10 +216,6 @@ if __name__=='__main__':
   
   
   
-  
-  
-  
-  
-  
-  
+if __name__=='__main__':
+  gist = GistPriors()
   
