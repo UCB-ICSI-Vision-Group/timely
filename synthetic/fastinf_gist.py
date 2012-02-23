@@ -53,7 +53,7 @@ def discretize_table(table, num_bins, asInt=True):
     bin_values = bin_values[1:]    
     col_bin[col_bin == 0] = 1  
     if asInt:
-      a = col_bin-1
+      a = num_bins - col_bin
       new_table[:, coldex] = a[:,0] 
     else:    
       for rowdex in range(table.shape[0]):
@@ -73,7 +73,7 @@ def create_tables():
     print table.shape
 
 if __name__=='__main__':
-  create_tables()
+  #create_tables()
   
   
   d = Dataset('test_pascal_train_tobi')
@@ -83,6 +83,7 @@ if __name__=='__main__':
   table = np.random.random((table_gt.shape[0],20))
   new_table = discretize_table(table, 5)
   
+  print table
   print new_table
   
   #print table
