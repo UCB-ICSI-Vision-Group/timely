@@ -1,9 +1,3 @@
-""" Train SVMs based on different feature_type types
-@author: Tobias Baumgartner
-@contact: tobi.baum@gmail.com
-@date: 10-27-11
-"""
-
 import sys
 import os
 from time import *
@@ -92,6 +86,7 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=False):
   return clf
 
 def svm_predict(x, clf):
+  x = np.array(x, dtype='float')
   result = clf.decision_function(x)
   return result
 

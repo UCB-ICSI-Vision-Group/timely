@@ -133,7 +133,7 @@ def create_meassurement_table(num_clss, func):
   return table
 
 def execute_lbp(filename_mrf, filename_data):
-  filename_out = config.get_fast_inf_res_file()
+  filename_out = config.get_fastinf_res_file()
   process = subp.Popen(['../fastInf/build/bin/learning', '-i', filename_mrf, 
                          '-e', filename_data, '-o', filename_out], shell=False, stdout=subp.PIPE)
   result = open(filename_out).read()
@@ -159,8 +159,8 @@ def c_corr_to_a(num_lines, func):
 if __name__=='__main__':
   num_clss = 3
   num_bins = 5
-  filename = config.get_fast_inf_mrf_file()
-  data_filename = config.get_fast_inf_data_file()
+  filename = config.get_fastinf_mrf_file()
+  data_filename = config.get_fastinf_data_file()
   
   #table = create_meassurement_table(num_clss, plausible_assignments)
   table = c_corr_to_a(500, plausible_assignments)  

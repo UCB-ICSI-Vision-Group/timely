@@ -38,7 +38,7 @@ class GistPriors():
   def get_proba_for_cls(self, cls, img):
     image = self.dataset.get_image_by_filename(img.name)
     index = self.dataset.get_img_ind(image)
-    gist = self.gist_table[index] 
+    gist = np.array(self.gist_table[index])
     return svm_proba(gist, self.svms[cls])
          
   def get_priors(self, img):
