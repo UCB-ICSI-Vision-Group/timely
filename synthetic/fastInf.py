@@ -7,7 +7,7 @@ import synthetic.config as config
 
 
 def plausible_assignments(assignments):
-  return np.absolute(assignments - np.random.random(assignments.shape)/4.)
+  return np.absolute(assignments - np.random.random(assignments.shape)/3.)
 
 def correct_assignments(assignments):
   classif = np.zeros(assignments.shape)
@@ -17,7 +17,11 @@ def correct_assignments(assignments):
   None
 
 def discretize_table(table, num_bins):
-  d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins)))) 
+  float_values = False
+  if float_values:
+    d_table = np.hstack((table[:,:table.shape[1]/2],np.divide(np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins)),float(num_bins)) + 1/float(2*num_bins)))
+  else:
+    d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins))))  
   return d_table
 
 def write_out_mrf(table, num_bins, filename, data_filename):
@@ -89,7 +93,7 @@ def write_out_mrf(table, num_bins, filename, data_filename):
   for rowdex in range(table.shape[0]):
     wd.write('( ')
     for i in range(table.shape[1]):
-      wd.write('%d '%table[rowdex, i])    
+      wd.write('%.2f '%table[rowdex, i])    
     wd.write(')\n')
   wd.close()
   
@@ -129,22 +133,40 @@ def create_meassurement_table(num_clss, func):
   return table
 
 def execute_lbp(filename_mrf, filename_data):
-  filename_out = config.get_fast_inf_res_file()
+  filename_out = config.get_fastinf_res_file()
   process = subp.Popen(['../fastInf/build/bin/learning', '-i', filename_mrf, 
                          '-e', filename_data, '-o', filename_out], shell=False, stdout=subp.PIPE)
-  #result = open(filename_out).read()
+  result = open(filename_out).read()
   
-  return None
+  return result
+
+def c_corr_to_a(num_lines, func):
+  assignment = np.zeros((3,))
+  table = np.zeros((num_lines, 6))
+  for i in range(num_lines):
+    rand = np.random.random((4,))
+    assignment[0] = rand[0] > .7
+    assignment[1] = rand[1] > .5
+    if rand[2] > 0.2:
+      assignment[2] = assignment[0]
+    else:
+      assignment[2] = rand[3] > .5
+    
+    classif = func(assignment)
+    table[i,:] = np.hstack((assignment, classif))
+  return table
   
 if __name__=='__main__':
   num_clss = 3
-  num_bins = 2
-  filename = config.get_fast_inf_mrf_file()
-  data_filename = config.get_fast_inf_data_file()
+  num_bins = 5
+  filename = config.get_fastinf_mrf_file()
+  data_filename = config.get_fastinf_data_file()
   
-  table = create_meassurement_table(num_clss, plausible_assignments)
+  #table = create_meassurement_table(num_clss, plausible_assignments)
+  table = c_corr_to_a(500, plausible_assignments)  
+    
   d_table = discretize_table(table, num_bins)
   write_out_mrf(d_table, num_bins, filename, data_filename)
   
-  print execute_lbp(filename, data_filename)
+  result = execute_lbp(filename, data_filename)
   

@@ -257,17 +257,18 @@ def get_dets_nov19():
 #####
 # Inference
 #####
-def get_fast_inf_mrf_file():
-  dirname = join(res_dir, 'mrf')
+fastinf_dir = join(res_dir, 'fastinf')
+def get_fastinf_mrf_file(dataset):
+  dirname = join(fastinf_dir, dataset)
   makedirs(dirname)
   return join(dirname, 'mrf.txt')
   
-def get_fast_inf_data_file():
-  dirname = join(res_dir, 'mrf')
+def get_fastinf_data_file(dataset):
+  dirname = join(fastinf_dir, dataset)
   makedirs(dirname)
   return join(dirname, 'data.txt')
 
-def get_fast_inf_res_file():
-  dirname = join(res_dir, 'mrf')
+def get_fastinf_res_file(dataset):
+  dirname = join(fastinf_dir, dataset)
   makedirs(dirname)
   return join(dirname, 'res.txt')
