@@ -17,6 +17,10 @@ class Table:
     self.cols = cols
     self.name = name
 
+  def set_arr(self,arr):
+    "Make sure that arr is at least 2d and set self.arr to it."
+    self.arr = np.atleast_2d(arr)
+
   def __deepcopy__(self):
     "Make a deep copy of the Table and return it."
     ret = Table()
@@ -37,6 +41,9 @@ class Table:
 
   def shape(self):
     return self.arr.shape
+
+  def ind(self,col_name):
+    return self.cols.index(col_name)
 
   ###################
   # Save/Load
@@ -90,6 +97,16 @@ class Table:
   ###################
   # Filtering
   ###################
+  def row_subset(self,row_inds):
+    "Return Table with only the specified rows."
+    return Table(arr=self.row_subset_arr(row_inds), cols=self.cols)
+
+  def row_subset_arr(self,row_inds):
+    "Return self.arr with only the specified rows."
+    if isinstance(row_inds,np.ndarray):
+      row_inds = row_inds.tolist()
+    return np.take(self.arr,row_inds,axis=0)
+
   def subset(self,col_names):
     "Return Table with only the specified col_names, in order."
     return Table(arr=self.subset_arr(col_names), cols=col_names)
@@ -103,18 +120,23 @@ class Table:
     return self.arr[:,inds]
 
   def sort_by_column(self,ind_name,descending=False):
-    "Modifies self to sort arr by column."
+    """
+    Modify self to sort arr by column. Return self.
+    """
     if descending:
       sorted_inds = np.argsort(-self.arr[:,self.cols.index(ind_name)])
     else:
       sorted_inds = np.argsort(self.arr[:,self.cols.index(ind_name)])
     self.arr = self.arr[sorted_inds,:]
+    return self
 
   def filter_on_column(self,ind_name,val,op=operator.eq,omit=False):
     """
     Take name of column to index by and value to filter by.
     By providing an operator, more than just equality filtering can be done.
     """
+    if ind_name not in self.cols:
+      return self
     table = Table(cols=self.cols,arr=self.arr)
     table.arr = filter_on_column(table.arr,table.cols.index(ind_name),val,op,omit)
     if omit:
@@ -151,31 +173,32 @@ def filter_on_column(arr, ind, val, op=operator.eq, omit=False):
     arr = arr[:,final_ind]
   return arr
 
-# TODO: allow arbitrary arguments to be passed to func
-def collect(seq,func,cols=None,with_index=False):
+def collect(seq, func, kwargs=None, with_index=False):
   """
   Take a sequence seq of arguments to function func.
     - func should return an np.array.
-    - cols are passed to func if given
+    - kwargs is a dictionary of arguments that will be passed to func if given
   Return the outputs of func concatenated vertically into an np.array
   (thereby making copies of the collected data).
   If with_index is True, append index column to the outputs.
   """
   all_results = []
   for index,image in enumerate(seq):
-    results = func(image, cols) if cols else func(image)
+    results = func(image, **kwargs) if kwargs else func(image)
     if results != None and max(results.shape)>0:
       if with_index:
         all_results.append(append_index_column(results,index))
       else:
         all_results.append(results)
+  if len(all_results)<1:
+    return np.array([])
   return np.vstack(all_results)
 
-def collect_with_index_column(seq, func, cols=None):
+def collect_with_index(seq, func, kwargs=None):
   """See collect()."""
-  return collect(seq,func,cols,with_index=True)
+  return collect(seq,func,kwargs,with_index=True)
 
-def sort_by_column(arr,ind,mode='ascend'):
+def sort_by_column(arr, ind, mode='ascend'):
   """Return the array row-sorted by column at ind."""
   if mode == 'descend':
     arr = arr[np.argsort(-arr[:,ind]),:]

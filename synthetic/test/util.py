@@ -1,7 +1,7 @@
 import itertools
 from nose.tools import *
-import numpy as np
 
+import numpy as np
 import synthetic.util as ut
 
 def test_random_subset_up_to_N():
@@ -46,3 +46,15 @@ def test_random_subset_ordered():
   assert(max(r)<=max(l))
   assert(min(r)>=min(l))
   assert(sorted(r)==r)
+
+def test_row_subset_table():
+  arr = np.random.rand(5,3)
+  cols = ['a','b','c']
+  t = ut.Table(arr,cols) 
+  assert(t.shape() == (5,3))
+  t2 = t.row_subset([0])
+  assert(t2.shape() == (1,3))
+  t2 = t.row_subset([0., 2.])
+  assert(t2.shape() == (2,3))
+  t2 = t.row_subset(np.array([0., 2.]))
+  assert(t2.shape() == (2,3))

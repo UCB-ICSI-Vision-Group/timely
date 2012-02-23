@@ -5,14 +5,15 @@ from common_imports import *
 from synthetic.detector import Detector
 import synthetic.config as config
 from synthetic.csc_classifier import CSCClassifier
+from synthetic.dpm_classifier import DPMClassifier
 
 class ExternalDetector(Detector):
   """
-  A mock interface to the Felzenszwalb DPM or the Pendersoli CtF detector.
+  A mock interface to the Felzenszwalb DPM, CSC, or the Pendersoli CtF detector.
   Actually works by pre-loading all the detections and then returning them as
   requested.
   """
-  def __init__(self, dataset, cls, sw, dets, detname):
+  def __init__(self, dataset, cls, dets, detname):
     """
     Expects cached detections in Table format to be passed in.
     The dets should not have the 'cls_ind' column, as they should all be of the
@@ -27,22 +28,21 @@ class ExternalDetector(Detector):
       config_name = detname+'_'+cls
       if config_name in configs:
         detector_config = configs[config_name]
-        print("Successfully initialized detector %s with config!"%config_name)
 
-    Detector.__init__(self,dataset,cls,sw,detector_config)
+    Detector.__init__(self,dataset,cls,detector_config)
     self.detname = detname
     self.dets = dets
     suffix = detname[4:]
-    self.csc_classif = CSCClassifier(suffix)    
-    try:
-      self.svm = self.csc_classif.load_svm(cls)
-      setting_table = ut.Table.load(os.path.join(config.res_dir,'csc_svm_'+suffix,'best_table'))
-      settings = setting_table.arr[config.pascal_classes.index(cls),:]
-      self.intervalls = settings[setting_table.cols.index('bins')]
-      self.lower = settings[setting_table.cols.index('lower')]
-      self.upper = settings[setting_table.cols.index('upper')]
-    except:
-      print("Could not load classifier SVM for class %s"%cls)
+    if self.detname=='dpm':
+      self.classif = DPMClassifier()
+    else:
+      self.classif = CSCClassifier(suffix)
+    self.svm = self.classif.load_svm(cls)
+    setting_table = ut.Table.load(opjoin(config.get_classifier_dirname(self.classif),'best_table'))
+    settings = setting_table.arr[config.pascal_classes.index(cls),:]
+    self.intervalls = settings[setting_table.cols.index('bins')]
+    self.lower = settings[setting_table.cols.index('lower')]
+    self.upper = settings[setting_table.cols.index('upper')]
 
   def detect(self, image):
     """
@@ -72,5 +72,5 @@ class ExternalDetector(Detector):
       return Detector.compute_posterior(self, image, dets, oracle)
     img = self.dataset.get_img_ind(image)
     cls = config.pascal_classes.index(self.cls)
-    return self.csc_classif.classify_image(self.svm,dets,cls,img, self.intervalls, self.lower, self.upper)
+    return self.classif.classify_image(self.svm,dets,cls,img, self.intervalls, self.lower, self.upper)
 

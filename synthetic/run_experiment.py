@@ -70,7 +70,7 @@ def main():
     description="Run experiments with the timely detection system.")
 
   parser.add_argument('--test_dataset',
-    choices=['val','test','train','trainval'],
+    choices=['val','test'],
     default='val',
     help="""Dataset to use for testing. Run on val until final runs.
     The training dataset is inferred (val->train; test->trainval).""")
@@ -80,7 +80,7 @@ def main():
 
   parser.add_argument('--config',
     help="""Config file name that specifies the experiments to run.
-    Give name s.t the file is configs/#{name}.json or configs/#{name}/.
+    Give name such that the file is configs/#{name}.json or configs/#{name}/
     In the latter case, all files within the directory will be loaded.""")
 
   parser.add_argument('--force', action='store_true', 
@@ -118,15 +118,14 @@ def main():
   elif args.test_dataset=='val':
     train_dataset = Dataset('full_pascal_train')
   else:
-    print("Impossible, setting train_dataset to dataset")
-    train_dataset = dataset
+    None # impossible by argparse settings
 
-  tables = []
+  dets_tables = []
+  clses_tables = []
   all_bounds = []
 
-  sw = SlidingWindows(dataset,train_dataset)
   for config_f in configs:
-    dp = DatasetPolicy(dataset, train_dataset, sw, **config_f)
+    dp = DatasetPolicy(dataset, train_dataset, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)
 
@@ -136,10 +135,11 @@ def main():
 
     # evaluate in the AP vs. Time regime, unless told not to
     if not args.no_apvst:
-      table = ev.evaluate_dets_vs_t_avg(None,force=args.force)
+      dets_table,clses_table = ev.evaluate_vs_t(None,None,force=args.force)
+      dets_table_whole,clses_table_whole = ev.evaluate_vs_t_whole(None,None,force=args.force)
       if comm_rank==0:
-        tables.append(table)
-      #ev.evaluate_dets_vs_t_whole(all_dets,force=args.force)
+        dets_tables.append(dets_table)
+        clses_tables.append(clses_table)
 
     # optionally, evaluate in the standard PR regime
     if args.wholeset_prs:
@@ -156,8 +156,8 @@ def main():
     filename = args.config
     ff = os.path.join(dirname, '%s.png'%filename)
     ff_no_legend = os.path.join(dirname, '%s_no_legend.png'%filename)
-    Evaluation.plot_ap_vs_t(tables, ff, all_bounds, with_legend=True)
-    Evaluation.plot_ap_vs_t(tables, ff_no_legend, all_bounds, with_legend=False)
+    Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True)
+    Evaluation.plot_ap_vs_t(dets_tables, ff_no_legend, all_bounds, with_legend=False)
     
 if __name__ == '__main__':
   main()
