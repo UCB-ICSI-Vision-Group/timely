@@ -142,6 +142,8 @@ def classify_images(cc, cls, images, C, gamma, kernel='rbf'):
   else:
     return res
   clf = load_svm(filename, probability=False)
+  if clf == None:
+    return res
   for idx2, img_idx in enumerate(images):
     x = cc.ff.get_feature_vector(img_idx)
     pred = svm_predict(x, clf)
