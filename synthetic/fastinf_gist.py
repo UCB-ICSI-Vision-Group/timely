@@ -7,7 +7,7 @@ from synthetic.gist_classifier import GistClassifier, cls_for_dataset
 from synthetic.dataset import Dataset
 import cPickle
 
-def create_gist_model_for_dataset(gist, d):
+def create_gist_model_for_dataset(d):
   dataset = d.name  
 
   table = cls_for_dataset(dataset)    
@@ -15,8 +15,12 @@ def create_gist_model_for_dataset(gist, d):
 
 def discretize_table(table, num_bins, asInt=True):
   new_table = np.zeros(table.shape)
+  print table[0,:]
   for coldex in range(table.shape[1]):
     col = table[:, coldex]
+    print type(col)
+    print sum(abs(col))
+    print col
     bounds = ut.importance_sample(col, num_bins+1)
     
     # determine which bin these fall in
@@ -58,15 +62,14 @@ def create_tables():
 if __name__=='__main__':
   #create_tables()
   num_bins = 5
-  dataset = 'full_pascal_train'
-  cls = 'dog'
-  gist = GistClassifier(cls, dataset)
-  d = gist.dataset
-  table_gt = d.get_cls_ground_truth().arr.astype(int)
+  dataset = 'full_pascal_trainval'
   
+  d = Dataset(dataset)
+  table_gt = d.get_cls_ground_truth().arr.astype(int)
+
   # replace this with a method to get the probs for each image
   # ---------------->8-----------------
-  table = create_gist_model_for_dataset(gist, d)
+  table = create_gist_model_for_dataset(d)
   #table = plausible_assignments(table_gt)
   # ----------------8<-----------------
   print table
@@ -74,14 +77,17 @@ if __name__=='__main__':
   discr_table = discretize_table(table, num_bins)  
   data = np.hstack((table_gt, discr_table))
   
-  filename = config.get_fastinf_mrf_file(dataset)
-  data_filename = config.get_fastinf_data_file(dataset)
-  filename_out = config.get_fastinf_res_file(dataset)
+  print discr_table
+  suffix = 'gist'
+  filename = config.get_fastinf_mrf_file(dataset,suffix)
+  data_filename = config.get_fastinf_data_file(dataset,suffix)
+  filename_out = config.get_fastinf_res_file(dataset,suffix)
   
-  write_out_mrf(data, num_bins, filename, data_filename)  
-  result = execute_lbp(filename, data_filename, filename_out)
+  if comm_rank == 0:
+    write_out_mrf(data, num_bins, filename, data_filename)  
+    result = execute_lbp(filename, data_filename, filename_out)
 
-  print data
+  #print data
   
   #print table
   
