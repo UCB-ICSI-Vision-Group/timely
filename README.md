@@ -85,23 +85,19 @@ Tasks
 
 Schedule
 ---
-Mon Feb 20 - 4 days left
-- write up information gain reward function in draft, with discussion of submodularity @sergey
+Fri Feb 24 - 7 days left
 - MRF model trained with GIST and detection classifiers
 - Regression to next-step rewards from featurization of the state, for both value functions
 - Plot of old value function with new inference
 - Plot of using the information gain reward function-derived manual value function with new inference
-
-Wed Feb 22 - 2 days left
-
-Fri Feb 24 - 0 days left
 - have draft with full set of results, distribute to group
+- make sure that the belief states we are collecting in the samples all preseve the correct state (does deepcopy work?) @sergey
 
-Mon Feb 27 - -3 days left
+Mon Feb 27 - 5 days left
 
-Wed Feb 29 - -5 days left
+Wed Feb 29 - 2 days left
 
-Fri Mar 2 - -7 days left
+Fri Mar 2 - 0 days left
 
-Mon Mar 5 - -10 days left
+Mon Mar 5 - -3 days left
 - final paper submitted

@@ -273,6 +273,10 @@ def fequal(a,b,tol=.0000001):
   """
   return abs(a-b)<tol
 
+def log(x):
+  "Base-2 log that returns 0 if x==0."
+  return np.log2(x) if not x==0 else 0
+
 def cartesian(arrays, out=None):
     """
     from http://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays

@@ -26,14 +26,12 @@ class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
     'suffix': 'jan30', # use this to re-run on same params after changing code
-    'detector': 'ext', # perfect,perfect_with_noise,ext
-    'class_priors_mode': 'random', # random,oracle,fixed_order,no_smooth,backoff
+    'detector': 'perfect', # perfect,perfect_with_noise,ext
+    'class_priors_mode': 'random', # random,oracle,fixed_order,fastinf
     'dets_suffixes': ['dpm'], # further specifies which detector to use (use 'dpm' so tests pass)
     'bounds': None, # start and deadline times for the policy
     'gist': 0, # use the GIST action? 0/1
-    'with_entropy': 0, # use the entropy feature in belief state featurization?
-    'with_times': 0, # use the time-related features in belief state featurization?
-    'learn_policy': 'manual' # can be manual,advanced,advanced_pair,greedy,lspi
+    'learn_policy': 'manual' # can be manual,greedy,lspi
   }
 
   def get_name(self):
@@ -46,10 +44,6 @@ class DatasetPolicy:
       middle += '-'.join((str(x) for x in self.bounds))
     if self.gist:
       middle += "with_gist"
-    if self.with_entropy:
-      middle += "with_entropy"
-    if self.with_times:
-      middle += "with_times"
     dets_suffixes = '-'.join(self.dets_suffixes)
     name = '_'.join(
         (self.class_priors_mode,
@@ -83,6 +77,7 @@ class DatasetPolicy:
     self.actions = []
     
     # GIST, if it is to be added, is the first action
+    # TODO: sort this stuff out
     if self.gist:
       gist_obj = GistPriors(self.dataset.name)
       self.actions.append(ImageAction('gist', gist_obj))
@@ -100,19 +95,9 @@ class DatasetPolicy:
         self.actions.append(ImageAction('perfect_noise_%s'%cls,det))
     # real detectors, with pre-cached detections
     elif self.detector=='ext':
+      # load the dets from cache file and parcel out to classes
       for suffix in self.dets_suffixes:
-        # load the dets from cache file
-        # TODO: move this regexp matching into load_ext_detections
-        if re.search('dpm',suffix):
-          self.all_dets = self.load_ext_detections(self.dataset, 'dpm', suffix)
-        elif re.search('ctf',suffix):
-          self.all_dets = self.load_ext_detections(self.dataset, 'ctf', suffix)
-        elif re.search('csc',suffix):
-          self.all_dets = self.load_ext_detections(self.dataset, 'csc', suffix)
-        else:
-          print(suffix)
-          raise RuntimeError('Unknown detector type in suffix')
-        # now we have all_dets; parcel them out to classes
+        all_dets = self.load_ext_detections(self.dataset, suffix)
         for cls in self.dataset.classes:
           cls_ind = self.dataset.get_ind(cls)
           all_dets_for_cls = self.all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
@@ -124,7 +109,8 @@ class DatasetPolicy:
     # The default weights are just identity weights on the corresponding class
     # priors
     # TODO: load from something: filename constructed from config_name
-    b = self.init_belief_state()
+    b = BeliefState(self.dataset,self.actions)    
+    
     if self.learn_policy == 'manual':
       self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
       # The gist action is first, so offset the weights
@@ -152,10 +138,6 @@ class DatasetPolicy:
       None
     else:
       raise RuntimeError('Not yet implemented')
-
-  def get_ext_dets(self):
-    "Return external detections straight from their cache."
-    return self.all_dets
 
   def run_on_dataset(self,force=False):
     """
@@ -287,101 +269,18 @@ class DatasetPolicy:
   ################
   def update_actions(self,b):
     """Update the values of actions according to the current belief state."""
-    if self.learn_policy=='advanced' or \
-        self.learn_policy=='advanced_pair' or \
-        self.learn_policy=='slope' or self.learn_policy=='slope_pair':
-      for ind,action in enumerate(self.actions):
-        if isinstance(action.obj, Detector):
-          det = action.obj
-          taken_other = 0
-          if ind+20 < len(self.actions):
-            det_other = self.actions[ind+20].obj
-            taken_other = b['taken'][ind+20]
-          elif ind-20 >= 0:
-            det_other = self.actions[ind-20].obj
-            taken_other = b['taken'][ind-20]
-          #print det.cls_ind
-          P = b['priors'].priors[det.cls_ind]
-          time_to_deadline = max(0,b['bounds'][1]-b['t'])
-          if self.learn_policy=='slope' or self.learn_policy == 'slope_pair':
-            val =  P * det.config['naive_ap|present']
-            if self.learn_policy=='slope_pair':
-              if not taken_other == 0:
-                val -= P*det_other.config['naive_ap|present']
-            val /= det.config['avg_time']
-            val *= time_to_deadline
-          else:
-            #val = time_to_deadline * P * det.config['actual_ap|present']
-            #val += time_to_deadline * (1-P) * det.config['actual_ap|absent']
-            val = time_to_deadline * P * det.config['naive_ap|present']
-            val -= P * det.config['naive_ap|present'] * det.config['avg_time']
-            #val -= (1-P) * det.config['actual_ap|absent'] * det.config['avg_time']
-            if self.learn_policy=='advanced_pair':
-              if not taken_other == 0:
-                assert(det_other.cls_ind == det.cls_ind)
-                val -= P*det_other.config['actual_ap|present']*time_to_deadline
-                val -= (1-P)*det_other.config['actual_ap|absent']*time_to_deadline
-                val += P * det_other.config['actual_ap|present'] * det.config['avg_time']
-                val += (1-P) * det_other.config['actual_ap|absent'] * det.config['avg_time']
-                val += P * det_other.config['actual_ap|present'] * det.config['avg_time']
-          b['values'][ind] = val
-        else:
-          b['values'][ind] = np.random.rand() 
-    else:
-      b['values'] = np.dot(self.weights,self.get_feature_vec(b))
+    self.values = np.dot(self.weights, b.featurize())
 
-  def reset_actions(self, b):
-    "Zero the 'taken' info and the computed values of the actions."
-    b['taken'] = np.zeros(len(self.actions))
-    b['values'] = np.zeros(len(self.actions))
-
-  def pick_max_untaken_action(self, b):
+  def select_action(self, b):
     """
     Return the index of the untaken action with the max value.
     Return -1 if all actions have been taken.
     """
-    if np.all(b['taken']):
+    if np.all(b.taken):
       return -1
-    untaken_inds = np.flatnonzero(b['taken']==0)
-    max_untaken_ind = b['values'][untaken_inds].argmax()
+    untaken_inds = np.flatnonzero(b.taken==0)
+    max_untaken_ind = self.action_values[untaken_inds].argmax()
     return untaken_inds[max_untaken_ind]
-
-  def get_feature_vec(self, b):
-    """
-    Return featurized representation of the current belief state.
-    """
-    features = b['priors'].priors
-
-    def mylog(x): return np.log2(x) if not x==0 else 0
-    def H(x): return np.sum([-x_i*mylog(x_i) -(1-x_i)*mylog(1-x_i) for x_i in x])
-    entropy = H(b['priors'].priors)
-    #features += [entropy]
-
-    time_to_start = 0
-    if b['bounds']:
-      if b['bounds'][0]>0:
-        time_to_start = max(0, (b['bounds'][0]-b['t'])/b['bounds'][0])
-      time_to_deadline = max(0, (b['bounds'][1]-b['t'])/b['bounds'][1])
-    else:
-      time_to_start = 0
-      time_to_deadline = 1
-    #features += [time_to_start,time_to_deadline]
-    #features += [time_to_deadline]
-    return np.array(features)
-
-  def init_belief_state(self,image=None):
-    b = {}
-    if image:
-      b['img_ind'] = self.dataset.get_img_ind(image)
-    else:
-      b['img_ind'] = -1
-    # TODO: separate NGramModel from ClassPriors, to maintain the benefit of
-    # caching answers
-    b['priors'] = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
-    b['t'] = 0
-    b['bounds'] = self.bounds
-    self.reset_actions(b)
-    return b
 
   def run_on_image(self, image):
     """
@@ -392,86 +291,77 @@ class DatasetPolicy:
     """
     gt = image.get_ground_truth(include_diff=True)
     tt = ut.TicToc().tic()
-    b = self.init_belief_state(image)
-    self.update_actions(b)
     
     all_detections = []
     all_clses = []
     samples = []
-    
-    # If gist mode is on, the first action is gist :-)
-    if self.gist:
-      next_action_ind = 0
-    else:
-      next_action_ind = self.pick_max_untaken_action(b)
-
     prev_ap = 0
+   
+    self.img_ind = self.dataset.get_img_ind(image) if image else -1 
+    b = BeliefState(self.dataset,self.actions)
+    self.update_actions(b)
+    action_ind = self.select_action(b)
     while True:
       sample = {}
-      sample['img_ind'] = b['img_ind']
-      sample['state'] = self.get_feature_vec(b)
-      sample['action_ind'] = next_action_ind
-      action = self.actions[next_action_ind]
-      b['taken'][next_action_ind] = 1
+      sample['img_ind'] = img_ind
+      sample['state'] = copy.deepcopy(b)
+      sample['action_ind'] = action_ind
+      action = self.actions[action_ind]
+      b.taken[action_ind] = 1
 
-      if isinstance(action.obj, Detector):
-        # detector actions
-        det = action.obj
-        cls_ind = self.dataset.classes.index(det.cls)
-        detections, sample['dt'] = det.detect(image)
-        b['t'] += sample['dt']
+      obs = action.obj.get_observations(image)
 
+      # If observations include detections, compute the relevant
+      # stuff for the sample collection
+      sample['det_naive_ap'] = 0
+      sample['det_actual_ap'] = 0
+      if 'dets' in obs.keys:
+        detections = obs['dets']
+        cls_ind = self.dataset.classes.index(action.obj.cls)
         if detections.shape[0]>0:
-          c_vector = np.tile(cls_ind,(np.shape(detections)[0],1)) 
-          i_vector = np.tile(b['img_ind'],(np.shape(detections)[0],1))
-          detections = np.hstack((detections, c_vector, i_vector))          
+          c_vector = np.tile(cls_ind,(np.shape(detections)[0],1))
+          i_vector = np.tile(img_ind,(np.shape(detections)[0],1))
+          detections = np.hstack((detections, c_vector, i_vector))
         else:
           detections = np.array([])
         dets_table = ut.Table(detections,det.get_cols()+['cls_ind','img_ind'])
 
-        # compute the greedy AP increase
+        # compute the naive det AP increase
         ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)
         sample['det_naive_ap'] = ap
 
+        # TODO: am I needlessly recomputing this table?
         all_detections.append(detections)
         nonempty_dets = [dets for dets in all_detections if dets.shape[0]>0]
         all_dets_table = ut.Table(np.array([]),dets_table.cols)
         if len(nonempty_dets)>0:
           all_dets_table = ut.Table(np.concatenate(nonempty_dets,0),dets_table.cols)
-        # and the actual AP increase
-        # TODO: aren't these non-NMSd?
+
+        # compute the actual AP increase
         ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
         ap_diff = ap-prev_ap
         sample['det_actual_ap'] = ap_diff
         prev_ap = ap
 
-        # compute the posterior given these detections, and update the class priors
-        posterior = det.compute_posterior(image, dets_table, oracle=False)
-        b['priors'].update_with_posterior(cls_ind, posterior)
-      else: 
-        # gist scene context action
-        gist_obj = action.obj
-        gist_priors = gist_obj.get_priors_lam(image, b['priors'].priors)
-        b['priors'].update_with_gist(gist_priors)
-        time_gist = 1
-        b['t'] += time_gist
-        samples['time'].append(time_gist)
-        sample['det_naive_ap'] = 0
-        sample['det_actual_ap'] = 0
+      # Observations always include the following stuff, which can be used
+      # to update the belief state
+      score = obs['score']
+      sample['dt'] = obs['dt']
+      b.t += obs['dt']
+      b.update_with_score(action, score)
 
-      # TODO
-      clses = b['priors'].priors + [b['img_ind'],b['t']]
+      # The updated belief state posterior over C is our classification result
+      clses = b.p_c + [img_ind,b.t]
       all_clses.append(clses)
 
-      # pick the next action, having updated the priors
+      # Update action values and pick the next action; store sample
       self.update_actions(b)
-      next_action_ind = self.pick_max_untaken_action(b)
-      # TODO: concretize b before storing it
-      sample['next_state'] = b
+      action_ind = self.select_action(b)
+      sample['next_state'] = copy.deepcopy(b)
       samples.append(sample)
 
       # check for stopping conditions
-      if next_action_ind < 0:
+      if action_ind < 0:
         break
       if self.bounds and not self.class_priors_mode=='oracle':
         if b['t'] > self.bounds[1]:
@@ -520,7 +410,7 @@ class DatasetPolicy:
   ###############
   # External detections stuff
   ###############
-  def load_ext_detections(self,dataset,mode,suffix,force=False):
+  def load_ext_detections(self,dataset,suffix,force=False):
     """
     Loads multi-image, multi-class array of detections for all images in the
     given dataset.
@@ -536,7 +426,7 @@ class DatasetPolicy:
       all_dets = []
       for i in range(comm_rank,len(dataset.images),comm_size):
         image = dataset.images[i]
-        if mode=='dpm':
+        if re.search('dpm',suffix):
           # NOTE: not actually using the given suffix in the call below
           dets = self.load_dpm_dets_for_image(image)
           ind_vector = np.ones((np.shape(dets)[0],1)) * i
@@ -544,19 +434,20 @@ class DatasetPolicy:
           cols = ['x','y','w','h','dummy','dummy','dummy','dummy','score','time','cls_ind','img_ind']
           good_ind = [0,1,2,3,8,9,10,11]
           dets = dets[:,good_ind]
-        elif mode=='csc':
+        elif re.search('csc',suffix):
           # NOTE: not actually using the given suffix in the call below
-            dets = self.load_csc_dpm_dets_for_image(image)
-            ind_vector = np.ones((np.shape(dets)[0],1)) * i
-            dets = np.hstack((dets,ind_vector))
-        elif mode=='ctf':
+          dets = self.load_csc_dpm_dets_for_image(image)
+          ind_vector = np.ones((np.shape(dets)[0],1)) * i
+          dets = np.hstack((dets,ind_vector))
+        elif re.search('ctf',suffix):
           # Split the suffix into ctf and the main part
           actual_suffix = suffix.split('_')[1]
           dets = self.load_ctf_dets_for_image(image, actual_suffix)
           ind_vector = np.ones((np.shape(dets)[0],1)) * i
           dets = np.hstack((dets,ind_vector))
         else:
-          raise RuntimeError('Unknown detections mode')
+          print(suffix)
+          raise RuntimeError('Unknown detector type in suffix')
         all_dets.append(dets)
       final_dets = None
       if comm_rank==0:

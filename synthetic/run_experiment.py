@@ -89,9 +89,6 @@ def main():
   parser.add_argument('--wholeset_prs', action='store_true', 
     default=False, help='evaluate in the final p-r regime')
 
-  parser.add_argument('--no_policy', action='store_true', 
-    default=False, help='do not use the policy when evaluating wholeset_pr')
-
   parser.add_argument('--no_apvst', action='store_true', 
     default=False, help='do NOT evaluate in the ap vs. time regime')
 
@@ -143,11 +140,7 @@ def main():
 
     # optionally, evaluate in the standard PR regime
     if args.wholeset_prs:
-      if args.no_policy:
-        dets = dp.get_ext_dets()
-        ev.evaluate_detections_whole(dets,force=args.force)
-      else:
-        ev.evaluate_detections_whole(None,force=args.force)
+      ev.evaluate_detections_whole(None,force=args.force)
 
   # and plot the comparison if multiple config files were given
   if not args.no_apvst and len(configs)>1 and comm_rank==0:
