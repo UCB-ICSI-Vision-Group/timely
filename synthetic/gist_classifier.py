@@ -6,7 +6,6 @@ from common_mpi import *
 from synthetic.class_priors import NGramModel
 import synthetic.util as ut
 import synthetic.config as config
-from synthetic.detector import Detector
 from synthetic.image import Image
 from synthetic.training import *
 import time
@@ -30,9 +29,9 @@ class GistClassifier(Classifier):
       
     Classifier.__init__(self)
     print("Started loading GIST")
-    t = time.time()
+    self.tt.tic()
     self.gist_table = np.load(config.get_gist_dict_filename(dataset_name))
-    print("Time spent loading gist: %.3f"%(time.time()-t))
+    print("Time spent loading gist: %.3f"%self.tt.qtoc())
     self.cls = cls
     self.svm = self.load_svm()
   
@@ -63,23 +62,7 @@ class GistClassifier(Classifier):
     index = self.dataset.get_img_ind(image)
     gist = np.array(self.gist_table[index])
     return svm_proba(gist, self.svm)
-         
-  def get_priors(self, img):
-    num_classes = len(config.pascal_classes)
-    prior_vect = []
-    for cls_idx in range(num_classes):
-      cls = config.pascal_classes[cls_idx]
-      prob = self.get_proba_for_cls(cls, img)[0,1]
-      prior_vect.append(prob)      
-    return prior_vect
-  
-  def get_priors_lam(self, img, prior, lam=0.95):
-    gist = self.get_priors(img)
-    prior = np.array(prior)
-    gist = np.array(gist)
-    comb = lam*prior + (1-lam)*gist
-    return comb
-  
+     
   def compute_obj_func(self, gist, truth):
     diff = gist - truth
     sqr = np.multiply(diff,diff)

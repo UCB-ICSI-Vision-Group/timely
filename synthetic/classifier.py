@@ -7,12 +7,12 @@ from common_mpi import *
 from synthetic.training import train_svm, svm_predict, save_svm, load_svm
 import synthetic.config as config
 
-class Classifier():
+class Classifier(object):
   def __init__(self):
     self.name = ''
     self.suffix = ''
     self.cls = ''
-    self.tictoc = ut.TicToc()
+    self.tt = ut.TicToc()
   
   def compute_histogram(self, arr, intervals, lower, upper):
     band = upper - lower
@@ -87,21 +87,21 @@ class Classifier():
     Get the score for given image.
     """
     observation = {}
-    self.tictoc.tic()
+    self.tt.tic()
     score = self.get_score(image)
     
     observation['score'] = score
-    observation['dt'] = self.tictoc.toc(quiet=True)    
+    observation['dt'] = self.tt.toc(quiet=True)    
     return observation 
         
   @abstractmethod
   def get_score(self, img): 
     """
-    Get the score for the given image
+    Get the score for the given image.
     """
   
-  def load_svm(self, cls):
-    model = load_svm(config.get_classifier_filename(self,cls))
+  def load_svm(self):
+    model = load_svm(config.get_classifier_filename(self,self.cls))
     return model
   
   def test_svm(self, test_dataset, feats, intervals, kernel, lower, upper, \

@@ -7,7 +7,7 @@ from synthetic.dataset import Dataset
 import synthetic.config as config
 from synthetic.sliding_windows import WindowParams
 
-class Detector:
+class Detector(object):
   """
   Detector takes an image and outputs list of bounding boxes and
   confidences for its class.
@@ -134,15 +134,15 @@ class Detector:
     return dets[pick,:]
 
 class SWDetector(Detector):
-  """A detector that must be initialized with a sliding window generator."""
+  "A detector that must be initialized with a sliding window generator."
   def __init__(self, dataset, cls, sw_generator, detector_config=None):
     Detector.__init__(self,dataset,cls,detector_config)
     self.sw = sw_generator
 
 class PerfectDetector(Detector):
   """
-  An idealized detector modeled by its classification accuracy given
-  detections, and predicted reward given prior on class presence.
+  An idealized detector that returns ground truth.
+  Perfect classification performance.
   """
 
   def detect(self, image):
@@ -157,6 +157,7 @@ class PerfectDetectorWithNoise(SWDetector):
   """
   Basically PerfectDetector with additional false positives and false
   negatives, generated randomly according to a couple of parameters.
+  Still perfect classification!
   """
 
   def detect(self, image):
@@ -185,4 +186,3 @@ class PerfectDetectorWithNoise(SWDetector):
       score = np.random.beta(1,2)
       dets.append(np.hstack((window, score)))
     return (np.array(dets), self.expected_time(image))
-

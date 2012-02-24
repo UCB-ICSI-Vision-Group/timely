@@ -22,7 +22,6 @@ class ClassifierConfig():
     self.e = Extractor()
     self.dense_codebook = self.e.get_codebook(self.d, 'dsift')
     self.sparse_codebook = self.e.get_codebook(self.d, 'sift')
-    self.tictocer = TicToc()
     self.L = L
     self.numfolds = numfolds
     

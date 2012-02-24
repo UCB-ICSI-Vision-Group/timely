@@ -14,7 +14,7 @@ class CSCClassifier(Classifier):
     self.suffix = suffix
     self.cls = cls
     self.dataset = dataset
-    self.svm = config.get_classifier_filename(self, cls)
+    self.svm = self.load_svm()
     
     setting_table = ut.Table.load(opjoin(config.get_classifier_dirname(self),'best_table'))
     settings = setting_table.arr[config.pascal_classes.index(cls),:]
@@ -25,7 +25,7 @@ class CSCClassifier(Classifier):
   def classify_image(self, img):
     model = self.svm
     #, dets, cls, img, intervals, lower, upper 
-    vector = self.create_vector(dets, cls, img, intervals, lower, upper)
+    vector = self.create_vector(img)
     result = svm_predict(vector, model)
     return result
     

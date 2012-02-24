@@ -5,7 +5,7 @@ import synthetic.config as config
 from synthetic.fastinf_model import FastinfModel
 from synthetic.ngram_model import NgramModel
 
-class InferenceModel:
+class InferenceModel(object):
   def get_probabilities(self):
     "Return the posterior probabilities over C."
     return self.p_c
@@ -14,7 +14,7 @@ class InferenceModel:
   def update_with_observations(self,observations):
     "Update all the probabilities with the given observations."
 
-class BeliefState:
+class BeliefState(object):
 	"""
 	Encapsulates stuff that we keep track of during policy execution.
   Methods to initialize the model, update with an observed posterior,

@@ -13,6 +13,7 @@ class ExternalDetector(Detector):
   Actually works by pre-loading all the detections and then returning them as
   requested.
   """
+
   def __init__(self, dataset, cls, dets, detname):
     """
     Expects cached detections in Table format to be passed in.
@@ -33,16 +34,11 @@ class ExternalDetector(Detector):
     self.detname = detname
     self.dets = dets
     suffix = detname[4:]
+    
     if self.detname=='dpm':
       self.classif = DPMClassifier()
     else:
-      self.classif = CSCClassifier(suffix)
-    self.svm = self.classif.load_svm(cls)
-    setting_table = ut.Table.load(opjoin(config.get_classifier_dirname(self.classif),'best_table'))
-    settings = setting_table.arr[config.pascal_classes.index(cls),:]
-    self.intervals = settings[setting_table.cols.index('bins')]
-    self.lower = settings[setting_table.cols.index('lower')]
-    self.upper = settings[setting_table.cols.index('upper')]
+      self.classif = CSCClassifier(suffix,cls,dataset)
 
   def detect(self, image):
     """
@@ -62,7 +58,7 @@ class ExternalDetector(Detector):
     dets = dets.with_column_omitted('time')
     return (dets.arr, time_passed)
 
-  def compute_posterior(self, image, dets, oracle=False):
+  def compute_score(self, image, dets, oracle=False):
     """
     Return the 0/1 decision of whether the cls of this detector is present in
     the image, given the detections table.
