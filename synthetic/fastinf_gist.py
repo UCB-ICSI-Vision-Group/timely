@@ -3,35 +3,14 @@ from synthetic.common_mpi import *
 
 import synthetic.config as config
 from synthetic.fastInf import *
-from synthetic.gist_detector import GistClassifier
+from synthetic.gist_classifier import GistClassifier, cls_for_dataset
 from synthetic.dataset import Dataset
 import cPickle
 
 def create_gist_model_for_dataset(gist, d):
   dataset = d.name  
-  images = d.images
-  
-  table = np.zeros((len(images), len(d.classes)))
-  
-  if comm_rank == 0:
-    t = ut.TicToc()
-    t.tic()
-  # Some map reduce here!
-  for idx in range(comm_rank, len(images), comm_size):
-    img = images[idx]
-    print 'classify image %s on %d'%(img.name, comm_rank)
-    classif = gist.get_priors(img)
-    table[idx, :] = np.array(classif)
-  
-  # store individually
-  savefile = '%s_%d'%(config.get_fastinf_data_file(dataset),comm_rank)
-  cPickle.dump(table, open(savefile, 'w'))
-  
-  safebarrier(comm)
-  if comm_rank == 0:
-    print 'computing table took %f seconds'%t.toc(quiet=True)
-  table = comm.reduce(table)
-    
+
+  table = cls_for_dataset(dataset)    
   return table  
 
 def discretize_table(table, num_bins, asInt=True):
@@ -80,8 +59,8 @@ if __name__=='__main__':
   #create_tables()
   num_bins = 5
   dataset = 'full_pascal_train'
-  
-  gist = GistClassifier(dataset)
+  cls = 'dog'
+  gist = GistClassifier(cls, dataset)
   d = gist.dataset
   table_gt = d.get_cls_ground_truth().arr.astype(int)
   

@@ -11,7 +11,7 @@ from synthetic.image import Image
 from synthetic.training import *
 import time
 from synthetic.classifier import Classifier
-from synthetic.fastInf import write_out_mrf, execute_lbp
+from synthetic.fastInf import write_out_mrf, execute_lbp, discretize_table
 
 class GistClassifier(Classifier):
   """
@@ -257,39 +257,41 @@ def convert():
   dataset_origin = 'full_pascal_trainval'
   convert_gist_datasets(dataset_origin, datasets)
 
-def cls_gt_for_dataset(dataset):
+def cls_for_dataset(dataset):
   d = Dataset(dataset)
   classes = d.classes
   table = np.zeros((len(d.images), len(classes)))
+  savefile = config.get_gist_fastinf_table_name(dataset, None)
+   
+  print savefile
+  if os.path.exists(savefile):
+    return cPickle.load(open(savefile, 'r'))
   
   for cls_idx in range(comm_rank, len(classes), comm_size):
-    savedir = join(config.res_dir, 'gist','cls_gt_%s'%cls)
-    if os.path.exists(savedir):
-      continue
-    
     cls = classes[cls_idx]
+    
+    savefile = config.get_gist_fastinf_table_name(dataset, cls)
+    if os.path.exists(savefile):
+      continue    
     gist = GistClassifier(cls, d)
     d = gist.dataset
     images = d.images
-    table[:, cls_idx] = gist.get_scores_for_image_set(range(len(images)))[:,0]
-  
-    savedir = join(config.res_dir, 'gist','cls_gt_%s'%cls)
-    ut.makedirs(savedir)
-    cPickle.dump(table, open(savedir,'w'))
+    table[:, cls_idx] = gist.get_scores_for_image_set(range(len(images)))[:,0]    
+    cPickle.dump(table, open(savefile,'w'))
     
   safebarrier(comm)
   table = comm.allreduce(table)  
   if comm_rank == 0:
-    savedir = join(config.res_dir, 'gist','cls_gt')
-    cPickle.dump(table, open(savedir,'w'))
+    savefile = config.get_gist_fastinf_table_name(dataset, None)
+    cPickle.dump(table, open(savefile,'w'))
   return table
 
 if __name__=='__main__':
   dataset = 'full_pascal_trainval'
-  table = cls_gt_for_dataset(dataset)
-  
+  table = cls_for_dataset(dataset)
+  d = Dataset(dataset)
   num_bins = 5
-  suffix = 'gist'
+  suffix = 'gist_pair'
   filename = config.get_fastinf_mrf_file(dataset, suffix)
   data_filename = config.get_fastinf_data_file(dataset, suffix)
   filename_out = config.get_fastinf_res_file(dataset, suffix)
@@ -299,6 +301,7 @@ if __name__=='__main__':
   
   table = np.hstack((table_gt, table))
   
+  discretize_table(table, num_bins)
   if comm_rank == 0:  
     write_out_mrf(table, num_bins, filename, data_filename)  
     result = execute_lbp(filename, data_filename, filename_out)

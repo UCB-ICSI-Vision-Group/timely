@@ -183,6 +183,14 @@ def get_gist_svm_filename(for_cls):
   dirname = makedirs(join(gist_dir,'svm'))
   return join(dirname,for_cls)
 
+def get_gist_fastinf_table_name(dataset, cls):
+  savedir = join(res_dir, 'gist', dataset)
+  makedirs(savedir)
+  if cls == None:
+    savefile = join(savedir,'cls_gt')
+  else:
+    savefile = join(savedir,'cls_gt_%s'%cls)
+  return savefile
 #####
 # Classifier
 #####
@@ -269,10 +277,14 @@ def get_dets_nov19():
 # Inference
 #####
 fastinf_dir = join(res_dir, 'fastinf')
+makedirs(fastinf_dir)
 def get_fastinf_mrf_file(dataset, suffix):
   dirname = join(fastinf_dir, dataset, suffix)
   makedirs(dirname)
   return join(dirname, 'mrf.txt')
+
+def get_mrf_model(num_vars):
+  return join(fastinf_dir, 'basic_model_%d'%num_vars)
   
 def get_fastinf_data_file(dataset, suffix):
   dirname = join(fastinf_dir, dataset, suffix)
