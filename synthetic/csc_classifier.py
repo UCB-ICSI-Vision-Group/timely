@@ -150,6 +150,3 @@ if __name__=='__main__':
   parameters = get_best_parameters()
   csc_classifier_train(parameters, 'default', probab=True, test=False, force_new=True)
     
-    
-    
-    

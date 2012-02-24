@@ -31,7 +31,8 @@ def write_out_mrf(table, num_bins, filename, data_filename, pairwise=True):
   wm = open(filename, 'w')
   modelfile = config.get_mrf_model(num_vars)
   print modelfile, os.path.exists(modelfile)
-  if not os.path.exists(modelfile):
+  # TODO!
+  if True or not os.path.exists(modelfile):
     #===========
     #= Model
     #===========  
@@ -178,7 +179,7 @@ def execute_lbp(filename_mrf, filename_data, filename_out):
   cmd = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
                          '-e', filename_data, '-o', filename_out]
   cmd2 = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
-                         '-e', filename_data, '-r2', 0.5,'-o', filename_out+'_r2']
+                         '-e', filename_data, '-r2', '0.5','-o', filename_out+'_r2']
   cmd = ' '.join(cmd)
   cmd2 = ' '.join(cmd2)
   ut.run_command(cmd)
@@ -206,7 +207,7 @@ if __name__=='__main__':
   dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
   num_clss = 20
-  num_bins = 5
+  num_bins = 8
   suffix = 'pairwise'
   filename = config.get_fastinf_mrf_file(dataset, suffix)
   data_filename = config.get_fastinf_data_file(dataset, suffix)
