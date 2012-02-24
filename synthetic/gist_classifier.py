@@ -257,7 +257,7 @@ def convert():
   dataset_origin = 'full_pascal_trainval'
   convert_gist_datasets(dataset_origin, datasets)
 
-def cls_for_dataset(dataset):
+def cls_gt_for_dataset(dataset):
   d = Dataset(dataset)
   classes = d.classes
   table = np.zeros((len(d.images), len(classes)))
@@ -272,6 +272,7 @@ def cls_for_dataset(dataset):
     
     savefile = config.get_gist_fastinf_table_name(dataset, cls)
     if os.path.exists(savefile):
+      table = cPickle.load(open(savefile,'r'))
       continue    
     gist = GistClassifier(cls, d)
     d = gist.dataset
@@ -288,7 +289,7 @@ def cls_for_dataset(dataset):
 
 if __name__=='__main__':
   dataset = 'full_pascal_trainval'
-  table = cls_for_dataset(dataset)
+  table = cls_gt_for_dataset(dataset)
   d = Dataset(dataset)
   num_bins = 5
   suffix = 'gist_pair'
