@@ -6,7 +6,6 @@ from common_mpi import *
 from common_imports import *
 
 import synthetic.config as config
-from synthetic.class_priors import ClassPriors
 from synthetic.dataset import Dataset
 from synthetic.evaluation import Evaluation
 from synthetic.gist_detector import GistClassifier
@@ -27,11 +26,12 @@ class DatasetPolicy:
   default_config = {
     'suffix': 'jan30', # use this to re-run on same params after changing code
     'detector': 'perfect', # perfect,perfect_with_noise,ext
-    'class_priors_mode': 'random', # random,oracle,fixed_order,fastinf
-    'dets_suffixes': ['dpm'], # further specifies which detector to use (use 'dpm' so tests pass)
+    'policy_mode': 'random',
+      # policy mode can be one of random, oracle, fixed_order, 
+      # fastinf_manual, fastinf_greedy, fastinf_rl
+    'dets_suffixes': ['dpm'], # further specifies which detectors to use (use 'dpm' so tests pass)
     'bounds': None, # start and deadline times for the policy
-    'gist': 0, # use the GIST action? 0/1
-    'learn_policy': 'manual' # can be manual,greedy,lspi
+    'gist': 0, # include the GIST actions? 0/1
   }
 
   def get_name(self):
@@ -46,10 +46,9 @@ class DatasetPolicy:
       middle += "with_gist"
     dets_suffixes = '-'.join(self.dets_suffixes)
     name = '_'.join(
-        (self.class_priors_mode,
+        (self.policy_mode,
         dets_suffixes,
         middle,
-        self.learn_policy,
         self.suffix))
     return name
 
@@ -111,7 +110,7 @@ class DatasetPolicy:
     # TODO: load from something: filename constructed from config_name
     b = BeliefState(self.dataset,self.actions)    
     
-    if self.learn_policy == 'manual':
+    if self.policy_mode == 'fastinf_manual':
       self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
       # The gist action is first, so offset the weights
       if self.gist:
@@ -124,7 +123,7 @@ class DatasetPolicy:
           naive_aps = [1 for action in self.actions]
         np.fill_diagonal(self.weights,naive_aps)
       self.write_out_weights()
-    elif self.learn_policy == 'greedy':
+    elif self.policy_mode == 'fastinf_greedy':
       self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
       # The gist action is first, so offset the weights
       if self.gist:
@@ -134,8 +133,6 @@ class DatasetPolicy:
         np.fill_diagonal(self.weights,naive_aps)
       self.learn_weights()
       self.write_out_weights()
-    elif self.learn_policy == 'advanced' or self.learn_policy == 'advanced_pair' or self.learn_policy=='slope' or self.learn_policy=='slope_pair':
-      None
     else:
       raise RuntimeError('Not yet implemented')
 
@@ -183,14 +180,21 @@ class DatasetPolicy:
 
   def learn_weights(self):
     """
-    Runs iterations of generating samples with current weights and training new
-    weight vectors based on the collected samples.
-    What it does depends on self.learn_policy setting.
+    Runs iterations of generating samples with current weights and training
+    new weight vectors based on the collected samples.
+    What it does depends on policy_mode.
     """
     # check for file containing the relevant statistics. if it does not exist,
     # collect samples and write it out.
     # NOTE: the filename depends only on the detector type
-    None
+    if re.search('_greedy$', self.policy_mode):
+      # regression to next-step greedy rewards
+      None
+    elif re.search('_rl$', self.policy_mode):
+      # full reinforcement learning
+      None
+    else:
+      raise RuntimeError("Policy mode %s is not supported!"%self.policy_mode)
 
   def output_det_statistics(self):
     # collect samples and display the statistics of times and naive and
@@ -262,14 +266,21 @@ class DatasetPolicy:
   def write_out_weights(self, name='default'):
     """Write self.weights out to canonical filename given the name."""
     filename = opjoin(config.get_dp_weights_dirname(self), name+'.txt')
-    np.savetxt(filename, self.weights, fmt='%.2f') 
+    np.savetxt(filename, self.weights, fmt='%.2f')
 
   ################
   # Image Policy stuff
   ################
   def update_actions(self,b):
-    """Update the values of actions according to the current belief state."""
-    self.values = np.dot(self.weights, b.featurize())
+    "Update the values of actions according to the current belief state."
+    if self.policy_mode=='random' or self.policy_mode=='oracle':
+      self.action_values = np.random.rand(self.actions)
+    elif self.policy_mode=='fixed_order':
+      self.action_values = b.get_p_c()
+    elif re.search('fastinf',self.policy_mode):
+      self.action_values = np.dot(self.weights, b.featurize())
+    else:
+      raise RuntimeError("Unknown policy_mode: %s"%self.policy_mode)
 
   def select_action(self, b):
     """
@@ -351,7 +362,7 @@ class DatasetPolicy:
       b.update_with_score(action, score)
 
       # The updated belief state posterior over C is our classification result
-      clses = b.p_c + [img_ind,b.t]
+      clses = b.get_p_c() + [img_ind,b.t]
       all_clses.append(clses)
 
       # Update action values and pick the next action; store sample
@@ -363,14 +374,14 @@ class DatasetPolicy:
       # check for stopping conditions
       if action_ind < 0:
         break
-      if self.bounds and not self.class_priors_mode=='oracle':
-        if b['t'] > self.bounds[1]:
+      if self.bounds and not self.policy_mode=='oracle':
+        if b.t > self.bounds[1]:
           break
 
     # in case of 'oracle' mode, re-sort the detections and times in order of AP
     # contributions
     times = [s['dt'] for s in samples]
-    if self.class_priors_mode=='oracle':
+    if self.policy_mode=='oracle':
       naive_aps = np.array([s['det_naive_ap'] for s in samples])
       sorted_inds = np.argsort(-naive_aps)
       all_detections = np.take(all_detections, sorted_inds)

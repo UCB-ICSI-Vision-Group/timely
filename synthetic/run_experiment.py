@@ -41,17 +41,17 @@ def load_configs(name):
         if isinstance(cf['bounds'][0], list) else [cf['bounds']]
       num_conditions *= len(bounds_list)
     
-    if 'class_priors_mode' in cf:
+    if 'policy_mode' in cf:
       cp_modes_list = []
-      cp_modes_list = cf['class_priors_mode'] \
-        if isinstance(cf['class_priors_mode'], list) else [cf['class_priors_mode']]
+      cp_modes_list = cf['policy_mode'] \
+        if isinstance(cf['policy_mode'], list) else [cf['policy_mode']]
       num_conditions *= len(cp_modes_list)
 
     configs = []
     for i in range(0,num_conditions):
       configs.append(dict(cf))
       configs[i]['bounds'] = bounds_list[i%len(bounds_list)]
-      configs[i]['class_priors_mode'] = cp_modes_list[i%len(cp_modes_list)]
+      configs[i]['policy_mode'] = cp_modes_list[i%len(cp_modes_list)]
     return configs
 
   dirname = opjoin(config.config_dir,name)
