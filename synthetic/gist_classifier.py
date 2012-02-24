@@ -11,7 +11,7 @@ from synthetic.image import Image
 from synthetic.training import *
 import time
 from synthetic.classifier import Classifier
-from synthetic.fastInf import write_out_mrf, execute_lbp
+from synthetic.fastInf import write_out_mrf, execute_lbp, discretize_table
 
 class GistClassifier(Classifier):
   """
@@ -257,7 +257,7 @@ def convert():
   dataset_origin = 'full_pascal_trainval'
   convert_gist_datasets(dataset_origin, datasets)
 
-def cls_gt_for_dataset(dataset):
+def cls_for_dataset(dataset):
   d = Dataset(dataset)
   classes = d.classes
   table = np.zeros((len(d.images), len(classes)))
@@ -288,10 +288,10 @@ def cls_gt_for_dataset(dataset):
 
 if __name__=='__main__':
   dataset = 'full_pascal_trainval'
-  table = cls_gt_for_dataset(dataset)
+  table = cls_for_dataset(dataset)
   d = Dataset(dataset)
   num_bins = 5
-  suffix = 'gist'
+  suffix = 'gist_pair'
   filename = config.get_fastinf_mrf_file(dataset, suffix)
   data_filename = config.get_fastinf_data_file(dataset, suffix)
   filename_out = config.get_fastinf_res_file(dataset, suffix)
@@ -301,6 +301,7 @@ if __name__=='__main__':
   
   table = np.hstack((table_gt, table))
   
+  discretize_table(table, num_bins)
   if comm_rank == 0:  
     write_out_mrf(table, num_bins, filename, data_filename)  
     result = execute_lbp(filename, data_filename, filename_out)
