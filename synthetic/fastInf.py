@@ -4,8 +4,7 @@ from synthetic.common_mpi import *
 import subprocess as subp
 
 from synthetic.dataset import Dataset
-from synthetic.fastinf_gist import create_gist_model_for_dataset,\
-  discretize_table
+from synthetic.fastinf_gist import *
 
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
@@ -160,7 +159,8 @@ def write_out_mrf(table, num_bins, filename, data_filename, second_table=None,pa
   #= Data
   #===========
   wd = open(data_filename, 'w')
-  table = np.hstack((table, second_table))
+  if not second_table == None:
+    table = np.hstack((table, second_table))
   for rowdex in range(table.shape[0]):
     wd.write('( ')
     for i in range(table.shape[1]):
@@ -245,8 +245,10 @@ def run_fastinf_different_settings():
   rs = ['', '0.5', '1']
   settings = list(itertools.product(suffixs, ms, rs))
   table_gt = d.get_cls_ground_truth().arr.astype(int)
+  print 'run with a total of %d settings'%len(settings)
   
   for setindx in range(comm_rank, len(settings), comm_size):
+    second_table = None
     setin = settings[setindx]
     suffix = setin[0]
     m = setin[1]
