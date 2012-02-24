@@ -213,5 +213,5 @@ def create_csc_stuff():
   filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
   
 if __name__=='__main__':
-  
+  None
                     

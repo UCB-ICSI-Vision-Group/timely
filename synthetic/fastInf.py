@@ -296,5 +296,7 @@ def run_fastinf_different_settings():
 if __name__=='__main__':
   create_csc_stuff()
   
+  comm.safebarrier()
+  
   run_fastinf_different_settings()
   
