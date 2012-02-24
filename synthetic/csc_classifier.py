@@ -162,17 +162,20 @@ def classify_all_images():
     csc = CSCClassifier(suffix, cls, d)
     ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
     for img_idx in range(comm_rank, len(d.images), comm_size):
-      img = d.images[img_idx] 
-      
-      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name)
-      if os.path.exists(filename):
-        continue
+      img = d.images[img_idx]      
+      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
+#      if os.path.exists(filename):
+#        continue
       print '%s image %s'%(cls, img.name)
       try:
         score = csc.get_score(img_idx)        
-        cPickle.dump(score, open(filename, 'w'))
+        w = open(filename, 'w')
+        w.write('%f'%score)
+        w.close()
       except:
-        cPickle.dump(0, open(filename, 'w'))
+        w = open(filename, 'w')
+        w.write('0')
+        w.close()
 
 def compile_table_from_classifications(d):  
   errors = 0
@@ -184,10 +187,13 @@ def compile_table_from_classifications(d):
     for img_idx in range(len(d.images)):
       img = d.images[img_idx] 
       print '%s image %s'%(cls, img.name)
-      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name)
+      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
       print filename
       try:
-        score = cPickle.load(open(filename, 'w'))
+        w = open(filename, 'r')
+        score = float(w.read())
+        w.close() 
+        
       except:
         score = 0
         errors += 1
@@ -197,7 +203,9 @@ def compile_table_from_classifications(d):
   return table
 
 if __name__=='__main__':
-  #classify_all_images()
+  classify_all_images()
+  
+  comm.safebarrier()
   d = Dataset('full_pascal_trainval')
   table = compile_table_from_classifications(d)
   filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
