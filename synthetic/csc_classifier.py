@@ -6,23 +6,47 @@ from common_mpi import *
 from synthetic.classifier import Classifier
 from synthetic.dataset import Dataset
 import synthetic.config as config
+from synthetic.training import svm_predict
 
 class CSCClassifier(Classifier):
-  def __init__(self, suffix):
+  def __init__(self, suffix, cls, dataset):
     self.name = 'csc'
     self.suffix = suffix
+    self.cls = cls
+    self.dataset = dataset
+    self.svm = config.get_classifier_filename(self, cls)
     
-  def create_vector(self, feats, cls, img, intervals, lower, upper):
+    setting_table = ut.Table.load(opjoin(config.get_classifier_dirname(self),'best_table'))
+    settings = setting_table.arr[config.pascal_classes.index(cls),:]
+    self.intervals = settings[setting_table.cols.index('bins')]
+    self.lower = settings[setting_table.cols.index('lower')]
+    self.upper = settings[setting_table.cols.index('upper')]
+    
+  def classify_image(self, img):
+    model = self.svm
+    #, dets, cls, img, intervals, lower, upper 
+    vector = self.create_vector(dets, cls, img, intervals, lower, upper)
+    result = svm_predict(vector, model)
+    return result
+    
+  def create_vector(self, img):
+    filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
+    csc_test = np.load(filename)
+    csc_test = csc_test[()]  
+    csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
+    csc_test.arr = self.normalize_scores(csc_test.arr)
+    feats = csc_test
+    
     if feats.arr.size == 0:
-      return np.zeros((1,intervals+1))
+      return np.zeros((1,self.intervals+1))
     dpm = feats.subset(['score', 'cls_ind', 'img_ind'])
     img_dpm = dpm.filter_on_column('img_ind', img, omit=True)
     if img_dpm.arr.size == 0:
       print 'empty vector'
-      return np.zeros((1,intervals+1))
-    cls_dpm = img_dpm.filter_on_column('cls_ind', cls, omit=True)
-    hist = self.compute_histogram(cls_dpm.arr, intervals, lower, upper)
-    vector = np.zeros((1, intervals+1))
+      return np.zeros((1,self.intervals+1))
+    cls_dpm = img_dpm.filter_on_column('cls_ind', self.cls, omit=True)
+    hist = self.compute_histogram(cls_dpm.arr, self.intervals, self.lower, self.upper)
+    vector = np.zeros((1, self.intervals+1))
     vector[0,0:-1] = hist
     vector[0,-1] = img_dpm.shape()[0]
     return vector
@@ -110,20 +134,23 @@ def old_training_stuff():
       with open(score_file, 'a') as myfile:
           myfile.write(classes[cls_idx] + ' ' + str(acc) + '\n')
 
-if __name__=='__main__':
-  csc = CSCClassifier('default')
-  best_table = csc.get_best_table()
-  
-  # list of lists of svm settings
-  # [lowers, uppers, kernels, intervallss, clss, Cs]
+def get_best_parameters():
   parameters = []
+  best_table = csc.get_best_table()
   for row_idx in range(best_table.shape()[0]):
     row = best_table.arr[row_idx, :]
     params = []
     for idx in ['lower', 'upper', 'kernel', 'bins', 'cls_ind', 'C']:
       params.append(row[best_table.ind(idx)])
     parameters.append(params)
-  print parameters
+  return parameters
+
+if __name__=='__main__':
+  csc = CSCClassifier('default')  
+  
+  # list of lists of svm settings
+  # [lowers, uppers, kernels, intervallss, clss, Cs]
+  parameters = get_best_parameters()
   csc_classifier_train(parameters, 'default', probab=True, test=False, force_new=True)
     
     

@@ -4,6 +4,7 @@ from synthetic.common_mpi import *
 import subprocess as subp
 
 import synthetic.config as config
+from synthetic.dataset import Dataset
 
 
 def plausible_assignments(assignments):
@@ -133,8 +134,10 @@ def create_meassurement_table(num_clss, func):
   return table
 
 def execute_lbp(filename_mrf, filename_data, filename_out):
-  process = subp.Popen(['../fastInf/build/bin/learning', '-i', filename_mrf, 
-                         '-e', filename_data, '-o', filename_out], shell=False, stdout=subp.PIPE)
+  cmd = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
+                         '-e', filename_data, '-o', filename_out]
+  print ' '.join(cmd)
+  process = subp.Popen(cmd, shell=False, stdout=subp.PIPE)
   result = open(filename_out).read()
   
   return result
@@ -156,17 +159,25 @@ def c_corr_to_a(num_lines, func):
   return table
   
 if __name__=='__main__':
+  dataset = 'full_pascal_trainval'
+  d = Dataset(dataset)
   num_clss = 3
   num_bins = 5
-  filename = config.get_fastinf_mrf_file()
-  data_filename = config.get_fastinf_data_file()
-  filename_out = config.get_fastinf_res_file()
+  suffix = 'perfect'
+  filename = config.get_fastinf_mrf_file(dataset, suffix)
+  data_filename = config.get_fastinf_data_file(dataset, suffix)
+  filename_out = config.get_fastinf_res_file(dataset, suffix)
   
   #table = create_meassurement_table(num_clss, plausible_assignments)
-  table = c_corr_to_a(500, plausible_assignments)  
-    
-  d_table = discretize_table(table, num_bins)
-  write_out_mrf(d_table, num_bins, filename, data_filename)
+  #table = c_corr_to_a(500, plausible_assignments)
+  table = d.get_cls_ground_truth().arr.astype(int)
+  print table.shape
+  table = np.hstack((table, table))  
+  print table.shape
+  write_out_mrf(table, num_bins, filename, data_filename)    
+#  d_table = discretize_table(table, num_bins)
+#  write_out_mrf(d_table, num_bins, filename, data_filename)
+
   
-  result = execute_lbp(filename, data_filename)
+  result = execute_lbp(filename, data_filename, filename_out)
   

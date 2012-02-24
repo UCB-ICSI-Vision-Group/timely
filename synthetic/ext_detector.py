@@ -40,7 +40,7 @@ class ExternalDetector(Detector):
     self.svm = self.classif.load_svm(cls)
     setting_table = ut.Table.load(opjoin(config.get_classifier_dirname(self.classif),'best_table'))
     settings = setting_table.arr[config.pascal_classes.index(cls),:]
-    self.intervalls = settings[setting_table.cols.index('bins')]
+    self.intervals = settings[setting_table.cols.index('bins')]
     self.lower = settings[setting_table.cols.index('lower')]
     self.upper = settings[setting_table.cols.index('upper')]
 
@@ -72,5 +72,5 @@ class ExternalDetector(Detector):
       return Detector.compute_posterior(self, image, dets, oracle)
     img = self.dataset.get_img_ind(image)
     cls = config.pascal_classes.index(self.cls)
-    return self.classif.classify_image(self.svm,dets,cls,img, self.intervalls, self.lower, self.upper)
+    return self.classif.classify_image(self.svm,dets,cls,img, self.intervals, self.lower, self.upper)
 

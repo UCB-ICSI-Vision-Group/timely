@@ -11,6 +11,8 @@ class Classifier():
   def __init__(self):
     self.name = ''
     self.suffix = ''
+    self.cls = ''
+    self.tictoc = ut.TicToc()
   
   def compute_histogram(self, arr, intervals, lower, upper):
     band = upper - lower
@@ -27,8 +29,13 @@ class Classifier():
       hist = np.divide(hist, sum(hist)) 
     return np.transpose(hist)
   
+#  @abstractmethod
+#  def create_vector(self, img):
+#    "Create the feature vector."
+#    # implement in subclasses
+    
   @abstractmethod
-  def create_vector(self, feats, cls, img, intervals, lower, upper):
+  def compute_posterior(self, image, dets, oracle=False):
     "Create the feature vector."
     # implement in subclasses
   
@@ -75,14 +82,22 @@ class Classifier():
    
     save_svm(model, filename)
     
-  def classify_image(self, model, dets, cls, img, intervals, lower, upper): 
-    vector = self.create_vector(dets, cls, img, intervals, lower, upper)
-    result = svm_predict(vector, model)
-    # TODO: score
-    ret = 0
-    if (result > 0)[0][0]:
-      ret = 1
-    return ret
+  def get_observation(self, image):
+    """
+    Get the score for given image.
+    """
+    observation = {}
+    self.tictoc.tic()
+    score = self.get_score(image)
+    
+    observation['dt'] = self.tictoc.toc(quiet=True)    
+    return observation 
+        
+  @abstractmethod
+  def get_score(self, img): 
+    """
+    Get the score for the given image
+    """
   
   def load_svm(self, cls):
     model = load_svm(config.get_classifier_filename(self,cls))

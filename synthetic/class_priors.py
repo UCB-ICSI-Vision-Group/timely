@@ -11,7 +11,7 @@ class ClassPriors:
   condition on observed values, and compute expected information gain.
   """
 
-    accepted_modes = [
+  accepted_modes = [
     	'random','oracle','fixed_order',
     	'no_smooth','backoff', 'fastinf']
 
