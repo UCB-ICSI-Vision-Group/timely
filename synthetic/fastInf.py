@@ -5,6 +5,7 @@ import subprocess as subp
 
 import synthetic.config as config
 from synthetic.dataset import Dataset
+import itertools
 
 
 def plausible_assignments(assignments):
@@ -25,7 +26,7 @@ def discretize_table(table, num_bins):
     d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins))))  
   return d_table
 
-def write_out_mrf(table, num_bins, filename, data_filename):
+def write_out_mrf(table, num_bins, filename, data_filename, pairwise=True):
   """
   Again we assume the table to be of the form displayed below.
   """
@@ -46,33 +47,56 @@ def write_out_mrf(table, num_bins, filename, data_filename):
   
   # ===========Cliques============
   wm.write('@Cliques\n')
-  # top clique:
-  wm.write('cl0\t%d'%num_vars)
-  wm.write('\t')
-  for i in range(num_vars):
-    wm.write(' %d'%i)
-  wm.write('\t%d\t'%num_vars)
-  for i in range(num_vars):
-    wm.write(' %d'%(i+1))
-  wm.write('\n') 
+  if not pairwise:
+    # top clique:
+    wm.write('cl0\t%d'%num_vars)
+    wm.write('\t')
+    for i in range(num_vars):
+      wm.write(' %d'%i)
+    wm.write('\t%d\t'%num_vars)
+    for i in range(num_vars):
+      wm.write(' %d'%(i+1))
+    wm.write('\n')
+  else:
+    combs = list(itertools.combinations(range(num_vars), 2))
+    num_combs = len(combs)    
+    for idx, comb in enumerate(combs):
+      # neighboring cliques:
+      neighs = []
+      for i, c in enumerate(combs):
+        if not c==comb:
+          if c[0] in comb or c[1] in comb:
+            neighs.append(i)
+
+      wm.write('cl%d\t2\t%d %d\t%d\t'%(idx, comb[0], comb[1], len(neighs)))
+      for n in neighs:
+        wm.write('%d '%n)
+      wm.write('\n')
   #pairwise cliques
   for i in range(num_vars):
-    wm.write('cl%d\t2\t%d %d\t1\t0\n'%(i+1, i, i+num_vars))  
+    wm.write('cl%d\t2\t%d %d\t1\t0\n'%(i+1+idx, i, i+num_vars))  
   wm.write('@End\n')
   wm.write('\n')
+  num_cliques = i+2+idx
+  print num_cliques
     
   # ===========Measures==========
   # Well, there is a segfault if these are empty :/
   wm.write('@Measures\n')
-  wm.write('mes0\t%d\t'%(num_vars))
-  for _ in range(num_vars):
-    wm.write('2 ')
-  wm.write('\t')
-  for _ in range(2**num_vars):
-    wm.write('.1 ')
-  wm.write('\n')
+  if not pairwise:
+    wm.write('mes0\t%d\t'%(num_vars))
+    for _ in range(num_vars):
+      wm.write('2 ')
+    wm.write('\t')
+    for _ in range(2**num_vars):
+      wm.write('.1 ')
+    wm.write('\n')
+  else:
+    for j in range(num_combs):
+      wm.write('mes%d\t2\t2 2\t.1 .1 .1 .1\n'%j)
+    
   for i in range(num_vars):
-    wm.write('mes%d\t2\t2 %d'%(i+1, num_bins))
+    wm.write('mes%d\t2\t2 %d'%(i+j+1, num_bins))
     wm.write('\t')
     for _ in range(num_bins*2):
       wm.write('.1 ')
@@ -82,7 +106,7 @@ def write_out_mrf(table, num_bins, filename, data_filename):
   
   # ===========CliqueToMeasure==========
   wm.write('@CliqueToMeasure\n')
-  for i in range(num_vars+1):
+  for i in range(num_cliques):
     wm.write('%(i)d\t%(i)d\n'%dict(i=i))  
   wm.write('@End\n')
     
@@ -138,8 +162,8 @@ def execute_lbp(filename_mrf, filename_data, filename_out):
                          '-e', filename_data, '-o', filename_out]
   print ' '.join(cmd)
   process = subp.Popen(cmd, shell=False, stdout=subp.PIPE)
-  result = open(filename_out).read()
-  
+  process.communicate()
+  result = open(filename_out).read()  
   return result
 
 def c_corr_to_a(num_lines, func):
@@ -161,23 +185,25 @@ def c_corr_to_a(num_lines, func):
 if __name__=='__main__':
   dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
-  num_clss = 3
+  num_clss = 5
   num_bins = 5
-  suffix = 'perfect'
+  suffix = 'small'
   filename = config.get_fastinf_mrf_file(dataset, suffix)
   data_filename = config.get_fastinf_data_file(dataset, suffix)
   filename_out = config.get_fastinf_res_file(dataset, suffix)
   
-  #table = create_meassurement_table(num_clss, plausible_assignments)
+  table = create_meassurement_table(num_clss, plausible_assignments)
   #table = c_corr_to_a(500, plausible_assignments)
-  table = d.get_cls_ground_truth().arr.astype(int)
-  print table.shape
-  table = np.hstack((table, table))  
-  print table.shape
+#  table = d.get_cls_ground_truth().arr.astype(int)
+#  print table.shape
+#  table = np.hstack((table, table))  
+#  print table.shape
   write_out_mrf(table, num_bins, filename, data_filename)    
 #  d_table = discretize_table(table, num_bins)
 #  write_out_mrf(d_table, num_bins, filename, data_filename)
 
   
   result = execute_lbp(filename, data_filename, filename_out)
+  
+  print result
   
