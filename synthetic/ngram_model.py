@@ -3,91 +3,32 @@ from common_mpi import *
 
 import synthetic.config as config
 
-class ClassPriors:
-  """
-  Encapsulation of the part of the belief state that keeps track of the object
-  class priors.
-  Methods to initialize the model, update with an observed posterior,
-  condition on observed values, and compute expected information gain.
-  """
+class FixedOrderModel(InferenceModel):
+  "Model does not update anything, and p_c is determined by the counts."
 
-  accepted_modes = [
-    	'random','oracle','fixed_order',
-    	'no_smooth','backoff', 'fastinf']
+  def __init__(self,dataset):
+    self.data = self.dataset.get_cls_counts()
+    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0] 
 
-  def __init__(self, dataset, mode='random'):
-    self.dataset = dataset
-    data = self.dataset.get_cls_counts()
+  def update_with_observations(self, observations):
+    None
 
-    assert(mode in ClassPriors.accepted_modes)
-    self.mode = mode
+class NGramModel(InferenceModel):
+  accepted_modes = ['no_smooth','smooth','backoff']
 
-    if mode=='random':
-      self.model = RandomModel(data)
-    elif mode=='oracle':
-      self.model = RandomModel(data)
-    elif mode in ['fixed_order','no_smooth','backoff']:
-      self.model = NGramModel(data,self.mode)
-    elif mode=='fastinf':
-    	self.model = FastInfModel(dataset)
-    else:
-      raise RuntimeError("Unknown mode")
-    self.priors = self.model.get_probabilities()
-    self.observed_inds = []
-    self.observed_vals = []
-
-  def __repr__(self):
-    return "ClassPriors: \n%s\n%s"%(self.priors,zip(self.observed_inds,self.observed_vals))
-
-  def update_with_posterior(self, cls_ind, posterior):
-    """
-    Update the priors given the observed posterior of one class.
-    """
-    # TODO: for now, just set to hard 0/1
-    self.observed_inds.append(cls_ind)
-    self.observed_vals.append(posterior)
-    self.priors = self.model.get_probabilities(self.observed_inds,self.observed_vals)
-    
-  def update_with_gist(self, gist_priors):
-    """
-    Update the priors given the GIST-conditioned class probabilities.
-    """
-    # TODO: not quite clear what to do
-    new_priors = []
-    for i in range(len(self.priors)):
-      new_priors.append(self.priors[i]*gist_priors[i])
-    self.priors = new_priors
-
-class RandomModel:
-  def __init__(self,data):
-    self.num_classes = data.shape[1]
-
-  def get_probabilities(self, cond_inds=None, cond_vals=None): 
-    return np.random.rand(self.num_classes)
-
-class FastinfModel:
-	def __init__(self,dataset):
-		self.fname = config.get_fastinf_filename(dataset)
-
-class NGramModel:
-  accepted_modes = ['fixed_order','no_smooth','smooth','backoff']
-
-  def __init__(self,data,mode='fixed_order'):
-    self.data = data
+  def __init__(self,dataset,mode='no_smooth'):
+  	self.data = self.dataset.get_cls_counts()
     self.cache = {}
-    assert(mode in NGramModel.accepted_modes)
+    assert(mode in accepted_modes)
     self.mode = mode
     self.cls_inds = range(self.data.shape[1])
     print("NGramModel initialized with %s mode"%self.mode)
 
   def shape(self): return self.data.shape
 
-  def get_probabilities(self, cond_inds=None, cond_vals=None):
-    """Return list of the values of each cls_ind."""
-    if self.mode=='fixed_order':
-      return [self.cond_prob(cls_ind) for cls_ind in self.cls_inds]
-    else:
-      return [self.cond_prob(cls_ind, cond_inds, cond_vals) for cls_ind in self.cls_inds]
+  def update_with_observations(self, observations):
+    "Update all the probabilities with the given observations."
+    self.p_c = [self.cond_prob(cls_ind, cond_inds, cond_vals) for cls_ind in self.cls_inds]
 
   def marg_prob(self, cls_inds, vals=None):
     """
@@ -199,24 +140,3 @@ def find_best_lam1_lam2(filename):
       minimum = score
       bestvals = entries
   print bestvals
-
-if __name__ == '__main__':
-  NGramModel.test_self()
-
-  from synthetic.dataset import Dataset
-  dataset = Dataset('full_pascal_trainval')
-  cp = ClassPriors(dataset, 'no_smooth')
-  
-  find_best_lam1_lam2(os.path.join(config.res_dir,'cross_val_lam1_lam2/')+'auc.txt')
-
-  #cp.evaluate_marginal_prob_error()
-  lams = []
-  for lam1 in np.arange(0,1,0.05):
-    for lam2 in np.arange(0,1-lam1,0.05):
-      lams.append((lam1,lam2))
-  cp.evaluate_method(0.05, 0)
-#  auc_file = open(os.path.join(config.res_dir,'cross_val_lam1_lam2/')+'auc.txt','a')
-#  for lamdex in range(mpi_rank, len(lams), mpi_size):
-#    lam = lams[lamdex]
-#    auc = cp.evaluate_method(lam[0], lam[1])
-#    auc_file.write(str(lam[0])+' '+str(lam[1])+ ' '+str(auc)+'\n')

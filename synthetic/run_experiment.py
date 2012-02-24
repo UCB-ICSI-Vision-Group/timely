@@ -41,17 +41,17 @@ def load_configs(name):
         if isinstance(cf['bounds'][0], list) else [cf['bounds']]
       num_conditions *= len(bounds_list)
     
-    if 'class_priors_mode' in cf:
+    if 'policy_mode' in cf:
       cp_modes_list = []
-      cp_modes_list = cf['class_priors_mode'] \
-        if isinstance(cf['class_priors_mode'], list) else [cf['class_priors_mode']]
+      cp_modes_list = cf['policy_mode'] \
+        if isinstance(cf['policy_mode'], list) else [cf['policy_mode']]
       num_conditions *= len(cp_modes_list)
 
     configs = []
     for i in range(0,num_conditions):
       configs.append(dict(cf))
       configs[i]['bounds'] = bounds_list[i%len(bounds_list)]
-      configs[i]['class_priors_mode'] = cp_modes_list[i%len(cp_modes_list)]
+      configs[i]['policy_mode'] = cp_modes_list[i%len(cp_modes_list)]
     return configs
 
   dirname = opjoin(config.config_dir,name)
@@ -88,9 +88,6 @@ def main():
 
   parser.add_argument('--wholeset_prs', action='store_true', 
     default=False, help='evaluate in the final p-r regime')
-
-  parser.add_argument('--no_policy', action='store_true', 
-    default=False, help='do not use the policy when evaluating wholeset_pr')
 
   parser.add_argument('--no_apvst', action='store_true', 
     default=False, help='do NOT evaluate in the ap vs. time regime')
@@ -143,11 +140,7 @@ def main():
 
     # optionally, evaluate in the standard PR regime
     if args.wholeset_prs:
-      if args.no_policy:
-        dets = dp.get_ext_dets()
-        ev.evaluate_detections_whole(dets,force=args.force)
-      else:
-        ev.evaluate_detections_whole(None,force=args.force)
+      ev.evaluate_detections_whole(None,force=args.force)
 
   # and plot the comparison if multiple config files were given
   if not args.no_apvst and len(configs)>1 and comm_rank==0:
