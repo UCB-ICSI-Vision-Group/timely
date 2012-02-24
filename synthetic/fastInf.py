@@ -4,6 +4,8 @@ from synthetic.common_mpi import *
 import subprocess as subp
 
 from synthetic.dataset import Dataset
+from synthetic.fastinf_gist import create_gist_model_for_dataset,\
+  discretize_table
 
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
@@ -23,10 +25,11 @@ def discretize_table(table, num_bins):
     d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins))))  
   return d_table
 
-def write_out_mrf(table, num_bins, filename, data_filename, pairwise=True):
+def write_out_mrf(table, num_bins, filename, data_filename, second_table=None,pairwise=True):
   """
   Again we assume the table to be of the form displayed below.
   """
+   
   num_vars = table.shape[1]/2
   wm = open(filename, 'w')
   modelfile = config.get_mrf_model(num_vars)
@@ -42,6 +45,10 @@ def write_out_mrf(table, num_bins, filename, data_filename, pairwise=True):
       wm.write('var%d\t2\n'%i)
     for i in range(num_vars):
       wm.write('var%d\t%d\n'%(i+num_vars, num_bins))
+      
+    if not second_table == None:
+      for i in range(num_vars):
+        wm.write('var%d\t%d\n'%(i+2*num_vars, num_bins))    
     wm.write('@End\n')
     wm.write('\n')
     
@@ -83,10 +90,23 @@ def write_out_mrf(table, num_bins, filename, data_filename, pairwise=True):
       for n in neighs:
         wm.write('%d '%n)
       wm.write('\n')
-      #neighbors  
+      
+    if not second_table == None:
+      for l in range(num_vars):
+        neighs = []
+        for i, c in enumerate(combs):
+          #if not c==[i, i+num_vars]:
+          if l in c:
+            neighs.append(i)
+        wm.write('cl%d\t2\t%d %d\t%d\t'%(l+1+idx+num_vars, l, l+2*num_vars, len(neighs)))
+        for n in neighs:
+          wm.write('%d '%n)
+        wm.write('\n')
     wm.write('@End\n')
     wm.write('\n')
     num_cliques = l+2+idx
+    if not second_table == None:
+      num_cliques += num_vars
     print num_cliques
       
     # ===========Measures==========
@@ -110,6 +130,13 @@ def write_out_mrf(table, num_bins, filename, data_filename, pairwise=True):
       for _ in range(num_bins*2):
         wm.write('.1 ')
       wm.write('\n')
+    if not second_table == None:
+      for i in range(num_vars):
+        wm.write('mes%d\t2\t2 %d'%(i+j+1+num_vars, num_bins))
+        wm.write('\t')
+        for _ in range(num_bins*2):
+          wm.write('.1 ')
+        wm.write('\n')  
     wm.write('@End\n')
     wm.write('\n')
     
@@ -133,6 +160,7 @@ def write_out_mrf(table, num_bins, filename, data_filename, pairwise=True):
   #= Data
   #===========
   wd = open(data_filename, 'w')
+  table = np.hstack((table, second_table))
   for rowdex in range(table.shape[0]):
     wd.write('( ')
     for i in range(table.shape[1]):
@@ -175,16 +203,19 @@ def create_meassurement_table(num_clss, func):
    
   return table
 
-def execute_lbp(filename_mrf, filename_data, filename_out):
+def execute_lbp(filename_mrf, filename_data, filename_out, add_settings=[]):
   cmd = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
-                         '-e', filename_data, '-o', filename_out]
-  cmd2 = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
-                         '-e', filename_data, '-r2', '0.5','-o', filename_out+'_r2']
+                         '-e', filename_data, '-o', filename_out] + add_settings
+
+  timefile = filename_out+'_time'
+  tt = ut.TicToc()
+  tt.tic()        
   cmd = ' '.join(cmd)
-  cmd2 = ' '.join(cmd2)
   ut.run_command(cmd)
-  ut.run_command(cmd2)
-  
+  w = open(timefile, 'w')
+  w.write('%s\ntook %f sec'%(cmd, tt.toc(quiet=True)))
+  w.close()
+  print 'everything done'
   return 
 
 def c_corr_to_a(num_lines, func):
@@ -203,28 +234,49 @@ def c_corr_to_a(num_lines, func):
     table[i,:] = np.hstack((assignment, classif))
   return table
   
-if __name__=='__main__':
+  
+def run_fastinf_different_settings():  
+ 
   dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
-  num_clss = 20
-  num_bins = 8
-  suffix = 'pairwise'
-  filename = config.get_fastinf_mrf_file(dataset, suffix)
-  data_filename = config.get_fastinf_data_file(dataset, suffix)
-  filename_out = config.get_fastinf_res_file(dataset, suffix)
+  num_bins = 5
+  suffixs = ['perfect', 'GIST']#, 'CSC', 'GIST_CSC']
+  ms = ['0', '2', '5']
+  rs = ['', '0.5', '1']
+  settings = list(itertools.product(suffixs, ms, rs))
+  table_gt = d.get_cls_ground_truth().arr.astype(int)
+  for setin in settings:
+    suffix = setin[0]
+    m = setin[1]
+    r = setin[2]
+
+    filename = config.get_fastinf_mrf_file(dataset, suffix)
+    data_filename = config.get_fastinf_data_file(dataset, suffix)
+    filename_out = config.get_fastinf_res_file(dataset, suffix)
+    
+    if suffix == 'perfect':      
+      table = np.hstack((table_gt, table_gt))
+      
+    elif suffix == 'GIST':
+      table = create_gist_model_for_dataset(d)      
+      discr_table = discretize_table(table, num_bins)  
+      table = np.hstack((table_gt, discr_table))
+      
+    elif suffix == 'CSC':
+      None
+    elif suffix == 'GIST_CSC':
+      # these could be csc.
+      second_table = table[:, :table.shape[1]/2]
   
-  #table = create_meassurement_table(num_clss, plausible_assignments)
-  #table = c_corr_to_a(500, plausible_assignments)
-  table = d.get_cls_ground_truth().arr.astype(int)
-#  print table.shape
-  table = np.hstack((table, table))  
-#  print table.shape
-  write_out_mrf(table, num_bins, filename, data_filename)    
+    write_out_mrf(table, num_bins, filename, data_filename,second_table=second_table)
+    
+    add_sets = ['-m',m]
+    if not r == '':
+      add_sets += ['-r2', r]
+    execute_lbp(filename, data_filename, filename_out, add_settings=add_sets)
+    
 #  d_table = discretize_table(table, num_bins)
 #  write_out_mrf(d_table, num_bins, filename, data_filename)
 
-  
-  result = execute_lbp(filename, data_filename, filename_out)
-  
-  print result
-  
+if __name__=='__main__':
+  run_fastinf_different_settings()
