@@ -82,7 +82,7 @@ if __name__=='__main__':
   filename_out = config.get_fastinf_res_file(dataset,suffix)
   
   if comm_rank == 0:
-    write_out_mrf(data, num_bins, filename, data_filename)  
+    write_out_mrf(data[:100,:], num_bins, filename, data_filename)  
     result = execute_lbp(filename, data_filename, filename_out)
 
   #print data

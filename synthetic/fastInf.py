@@ -177,11 +177,14 @@ def create_meassurement_table(num_clss, func):
 def execute_lbp(filename_mrf, filename_data, filename_out):
   cmd = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
                          '-e', filename_data, '-o', filename_out]
-  print ' '.join(cmd)
-  process = subp.Popen(cmd, shell=False, stdout=subp.PIPE)
-  process.communicate()
-  result = open(filename_out).read()  
-  return result
+  cmd2 = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
+                         '-e', filename_data, '-r2', 0.5,'-o', filename_out+'_r2']
+  cmd = ' '.join(cmd)
+  cmd2 = ' '.join(cmd2)
+  ut.run_command(cmd)
+  ut.run_command(cmd2)
+  
+  return 
 
 def c_corr_to_a(num_lines, func):
   assignment = np.zeros((3,))
@@ -209,11 +212,11 @@ if __name__=='__main__':
   data_filename = config.get_fastinf_data_file(dataset, suffix)
   filename_out = config.get_fastinf_res_file(dataset, suffix)
   
-  table = create_meassurement_table(num_clss, plausible_assignments)
+  #table = create_meassurement_table(num_clss, plausible_assignments)
   #table = c_corr_to_a(500, plausible_assignments)
-#  table = d.get_cls_ground_truth().arr.astype(int)
+  table = d.get_cls_ground_truth().arr.astype(int)
 #  print table.shape
-#  table = np.hstack((table, table))  
+  table = np.hstack((table, table))  
 #  print table.shape
   write_out_mrf(table, num_bins, filename, data_filename)    
 #  d_table = discretize_table(table, num_bins)
