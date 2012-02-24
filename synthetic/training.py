@@ -84,14 +84,14 @@ def svm_proba(x, clf):
   return clf.predict_proba(x)
 
 def save_svm(model, filename):
-  dump = pickle.dumps(model)
+  dump = cPickle.dumps(model)
   f = open(filename, 'w')
   f.write(dump)
   f.close()
 
 def load_svm(filename, probability=True):
   dump = open(filename).read()
-  model = pickle.loads(dump)
+  model = cPickle.loads(dump)
   return model
 
 def get_hist(assignments, M):

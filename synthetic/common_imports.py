@@ -12,9 +12,10 @@ from pprint import pprint
 import json
 import itertools
 import cPickle
+import pickle
 
 import numpy as np
 import scipy.stats as st
 
-import synthetic.config
+import synthetic.config as config
 import util as ut
