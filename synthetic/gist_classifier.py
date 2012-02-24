@@ -11,15 +11,23 @@ from synthetic.image import Image
 from synthetic.training import *
 import time
 from synthetic.classifier import Classifier
+from synthetic.fastInf import write_out_mrf, execute_lbp
 
 class GistClassifier(Classifier):
   """
   Compute a likelihood-vector for the classes given a (precomputed) gist detection
   """
-  def __init__(self, cls, dataset_name):
+  def __init__(self, cls, dataset):
     """
     Load all gist features right away
     """
+    if type(dataset) == type(''):
+      self.dataset = Dataset(dataset)
+      dataset_name = dataset
+    else:
+      self.dataset = dataset
+      dataset_name = dataset.name
+      
     Classifier.__init__(self)
     print("Started loading GIST")
     t = time.time()
@@ -27,10 +35,19 @@ class GistClassifier(Classifier):
     print("Time spent loading gist: %.3f"%(time.time()-t))
     self.cls = cls
     self.svm = self.load_svm()
-    self.dataset = Dataset(dataset_name)    
+  
+  def get_scores_for_image_set(self, image_idc):
+    """
+    Get a list of image indices (of own dataset) and return all scores as column-vect
+    """
+    scores = np.zeros((len(image_idc), 1))    
+    for idx, img_idx in enumerate(image_idc):
+      img = self.dataset.images[img_idx]
+      scores[idx] = self.get_score(img)      
+    return scores
     
   def get_score(self, img):
-    return self.get_proba(img)
+    return self.get_proba(img)[0][1]
         
   def load_svm(self):
     filename = config.get_gist_svm_filename(self.cls)
@@ -240,13 +257,32 @@ def convert():
   dataset_origin = 'full_pascal_trainval'
   convert_gist_datasets(dataset_origin, datasets)
 
+def cls_gt_for_dataset(dataset):
+  d = Dataset(dataset)
+  classes = d.classes
+  table = np.zeros((len(d.images), len(classes)))
+  for cls_idx, cls in enumerate(classes):
+    gist = GistClassifier(cls, d)
+    d = gist.dataset
+    images = d.images
+    table[:, cls_idx] = gist.get_scores_for_image_set(range(len(images)))[:,0]  
+  return table
+
 if __name__=='__main__':
   dataset = 'full_pascal_trainval'
-  cls = 'dog'
-  gist = GistClassifier(cls, dataset)
-  d = gist.dataset
-  images = d.images
-  print gist.get_observation(images[0])
+  table = cls_gt_for_dataset(dataset)
   
+  num_bins = 5
+  suffix = 'gist'
+  filename = config.get_fastinf_mrf_file(dataset, suffix)
+  data_filename = config.get_fastinf_data_file(dataset, suffix)
+  filename_out = config.get_fastinf_res_file(dataset, suffix)
   
+  table_gt = d.get_cls_ground_truth().arr.astype(int)
+  print table.shape
   
+  table = np.hstack((table_gt, table))  
+  write_out_mrf(table, num_bins, filename, data_filename)    
+
+  result = execute_lbp(filename, data_filename, filename_out)
+    
