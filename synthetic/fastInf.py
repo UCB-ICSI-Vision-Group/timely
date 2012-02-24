@@ -242,7 +242,7 @@ def run_fastinf_different_settings():
   dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
   num_bins = 5
-  suffixs = ['perfect', 'GIST']#, 'CSC', 'GIST_CSC']
+  suffixs = ['CSC', 'GIST_CSC']#,'perfect', 'GIST']
   ms = ['0', '2', '5']
   rs = ['', '0.5', '1']
   settings = list(itertools.product(suffixs, ms, rs))
@@ -269,10 +269,20 @@ def run_fastinf_different_settings():
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'CSC':
-      None
+      filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
+      table = cPickle.loads(open(filename,'r'))
+      discr_table = discretize_table(table, num_bins)  
+      table = np.hstack((table_gt, discr_table))
+      
     elif suffix == 'GIST_CSC':
-      # these could be csc.
-      second_table = table[:, :table.shape[1]/2]
+      filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
+      table = cPickle.loads(open(filename,'r'))
+      discr_table = discretize_table(table, num_bins)  
+      table = np.hstack((table_gt, discr_table))
+      
+      second_table = create_gist_model_for_dataset(d)      
+      second_table = discretize_table(second_table, num_bins)  
+      
   
     write_out_mrf(table, num_bins, filename, data_filename,second_table=second_table)
     

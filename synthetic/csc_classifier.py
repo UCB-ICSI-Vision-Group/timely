@@ -174,20 +174,32 @@ def classify_all_images():
       except:
         cPickle.dump(0, open(filename, 'w'))
 
-def compile_table_from_classifications():
-  d = Dataset('full_pascal_trainval')
-  
+def compile_table_from_classifications(d):  
+  errors = 0
   table = np.zeros((len(d.images), len(d.classes)))
-  for cls_idx, cls in enumerate(d.classes):
+  
+  for cls_idx in range(comm_rank, len(d.classes), comm_size):
+    cls = d.classes[cls_idx]
     ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
     for img_idx in range(len(d.images)):
       img = d.images[img_idx] 
       print '%s image %s'%(cls, img.name)
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name)
-      score = cPickle.load(open(filename, 'w'))
+      print filename
+      try:
+        score = cPickle.load(open(filename, 'w'))
+      except:
+        score = 0
+        errors += 1
       table[img_idx, cls_idx] = score
-  
+  table = comm.reduce(table)
+  print 'errors: %d'%errors
+  return table
 
 if __name__=='__main__':
-  classify_all_images()
-  #compile_table_from_classifications()
+  #classify_all_images()
+  d = Dataset('full_pascal_trainval')
+  table = compile_table_from_classifications(d)
+  filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
+  
+                    
