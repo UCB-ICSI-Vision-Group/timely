@@ -32,85 +32,105 @@ def write_out_mrf(table, num_bins, filename, data_filename, pairwise=True):
   """
   num_vars = table.shape[1]/2
   wm = open(filename, 'w')
-   
-  #===========
-  #= Model
-  #===========  
-  # ===========Variables==========
-  wm.write('@Variables\n')
-  for i in range(num_vars):
-    wm.write('var%d\t2\n'%i)
-  for i in range(num_vars):
-    wm.write('var%d\t%d\n'%(i+num_vars, num_bins))
-  wm.write('@End\n')
-  wm.write('\n')
-  
-  # ===========Cliques============
-  wm.write('@Cliques\n')
-  if not pairwise:
-    # top clique:
-    wm.write('cl0\t%d'%num_vars)
-    wm.write('\t')
+  modelfile = config.get_mrf_model(num_vars)
+  print modelfile, os.path.exists(modelfile)
+  if not os.path.exists(modelfile):
+    #===========
+    #= Model
+    #===========  
+    # ===========Variables==========
+    wm.write('@Variables\n')
     for i in range(num_vars):
-      wm.write(' %d'%i)
-    wm.write('\t%d\t'%num_vars)
+      wm.write('var%d\t2\n'%i)
     for i in range(num_vars):
-      wm.write(' %d'%(i+1))
+      wm.write('var%d\t%d\n'%(i+num_vars, num_bins))
+    wm.write('@End\n')
     wm.write('\n')
-  else:
-    combs = list(itertools.combinations(range(num_vars), 2))
-    num_combs = len(combs)    
-    for idx, comb in enumerate(combs):
-      # neighboring cliques:
+    
+    # ===========Cliques============
+    wm.write('@Cliques\n')
+    if not pairwise:
+      # top clique:
+      wm.write('cl0\t%d'%num_vars)
+      wm.write('\t')
+      for i in range(num_vars):
+        wm.write(' %d'%i)
+      wm.write('\t%d\t'%num_vars)
+      for i in range(num_vars):
+        wm.write(' %d'%(i+1))
+      wm.write('\n')
+    else:
+      combs = list(itertools.combinations(range(num_vars), 2))
+      num_combs = len(combs)    
+      for idx, comb in enumerate(combs):
+        # neighboring cliques:
+        neighs = []
+        for i, c in enumerate(combs):
+          if not c==comb:
+            if c[0] in comb or c[1] in comb:
+              neighs.append(i)
+  
+        wm.write('cl%d\t2\t%d %d\t%d\t'%(idx, comb[0], comb[1], len(neighs)))
+        for n in neighs:
+          wm.write('%d '%n)
+        wm.write('\n')
+    #pairwise cliques
+    for l in range(num_vars):
       neighs = []
       for i, c in enumerate(combs):
-        if not c==comb:
-          if c[0] in comb or c[1] in comb:
-            neighs.append(i)
-
-      wm.write('cl%d\t2\t%d %d\t%d\t'%(idx, comb[0], comb[1], len(neighs)))
+        #if not c==[i, i+num_vars]:
+        if l in c:
+          neighs.append(i)
+      wm.write('cl%d\t2\t%d %d\t%d\t'%(l+1+idx, l, l+num_vars, len(neighs)))
       for n in neighs:
         wm.write('%d '%n)
       wm.write('\n')
-  #pairwise cliques
-  for i in range(num_vars):
-    wm.write('cl%d\t2\t%d %d\t1\t0\n'%(i+1+idx, i, i+num_vars))  
-  wm.write('@End\n')
-  wm.write('\n')
-  num_cliques = i+2+idx
-  print num_cliques
-    
-  # ===========Measures==========
-  # Well, there is a segfault if these are empty :/
-  wm.write('@Measures\n')
-  if not pairwise:
-    wm.write('mes0\t%d\t'%(num_vars))
-    for _ in range(num_vars):
-      wm.write('2 ')
-    wm.write('\t')
-    for _ in range(2**num_vars):
-      wm.write('.1 ')
+      #neighbors  
+    wm.write('@End\n')
     wm.write('\n')
+    num_cliques = l+2+idx
+    print num_cliques
+      
+    # ===========Measures==========
+    # Well, there is a segfault if these are empty :/
+    wm.write('@Measures\n')
+    if not pairwise:
+      wm.write('mes0\t%d\t'%(num_vars))
+      for _ in range(num_vars):
+        wm.write('2 ')
+      wm.write('\t')
+      for _ in range(2**num_vars):
+        wm.write('.1 ')
+      wm.write('\n')
+    else:
+      for j in range(num_combs):
+        wm.write('mes%d\t2\t2 2\t.1 .1 .1 .1\n'%j)
+      
+    for i in range(num_vars):
+      wm.write('mes%d\t2\t2 %d'%(i+j+1, num_bins))
+      wm.write('\t')
+      for _ in range(num_bins*2):
+        wm.write('.1 ')
+      wm.write('\n')
+    wm.write('@End\n')
+    wm.write('\n')
+    
+    # ===========CliqueToMeasure==========
+    wm.write('@CliqueToMeasure\n')
+    for i in range(num_cliques):
+      wm.write('%(i)d\t%(i)d\n'%dict(i=i))  
+    wm.write('@End\n')
+    
+    wm.close()
+    
+    # copy to modelfile
+    os.system('cp %s %s'%(filename,modelfile))
   else:
-    for j in range(num_combs):
-      wm.write('mes%d\t2\t2 2\t.1 .1 .1 .1\n'%j)
-    
-  for i in range(num_vars):
-    wm.write('mes%d\t2\t2 %d'%(i+j+1, num_bins))
-    wm.write('\t')
-    for _ in range(num_bins*2):
-      wm.write('.1 ')
-    wm.write('\n')
-  wm.write('@End\n')
-  wm.write('\n')
+    print 'load model...'
+    # copy from modelfile
+    os.system('cp %s %s'%(modelfile,filename))
   
-  # ===========CliqueToMeasure==========
-  wm.write('@CliqueToMeasure\n')
-  for i in range(num_cliques):
-    wm.write('%(i)d\t%(i)d\n'%dict(i=i))  
-  wm.write('@End\n')
-    
-  wm.close()
+  print 'reformat data'
   #===========
   #= Data
   #===========
@@ -185,9 +205,9 @@ def c_corr_to_a(num_lines, func):
 if __name__=='__main__':
   dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
-  num_clss = 5
+  num_clss = 20
   num_bins = 5
-  suffix = 'small'
+  suffix = 'pairwise'
   filename = config.get_fastinf_mrf_file(dataset, suffix)
   data_filename = config.get_fastinf_data_file(dataset, suffix)
   filename_out = config.get_fastinf_res_file(dataset, suffix)
