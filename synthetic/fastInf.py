@@ -5,6 +5,7 @@ import subprocess as subp
 
 from synthetic.dataset import Dataset
 from synthetic.fastinf_gist import *
+from synthetic.csc_classifier import create_csc_stuff
 
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
@@ -293,5 +294,7 @@ def run_fastinf_different_settings():
     
 
 if __name__=='__main__':
+  create_csc_stuff()
+  
   run_fastinf_different_settings()
   

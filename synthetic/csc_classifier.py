@@ -202,12 +202,16 @@ def compile_table_from_classifications(d):
   print 'errors: %d'%errors
   return table
 
-if __name__=='__main__':
+def create_csc_stuff():
+
+
   classify_all_images()
   
   comm.safebarrier()
   d = Dataset('full_pascal_trainval')
   table = compile_table_from_classifications(d)
   filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
+  
+if __name__=='__main__':
   
                     
