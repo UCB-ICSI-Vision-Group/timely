@@ -164,9 +164,14 @@ def classify_all_images():
     for img_idx in range(comm_rank, len(d.images), comm_size):
       img = d.images[img_idx] 
       print '%s image %s'%(cls, img.name)
-      score = csc.get_score(img_idx)
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name)
-      cPickle.dump(score, open(filename, 'w'))
+      if os.path.exists(filename):
+        continue
+      try:
+        score = csc.get_score(img_idx)        
+        cPickle.dump(score, open(filename, 'w'))
+      except:
+        cPickle.dump(0, open(filename, 'w'))
 
 def compile_table_from_classifications():
   d = Dataset('full_pascal_trainval')
