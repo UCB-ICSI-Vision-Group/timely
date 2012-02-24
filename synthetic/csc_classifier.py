@@ -163,10 +163,11 @@ def classify_all_images():
     ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
     for img_idx in range(comm_rank, len(d.images), comm_size):
       img = d.images[img_idx] 
-      print '%s image %s'%(cls, img.name)
+      
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name)
       if os.path.exists(filename):
         continue
+      print '%s image %s'%(cls, img.name)
       try:
         score = csc.get_score(img_idx)        
         cPickle.dump(score, open(filename, 'w'))
