@@ -279,8 +279,7 @@ def run_fastinf_different_settings():
       add_sets += ['-r2', r]
     execute_lbp(filename, data_filename, filename_out, add_settings=add_sets)
     
-#  d_table = discretize_table(table, num_bins)
-#  write_out_mrf(d_table, num_bins, filename, data_filename)
 
 if __name__=='__main__':
   run_fastinf_different_settings()
+  
