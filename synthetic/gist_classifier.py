@@ -261,33 +261,34 @@ def cls_gt_for_dataset(dataset):
   d = Dataset(dataset)
   classes = d.classes
   table = np.zeros((len(d.images), len(classes)))
+  savefile = os.path.exists(config.get_gist_fastinf_table_name(dataset, None))
+   
+  if savefile:
+    return cPickle.load(open(savefile, 'r'))
   
   for cls_idx in range(comm_rank, len(classes), comm_size):
-    savedir = join(config.res_dir, 'gist','cls_gt_%s'%cls)
-    if os.path.exists(savedir):
-      continue
-    
     cls = classes[cls_idx]
+    
+    savefile = config.get_gist_fastinf_table_name(dataset, cls)
+    if os.path.exists(savefile):
+      continue    
     gist = GistClassifier(cls, d)
     d = gist.dataset
     images = d.images
-    table[:, cls_idx] = gist.get_scores_for_image_set(range(len(images)))[:,0]
-  
-    savedir = join(config.res_dir, 'gist','cls_gt_%s'%cls)
-    ut.makedirs(savedir)
-    cPickle.dump(table, open(savedir,'w'))
+    table[:, cls_idx] = gist.get_scores_for_image_set(range(len(images)))[:,0]    
+    cPickle.dump(table, open(savefile,'w'))
     
   safebarrier(comm)
   table = comm.allreduce(table)  
   if comm_rank == 0:
-    savedir = join(config.res_dir, 'gist','cls_gt')
-    cPickle.dump(table, open(savedir,'w'))
+    savefile = config.get_gist_fastinf_table_name(dataset, None)
+    cPickle.dump(table, open(savefile,'w'))
   return table
 
 if __name__=='__main__':
   dataset = 'full_pascal_trainval'
   table = cls_gt_for_dataset(dataset)
-  
+  d = Dataset(dataset)
   num_bins = 5
   suffix = 'gist'
   filename = config.get_fastinf_mrf_file(dataset, suffix)

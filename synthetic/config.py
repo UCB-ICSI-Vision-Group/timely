@@ -183,6 +183,14 @@ def get_gist_svm_filename(for_cls):
   dirname = makedirs(join(gist_dir,'svm'))
   return join(dirname,for_cls)
 
+def get_gist_fastinf_table_name(dataset, cls):
+  savedir = join(res_dir, dataset, 'gist')
+  makedirs(savedir)
+  if cls == None:
+    savefile = join(savedir,'cls_gt')
+  else:
+    savefile = join(savedir,'cls_gt_%s'%cls)
+  return savefile
 #####
 # Classifier
 #####
