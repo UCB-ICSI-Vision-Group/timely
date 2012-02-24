@@ -10,38 +10,59 @@ from synthetic.detector import Detector
 from synthetic.image import Image
 from synthetic.training import *
 import time
+from synthetic.classifier import Classifier
+from synthetic.fastInf import write_out_mrf, execute_lbp
 
-class GistPriors():
+class GistClassifier(Classifier):
   """
   Compute a likelihood-vector for the classes given a (precomputed) gist detection
   """
-  def __init__(self, dataset_name):
+  def __init__(self, cls, dataset):
     """
     Load all gist features right away
     """
+    if type(dataset) == type(''):
+      self.dataset = Dataset(dataset)
+      dataset_name = dataset
+    else:
+      self.dataset = dataset
+      dataset_name = dataset.name
+      
+    Classifier.__init__(self)
     print("Started loading GIST")
     t = time.time()
     self.gist_table = np.load(config.get_gist_dict_filename(dataset_name))
     print("Time spent loading gist: %.3f"%(time.time()-t))
-    self.svms = self.load_all_svms()
-    self.dataset = Dataset(dataset_name)
-        
-  def load_all_svms(self):
-    svms = {}
-    for cls in config.pascal_classes:
-      filename = config.get_gist_svm_filename(cls)
-      if os.path.exists(filename):
-        print 'load svm %s'%filename
-        svms[cls] = load_svm(config.get_gist_svm_filename(cls))
-      else:
-        print 'gist svm for',cls,'does not exist'
-    return svms
+    self.cls = cls
+    self.svm = self.load_svm()
+  
+  def get_scores_for_image_set(self, image_idc):
+    """
+    Get a list of image indices (of own dataset) and return all scores as column-vect
+    """
+    scores = np.zeros((len(image_idc), 1))    
+    for idx, img_idx in enumerate(image_idc):
+      img = self.dataset.images[img_idx]
+      scores[idx] = self.get_score(img)      
+    return scores
     
-  def get_proba_for_cls(self, cls, img):
+  def get_score(self, img):
+    return self.get_proba(img)[0][1]
+        
+  def load_svm(self):
+    filename = config.get_gist_svm_filename(self.cls)
+    if os.path.exists(filename):
+      print 'load svm %s'%filename
+      svm = load_svm(config.get_gist_svm_filename(self.cls))
+    else:
+      print 'gist svm for',self.cls,'does not exist'
+    return svm
+    
+  def get_proba(self, img):
     image = self.dataset.get_image_by_filename(img.name)
     index = self.dataset.get_img_ind(image)
     gist = np.array(self.gist_table[index])
-    return svm_proba(gist, self.svms[cls])
+    return svm_proba(gist, self.svm)
          
   def get_priors(self, img):
     num_classes = len(config.pascal_classes)
@@ -161,9 +182,9 @@ class GistPriors():
     
 def gist_evaluate_best_svm():
   train_d = Dataset('full_pascal_train')
-  train_dect = GistPriors(train_d.name)
+  train_dect = GistClassifier(train_d.name)
   val_d = Dataset('full_pascal_val')
-  val_dect = GistPriors(val_d.name)  
+  val_dect = GistClassifier(val_d.name)  
   
   ranges = np.arange(0.5,10.,0.5)
   for C_idx in range(mpi_rank, len(ranges), mpi_size):
@@ -173,7 +194,7 @@ def gist_evaluate_best_svm():
       val_dect.evaluate_svm(cls, val_d, C)
     
 def test_gist_one_sample(dataset):    
-  dect = GistPriors(dataset)
+  dect = GistClassifier(dataset)
   d = Dataset(dataset)
   vect = dect.get_priors(d.images[1])
   for idx in range(len(vect)):
@@ -213,7 +234,7 @@ def crossval():
   #save_gist_differently()
   #test_gist_one_sample('full_pascal_test')
   #gist_evaluate_best_svm()
-  dect = GistPriors('full_pascal_trainval')
+  dect = GistClassifier('full_pascal_trainval')
   lams = np.arange(0,1,0.025)
   errors = np.zeros((lams.shape[0],1))
   for idx in range(mpi_rank, len(lams),mpi_size):
@@ -231,10 +252,54 @@ def crossval():
     outfile.close() 
     
   
-  
-  
-if __name__=='__main__':
+def convert():
   datasets = ['test_pascal_train_tobi','test_pascal_val_tobi']
   dataset_origin = 'full_pascal_trainval'
   convert_gist_datasets(dataset_origin, datasets)
+
+def cls_gt_for_dataset(dataset):
+  d = Dataset(dataset)
+  classes = d.classes
+  table = np.zeros((len(d.images), len(classes)))
+  
+  for cls_idx in range(comm_rank, len(classes), comm_size):
+    savedir = join(config.res_dir, 'gist','cls_gt_%s'%cls)
+    if os.path.exists(savedir):
+      continue
+    
+    cls = classes[cls_idx]
+    gist = GistClassifier(cls, d)
+    d = gist.dataset
+    images = d.images
+    table[:, cls_idx] = gist.get_scores_for_image_set(range(len(images)))[:,0]
+  
+    savedir = join(config.res_dir, 'gist','cls_gt_%s'%cls)
+    ut.makedirs(savedir)
+    cPickle.dump(table, open(savedir,'w'))
+    
+  safebarrier(comm)
+  table = comm.allreduce(table)  
+  if comm_rank == 0:
+    savedir = join(config.res_dir, 'gist','cls_gt')
+    cPickle.dump(table, open(savedir,'w'))
+  return table
+
+if __name__=='__main__':
+  dataset = 'full_pascal_trainval'
+  table = cls_gt_for_dataset(dataset)
+  
+  num_bins = 5
+  suffix = 'gist'
+  filename = config.get_fastinf_mrf_file(dataset, suffix)
+  data_filename = config.get_fastinf_data_file(dataset, suffix)
+  filename_out = config.get_fastinf_res_file(dataset, suffix)
+  
+  table_gt = d.get_cls_ground_truth().arr.astype(int)
+  print table.shape
+  
+  table = np.hstack((table_gt, table))
+  
+  if comm_rank == 0:  
+    write_out_mrf(table, num_bins, filename, data_filename)  
+    result = execute_lbp(filename, data_filename, filename_out)
   

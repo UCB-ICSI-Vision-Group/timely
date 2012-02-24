@@ -11,6 +11,8 @@ class Classifier():
   def __init__(self):
     self.name = ''
     self.suffix = ''
+    self.cls = ''
+    self.tictoc = ut.TicToc()
   
   def compute_histogram(self, arr, intervals, lower, upper):
     band = upper - lower
@@ -27,15 +29,20 @@ class Classifier():
       hist = np.divide(hist, sum(hist)) 
     return np.transpose(hist)
   
+#  @abstractmethod
+#  def create_vector(self, img):
+#    "Create the feature vector."
+#    # implement in subclasses
+    
   @abstractmethod
-  def create_vector(self, feats, cls, img, intervals, lower, upper):
+  def compute_posterior(self, image, dets, oracle=False):
     "Create the feature vector."
     # implement in subclasses
   
-  def train(self, pos, neg, kernel, C):    
+  def train(self, pos, neg, kernel, C, probab=True):    
     y = [1]*pos.shape[0] + [-1]*neg.shape[0]
     x = np.concatenate((pos,neg))
-    model = train_svm(x, y, kernel=kernel, C=C)
+    model = train_svm(x, y, kernel=kernel, C=C, probab=probab)
     return model
   
   def evaluate(self, pos, neg, model):
@@ -51,7 +58,7 @@ class Classifier():
       scores[idx] = 1./(math.exp(-2.*scores[idx]) + 1.)  
     return np.hstack((scores, arr[:,1:3]))
       
-  def train_for_all_cls(self, train_dataset, feats, intervals, kernel, lower, upper, cls_idx, C):
+  def train_for_all_cls(self, train_dataset, feats, intervals, kernel, lower, upper, cls_idx, C, probab=True):
     cls = train_dataset.classes[cls_idx]
     filename = config.get_classifier_svm_learning_filename(
       self,cls,kernel,intervals,lower,upper,C)
@@ -71,17 +78,27 @@ class Classifier():
     neg = np.concatenate(neg)
     # take as many negatives as there are positives
     neg = np.random.permutation(neg)[:pos.shape[0]]
-    model = self.train(pos, neg, kernel, C)
+    model = self.train(pos, neg, kernel, C, probab=probab)
    
     save_svm(model, filename)
     
-  def classify_image(self, model, dets, cls, img, intervals, lower, upper): 
-    vector = self.create_vector(dets, cls, img, intervals, lower, upper)
-    result = svm_predict(vector, model)
-    ret = 0
-    if (result > 0)[0][0]:
-      ret = 1
-    return ret
+  def get_observation(self, image):
+    """
+    Get the score for given image.
+    """
+    observation = {}
+    self.tictoc.tic()
+    score = self.get_score(image)
+    
+    observation['score'] = score
+    observation['dt'] = self.tictoc.toc(quiet=True)    
+    return observation 
+        
+  @abstractmethod
+  def get_score(self, img): 
+    """
+    Get the score for the given image
+    """
   
   def load_svm(self, cls):
     model = load_svm(config.get_classifier_filename(self,cls))
@@ -189,5 +206,6 @@ class Classifier():
     print best_table
     
   def get_best_table(self):
-      return ut.Table.load(opjoin(svm_save_dir,'best_table'))
+    svm_save_dir = config.get_classifier_learning_dirname(self)
+    return ut.Table.load(opjoin(svm_save_dir,'best_table'))
     

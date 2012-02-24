@@ -154,8 +154,14 @@ def get_cached_dataset_filename(name):
 
 # ./res_dir/ext_dets/{dataset}_*.npy
 def get_ext_dets_filename(dataset, suffix):
-  dirname = makedirs(join(res_dir,'ext_dets'))
-  dataset_name = dataset.name # NOTE does not depend on # images
+  if dataset == None:
+    """
+    Just load eeeevery image 
+    """
+    dataset_name = 'full_pascal_full'
+  else:
+    dataset_name = dataset.name # NOTE does not depend on # images
+  dirname = makedirs(join(res_dir,'ext_dets'))  
   return join(dirname, '%s_%s.npy'%(dataset_name,suffix))
 
 #####
@@ -185,7 +191,12 @@ def get_classifier_learning_dirname(classifier):
   name = classifier.name+'_svm'
   if len(classifier.suffix) >= 1:
     name += '_'+classifier.suffix
-  return makedirs(join(temp_res_dir,name))
+  return makedirs(join(res_dir,name))
+
+def get_classifier_svm_learning_filename(classifier, cls,kernel,intervals,lower,upper,C):
+  direct = get_classifier_dirname(classifier)
+  name = '%s_%s_%f_%f_%f_%f'%(cls,kernel,intervals,lower,upper,C)
+  return join(direct,name)
 
 def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C):
   dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))
@@ -258,17 +269,17 @@ def get_dets_nov19():
 # Inference
 #####
 fastinf_dir = join(res_dir, 'fastinf')
-def get_fastinf_mrf_file(dataset):
-  dirname = join(fastinf_dir, dataset)
+def get_fastinf_mrf_file(dataset, suffix):
+  dirname = join(fastinf_dir, dataset, suffix)
   makedirs(dirname)
   return join(dirname, 'mrf.txt')
   
-def get_fastinf_data_file(dataset):
-  dirname = join(fastinf_dir, dataset)
+def get_fastinf_data_file(dataset, suffix):
+  dirname = join(fastinf_dir, dataset, suffix)
   makedirs(dirname)
   return join(dirname, 'data.txt')
 
-def get_fastinf_res_file(dataset):
-  dirname = join(fastinf_dir, dataset)
+def get_fastinf_res_file(dataset, suffix):
+  dirname = join(fastinf_dir, dataset, suffix)
   makedirs(dirname)
   return join(dirname, 'res.txt')
