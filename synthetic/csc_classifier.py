@@ -154,12 +154,11 @@ def get_best_parameters():
     parameters.append(params)
   return parameters
 
-if __name__=='__main__':
+def classify_all_images():
   d = Dataset('full_pascal_trainval')
   suffix = 'default'
   
-  table = np.zeros((len(d.images), len(d.classes)))
-  for cls_idx, cls in enumerate(d.classes):
+  for cls in enumerate(d.classes):
     csc = CSCClassifier(suffix, cls, d)
     ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
     for img_idx in range(comm_rank, len(d.images), comm_size):
@@ -168,20 +167,20 @@ if __name__=='__main__':
       score = csc.get_score(img_idx)
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name)
       cPickle.dump(score, open(filename, 'w'))
-      #table[img_idx, cls_idx] = score
-            
-#  filename = config.get_ext_dets_filename(d, 'csc_'+suffix+'_'+comm_rank)
-#  print '%d save as %s'%(comm_rank, filename)
-#  cPickle.dump(table, open(filename,'w'))
+
+def compile_table_from_classifications():
+  d = Dataset('full_pascal_trainval')
   
-  safebarrier(comm)
-  table = comm.reduce(table)
+  table = np.zeros((len(d.images), len(d.classes)))
+  for cls_idx, cls in enumerate(d.classes):
+    ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
+    for img_idx in range(len(d.images)):
+      img = d.images[img_idx] 
+      print '%s image %s'%(cls, img.name)
+      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name)
+      score = cPickle.load(open(filename, 'w'))
+      table[img_idx, cls_idx] = score
   
-  if comm_rank == 0:
-    filename = config.get_ext_dets_filename(d, 'csc_'+suffix)
-    cPickle.dump(table, open(filename,'w'))
-  # list of lists of svm settings
-  # [lowers, uppers, kernels, intervallss, clss, Cs]
-#  parameters = get_best_parameters()
-#  csc_classifier_train(parameters, 'default', probab=True, test=False, force_new=True)
-    
+
+if __name__=='__main__':
+  compile_table_from_classifications()
