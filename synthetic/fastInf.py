@@ -3,10 +3,7 @@ from synthetic.common_mpi import *
 
 import subprocess as subp
 
-import synthetic.config as config
 from synthetic.dataset import Dataset
-import itertools
-
 
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)

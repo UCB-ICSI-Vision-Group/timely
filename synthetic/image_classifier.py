@@ -12,10 +12,6 @@ from sklearn.cross_validation import KFold
 from synthetic.image import Image
 import itertools
 
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
-
 class ClassifierConfig():
   def __init__(self, dataset, L, numfolds=4):
     self.d = Dataset(dataset)
@@ -91,7 +87,7 @@ def train_all_svms(cc, Cs, gammas, numfolds=4):
   cc.d.create_folds(numfolds)
   all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
 
-  for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
+  for set_idx in range(comm_rank, len(Cs)*len(gammas), comm_size): # Parallel
     curr_set = all_settings[set_idx]
     C = curr_set[0]
     gamma = curr_set[1]
@@ -109,7 +105,7 @@ def cross_valid_training(cc, Cs, gammas, numfolds=4, train=True):
   
   all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
 
-  for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
+  for set_idx in range(comm_rank, len(Cs)*len(gammas), comm_size): # Parallel
     curr_set = all_settings[set_idx]
     C = curr_set[0]
     gamma = curr_set[1]
@@ -226,7 +222,7 @@ def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0, force_new=False):
   else:
     print 'Don\'t compute SVM, no examples given'
   
-  print 'training all classifier SVMs took:', cc.tictocer.toc('overall', quiet=True), 'seconds on', mpi_rank
+  print 'training all classifier SVMs took:', cc.tictocer.toc('overall', quiet=True), 'seconds on', comm_rank
   
 def classify_image(cc, img, C=1.0, gamma=0.0, cls=None):
   """
@@ -253,8 +249,8 @@ def classify_all_images(cc):
   """
   print 'Classify images'
   images = cc.d.images
-  for img_idx in range(mpi_rank, len(images), mpi_size): # PARALLEL
-    print 'classify image %d/%d at %d'%(img_idx/mpi_size, len(images)/mpi_size, comm_rank)
+  for img_idx in range(comm_rank, len(images), comm_size): # PARALLEL
+    print 'classify image %d/%d at %d'%(img_idx/comm_size, len(images)/comm_size, comm_rank)
     img = images[img_idx]
     scores = classify_image(cc, img_idx)
     savefile = config.get_classifier_score_name(img, cc.L)

@@ -4,11 +4,8 @@ from common_imports import *
 from common_mpi import *
 
 from synthetic.class_priors import NGramModel
-import synthetic.util as ut
-import synthetic.config as config
 from synthetic.image import Image
 from synthetic.training import *
-import time
 from synthetic.classifier import Classifier
 from synthetic.fastInf import write_out_mrf, execute_lbp, discretize_table
 
@@ -170,7 +167,7 @@ def gist_evaluate_best_svm():
   val_dect = GistClassifier(val_d.name)  
   
   ranges = np.arange(0.5,10.,0.5)
-  for C_idx in range(mpi_rank, len(ranges), mpi_size):
+  for C_idx in range(comm_rank, len(ranges), comm_size):
     C = ranges[C_idx] 
     train_dect.train_all_svms(train_d, C)
     for cls in config.pascal_classes:
@@ -220,13 +217,13 @@ def crossval():
   dect = GistClassifier('full_pascal_trainval')
   lams = np.arange(0,1,0.025)
   errors = np.zeros((lams.shape[0],1))
-  for idx in range(mpi_rank, len(lams),mpi_size):
+  for idx in range(comm_rank, len(lams),comm_size):
     lam = lams[idx]
     err = dect.cross_val_lambda(lam)
     errors[idx, 0] = err
   errors = comm.reduce(errors)
   
-  if mpi_rank == 0:
+  if comm_rank == 0:
     result_file = config.res_dir + 'cross_val_lam_gist.txt'
     outfile = open(result_file,'w')
     print errors

@@ -4,7 +4,6 @@ from scipy.stats import beta
 from common_imports import *
 
 from synthetic.dataset import Dataset
-import synthetic.config as config
 from synthetic.sliding_windows import WindowParams
 
 class Detector(object):

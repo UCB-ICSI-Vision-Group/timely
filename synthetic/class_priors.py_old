@@ -7,7 +7,7 @@ from sklearn.cross_validation import KFold
 from common_imports import *
 from common_mpi import *
 
-import synthetic.config as config
+
 from synthetic.sliding_windows import WindowParams
 from synthetic.priorsJT import PriorsJT
 
@@ -123,9 +123,9 @@ class ClassPriors:
       means = np.mean(all_losses,0)
       x = np.arange(data.shape[1])
       auc = np.trapz(means,x)
-      if mpi_rank == 0:
+      if comm_rank == 0:
         plt.errorbar(x, y=means, yerr=np.std(all_losses,0), label="%s: %.3f"%(mode,auc))
-    if mpi_rank == 0:
+    if comm_rank == 0:
       plt.legend()
       plt.title('Perfect Class Prediction Loss, 4-Fold Cross-Validation')
       plt.xlabel('# actions taken',size='large')
@@ -382,7 +382,7 @@ if __name__ == '__main__':
       lams.append((lam1,lam2))
   cp.evaluate_method(0.05, 0)
 #  auc_file = open(os.path.join(config.res_dir,'cross_val_lam1_lam2/')+'auc.txt','a')
-#  for lamdex in range(mpi_rank, len(lams), mpi_size):
+#  for lamdex in range(comm_rank, len(lams), comm_size):
 #    lam = lams[lamdex]
 #    auc = cp.evaluate_method(lam[0], lam[1])
 #    auc_file.write(str(lam[0])+' '+str(lam[1])+ ' '+str(auc)+'\n')

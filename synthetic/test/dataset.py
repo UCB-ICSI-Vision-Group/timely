@@ -1,7 +1,6 @@
 import numpy as np
 
 from synthetic.dataset import Dataset
-import synthetic.config as config
 
 class TestDataset:
   def setup(self):

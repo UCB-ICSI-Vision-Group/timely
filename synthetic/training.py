@@ -1,31 +1,21 @@
-import sys
-import os
-from time import *
-from mpi4py import MPI
+from common_imports import *
+from common_mpi import *
+
 import scipy.cluster.vq as sp
 from sklearn import cluster
 from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 from collections import Counter
-import pickle
 from string import atoi
-import numpy as np
 from numpy.numarray.numerictypes import Int
 from numpy.ma.core import ceil
 from scipy import io
 
-import synthetic.config as config
 from synthetic.extractor import Extractor
 from synthetic.dataset import Dataset
 from synthetic.pyramid import *
 import synthetic.util as ut
 from synthetic.jumping_windows import *
-
-#import Image, ImageDraw
- 
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
 
 def save_to_mat(filename, X, Y, testX):
   Y = Y.astype('float64')
@@ -205,7 +195,7 @@ def train_with_hard_negatives(d, dtest,cbwords, cbsamps, codebook, cls, pos_tabl
     [test_pyrs, test_classification] = get_test_windows(testsize,dtest,e,\
                                           pyr_size,L,codebook,feature_type,cls,\
                                           pos_table.cols, randomize=randomize)
-    print 'node',mpi_rank,'training in round', i, 'with', np.sum(classification==1),'pos and',\
+    print 'node',comm_rank,'training in round', i, 'with', np.sum(classification==1),'pos and',\
       np.sum(classification == -1),'negs'
     print 'testing', test_pyrs.shape[0], 'new samples'
     print time.strftime('%m-%d %H:%M')
@@ -320,12 +310,12 @@ if __name__=='__main__':
 #  testsize = 1
 #  num_pos = 1
 
-  if mpi_rank == 0:
+  if comm_rank == 0:
     ut.makedirs(config.data_dir + 'features/' + feature_type + '/times/')
     ut.makedirs(config.data_dir + 'features/' + feature_type + '/codebooks/times/')
     ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/train_times/')
     
-  for cls_idx in range(mpi_rank, len(classes), mpi_size): 
+  for cls_idx in range(comm_rank, len(classes), comm_size): 
   #for cls in classes:
     cls = classes[cls_idx]
     codebook = e.get_codebook(d, feature_type)

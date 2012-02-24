@@ -16,7 +16,6 @@ from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.sliding_windows import SlidingWindows 
 from synthetic.evaluation import Evaluation
-import synthetic.config as config
 
 def load_configs(name):
   """

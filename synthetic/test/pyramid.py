@@ -4,14 +4,11 @@ Created on Jan 25, 2012
 @author: tobibaum
 '''
 
-import numpy as np
 import scipy.io as sio
 from os.path import join
 
-import synthetic.config as config
 from synthetic.pyramid import *
 from synthetic.extractor import get_indices_for_pos
-
 
 def create_grid():
   positions = np.zeros((25,2))

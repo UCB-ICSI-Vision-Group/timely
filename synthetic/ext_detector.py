@@ -1,9 +1,6 @@
-import json
-
 from common_imports import *
 
 from synthetic.detector import Detector
-import synthetic.config as config
 from synthetic.csc_classifier import CSCClassifier
 from synthetic.dpm_classifier import DPMClassifier
 
@@ -34,7 +31,7 @@ class ExternalDetector(Detector):
     self.detname = detname
     self.dets = dets
     suffix = detname[4:]
-    
+
     if self.detname=='dpm':
       self.classif = DPMClassifier()
     else:

@@ -4,7 +4,6 @@ from sklearn.cross_validation import KFold
 from common_mpi import *
 from common_imports import *
 
-import synthetic.config as config
 from synthetic.image import *
 from synthetic.sliding_windows import SlidingWindows
 

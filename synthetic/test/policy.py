@@ -1,9 +1,8 @@
-import os
 import scipy
-import numpy as np
 
-import synthetic.util as ut
-import synthetic.config as config
+from common_mpi import *
+from common_imports import *
+
 from synthetic.image import BoundingBox
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy

@@ -1,7 +1,6 @@
 from common_mpi import *
 from common_imports import *
 
-import synthetic.config as config
 from synthetic.fastinf_model import FastinfModel
 from synthetic.ngram_model import NgramModel
 

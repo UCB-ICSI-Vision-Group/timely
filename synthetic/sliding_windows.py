@@ -6,7 +6,6 @@ from common_imports import *
 from common_mpi import *
 
 from synthetic.bounding_box import BoundingBox
-import synthetic.config as config
 
 class WindowParams:
   """

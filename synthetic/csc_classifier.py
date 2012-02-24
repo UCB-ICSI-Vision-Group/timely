@@ -1,11 +1,8 @@
-import itertools
-
 from common_imports import *
 from common_mpi import *
 
 from synthetic.classifier import Classifier
 from synthetic.dataset import Dataset
-import synthetic.config as config
 from synthetic.training import svm_predict
 
 class CSCClassifier(Classifier):

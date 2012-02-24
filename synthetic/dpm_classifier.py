@@ -3,7 +3,6 @@ from common_imports import *
 from synthetic.classifier import Classifier
 from synthetic.training import load_svm
 from synthetic.dataset import Dataset
-import synthetic.config as config
 
 class DPMClassifier(Classifier):
   def __init__(self,suffix=''):

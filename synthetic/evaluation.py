@@ -7,7 +7,7 @@ from common_imports import *
 
 from synthetic.dataset import Dataset
 from synthetic.image import BoundingBox
-import synthetic.config as config
+
 
 class Evaluation:
   """

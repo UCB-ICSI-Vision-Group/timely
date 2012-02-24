@@ -5,7 +5,6 @@ from common_imports import *
 from common_mpi import *
 
 from synthetic.training import train_svm, svm_predict, save_svm, load_svm
-import synthetic.config as config
 
 class Classifier(object):
   def __init__(self):

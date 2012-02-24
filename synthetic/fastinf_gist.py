@@ -1,11 +1,9 @@
 from synthetic.common_imports import *
 from synthetic.common_mpi import *
 
-import synthetic.config as config
 from synthetic.fastInf import *
 from synthetic.gist_classifier import GistClassifier, cls_for_dataset
 from synthetic.dataset import Dataset
-import cPickle
 
 def create_gist_model_for_dataset(d):
   dataset = d.name  
