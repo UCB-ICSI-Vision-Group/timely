@@ -212,11 +212,11 @@ if __name__=='__main__':
   data_filename = config.get_fastinf_data_file(dataset, suffix)
   filename_out = config.get_fastinf_res_file(dataset, suffix)
   
-  table = create_meassurement_table(num_clss, plausible_assignments)
+  #table = create_meassurement_table(num_clss, plausible_assignments)
   #table = c_corr_to_a(500, plausible_assignments)
-#  table = d.get_cls_ground_truth().arr.astype(int)
+  table = d.get_cls_ground_truth().arr.astype(int)
 #  print table.shape
-#  table = np.hstack((table, table))  
+  table = np.hstack((table, table))  
 #  print table.shape
   write_out_mrf(table, num_bins, filename, data_filename)    
 #  d_table = discretize_table(table, num_bins)

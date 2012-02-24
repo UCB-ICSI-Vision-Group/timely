@@ -237,7 +237,7 @@ def convert():
   dataset_origin = 'full_pascal_trainval'
   convert_gist_datasets(dataset_origin, datasets)
 
-def cls_gt_for_dataset(dataset):
+def cls_for_dataset(dataset):
   d = Dataset(dataset)
   classes = d.classes
   table = np.zeros((len(d.images), len(classes)))
