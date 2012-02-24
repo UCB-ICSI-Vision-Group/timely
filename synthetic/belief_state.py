@@ -2,26 +2,17 @@ from common_mpi import *
 from common_imports import *
 
 from synthetic.fastinf_model import FastinfModel
-from synthetic.ngram_model import NgramModel
-
-class InferenceModel(object):
-  def get_probabilities(self):
-    "Return the posterior probabilities over C."
-    return self.p_c
-
-  @abstractmethod 
-  def update_with_observations(self,observations):
-    "Update all the probabilities with the given observations."
+from synthetic.ngram_model import NGramModel
 
 class BeliefState(object):
-	"""
-	Encapsulates stuff that we keep track of during policy execution.
+  """
+  Encapsulates stuff that we keep track of during policy execution.
   Methods to initialize the model, update with an observed posterior,
   condition on observed values, and compute expected information gain.
   """
 
   ngram_modes = ['no_smooth','backoff']
-	accepted_modes = ngram_modes+['fixed_order','fastinf']
+  accepted_modes = ngram_modes+['fixed_order','fastinf']
 
   def __init__(self,dataset,actions,mode='fastinf',bounds=None):
     assert(mode in accepted_modes)
@@ -38,8 +29,8 @@ class BeliefState(object):
     else:
       raise RuntimeError("Unknown mode")
 
-  	self.dataset = dataset
-  	self.actions = actions
+    self.dataset = dataset
+    self.actions = actions
     self.t = 0
     self.bounds = bounds
 

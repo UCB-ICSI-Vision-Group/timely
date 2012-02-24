@@ -1,6 +1,16 @@
 from common_imports import *
 from common_mpi import *
 
+class InferenceModel(object):
+  def get_probabilities(self):
+    "Return the posterior probabilities over C."
+    return self.p_c
+
+  @abstractmethod 
+  def update_with_observations(self,observations):
+    "Update all the probabilities with the given observations."
+    None
+
 class FixedOrderModel(InferenceModel):
   "Model does not update anything, and p_c is determined by the counts."
 
@@ -15,12 +25,12 @@ class NGramModel(InferenceModel):
   accepted_modes = ['no_smooth','smooth','backoff']
 
   def __init__(self,dataset,mode='no_smooth'):
-  	self.data = self.dataset.get_cls_counts()
-    self.cache = {}
+    self.data = self.dataset.get_cls_counts()
     assert(mode in accepted_modes)
     self.mode = mode
     self.cls_inds = range(self.data.shape[1])
     print("NGramModel initialized with %s mode"%self.mode)
+    self.cache = {}
 
   def shape(self): return self.data.shape
 

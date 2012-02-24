@@ -3,7 +3,7 @@ from sklearn.cross_validation import KFold
 from common_imports import *
 from common_mpi import *
 
-from synthetic.class_priors import NGramModel
+from synthetic.ngram_model import NGramModel
 from synthetic.image import Image
 from synthetic.training import *
 from synthetic.classifier import Classifier

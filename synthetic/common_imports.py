@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import os
 from os.path import join as opjoin
 from os.path import exists as opexists
@@ -15,6 +16,5 @@ import cPickle
 import numpy as np
 import scipy.stats as st
 
+import synthetic.config
 import util as ut
-
-import synthetic.config as config
