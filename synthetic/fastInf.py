@@ -204,6 +204,8 @@ def create_meassurement_table(num_clss, func):
   return table
 
 def execute_lbp(filename_mrf, filename_data, filename_out, add_settings=[]):
+  for s in add_settings:
+    filename_out += '_'+s
   cmd = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
                          '-e', filename_data, '-o', filename_out] + add_settings
 

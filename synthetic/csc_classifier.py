@@ -1,10 +1,10 @@
-from common_imports import *
-from common_mpi import *
+from synthetic.common_imports import *
+from synthetic.common_mpi import *
 
 from synthetic.classifier import Classifier
 from synthetic.dataset import Dataset
 from synthetic.training import svm_predict, svm_proba
-import synthetic.config as config
+#import synthetic.config as config
 from synthetic.config import get_ext_dets_filename
 
 
@@ -158,7 +158,7 @@ def classify_all_images():
   d = Dataset('full_pascal_trainval')
   suffix = 'default'
   
-  for cls in enumerate(d.classes):
+  for cls in d.classes:
     csc = CSCClassifier(suffix, cls, d)
     ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
     for img_idx in range(comm_rank, len(d.images), comm_size):
@@ -189,4 +189,5 @@ def compile_table_from_classifications():
   
 
 if __name__=='__main__':
-  compile_table_from_classifications()
+  classify_all_images()
+  #compile_table_from_classifications()
