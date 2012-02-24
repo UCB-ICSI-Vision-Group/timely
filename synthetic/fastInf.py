@@ -245,7 +245,9 @@ def run_fastinf_different_settings():
   rs = ['', '0.5', '1']
   settings = list(itertools.product(suffixs, ms, rs))
   table_gt = d.get_cls_ground_truth().arr.astype(int)
-  for setin in settings:
+  
+  for setindx in range(comm_rank, len(settings), comm_size):
+    setin = settings[setindx]
     suffix = setin[0]
     m = setin[1]
     r = setin[2]
