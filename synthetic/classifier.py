@@ -1,6 +1,7 @@
 from abc import abstractmethod
 import fnmatch
 
+import synthetic.config as config
 from common_imports import *
 from common_mpi import *
 

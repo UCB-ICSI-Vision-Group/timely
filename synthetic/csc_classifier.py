@@ -3,7 +3,9 @@ from common_mpi import *
 
 from synthetic.classifier import Classifier
 from synthetic.dataset import Dataset
-from synthetic.training import svm_predict
+from synthetic.training import svm_predict, svm_proba
+import synthetic.config as config
+
 
 class CSCClassifier(Classifier):
   def __init__(self, suffix, cls, dataset):
@@ -25,6 +27,15 @@ class CSCClassifier(Classifier):
     vector = self.create_vector(img)
     result = svm_predict(vector, model)
     return result
+  
+  def get_score(self, img):
+    return self.get_proba(img)[0][1]
+  
+  def get_proba(self, img):
+    image = self.dataset.get_image_by_filename(img.name)
+    index = self.dataset.get_img_ind(image)
+    gist = np.array(self.gist_table[index])
+    return svm_proba(gist, self.svm)
     
   def create_vector(self, img):
     filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
@@ -143,7 +154,12 @@ def get_best_parameters():
   return parameters
 
 if __name__=='__main__':
-  csc = CSCClassifier('default')  
+  d = Dataset('full_pascal_trainval')
+  cls = 'dog'
+  csc = CSCClassifier('default', cls, d)
+  
+  score = csc.get_score(d.images[0])
+  print score  
   
   # list of lists of svm settings
   # [lowers, uppers, kernels, intervallss, clss, Cs]

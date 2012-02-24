@@ -17,5 +17,4 @@ import pickle
 import numpy as np
 import scipy.stats as st
 
-import synthetic.config as config
 import util as ut

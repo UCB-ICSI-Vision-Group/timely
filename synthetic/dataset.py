@@ -6,6 +6,7 @@ from common_imports import *
 
 from synthetic.image import *
 from synthetic.sliding_windows import SlidingWindows
+from synthetic import config
 
 class Dataset:
   """
