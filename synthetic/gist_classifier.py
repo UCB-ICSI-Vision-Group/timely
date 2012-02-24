@@ -10,39 +10,42 @@ from synthetic.detector import Detector
 from synthetic.image import Image
 from synthetic.training import *
 import time
-from synthetic import Classifier
+from synthetic.classifier import Classifier
 
 class GistClassifier(Classifier):
   """
   Compute a likelihood-vector for the classes given a (precomputed) gist detection
   """
-  def __init__(self, dataset_name):
+  def __init__(self, cls, dataset_name):
     """
     Load all gist features right away
     """
+    Classifier.__init__(self)
     print("Started loading GIST")
     t = time.time()
     self.gist_table = np.load(config.get_gist_dict_filename(dataset_name))
     print("Time spent loading gist: %.3f"%(time.time()-t))
-    self.svms = self.load_all_svms()
-    self.dataset = Dataset(dataset_name)
-        
-  def load_all_svms(self):
-    svms = {}
-    for cls in config.pascal_classes:
-      filename = config.get_gist_svm_filename(cls)
-      if os.path.exists(filename):
-        print 'load svm %s'%filename
-        svms[cls] = load_svm(config.get_gist_svm_filename(cls))
-      else:
-        print 'gist svm for',cls,'does not exist'
-    return svms
+    self.cls = cls
+    self.svm = self.load_svm()
+    self.dataset = Dataset(dataset_name)    
     
-  def get_proba_for_cls(self, cls, img):
+  def get_score(self, img):
+    return self.get_proba(img)
+        
+  def load_svm(self):
+    filename = config.get_gist_svm_filename(self.cls)
+    if os.path.exists(filename):
+      print 'load svm %s'%filename
+      svm = load_svm(config.get_gist_svm_filename(self.cls))
+    else:
+      print 'gist svm for',self.cls,'does not exist'
+    return svm
+    
+  def get_proba(self, img):
     image = self.dataset.get_image_by_filename(img.name)
     index = self.dataset.get_img_ind(image)
     gist = np.array(self.gist_table[index])
-    return svm_proba(gist, self.svms[cls])
+    return svm_proba(gist, self.svm)
          
   def get_priors(self, img):
     num_classes = len(config.pascal_classes)
@@ -232,10 +235,18 @@ def crossval():
     outfile.close() 
     
   
-  
-  
-if __name__=='__main__':
+def convert():
   datasets = ['test_pascal_train_tobi','test_pascal_val_tobi']
   dataset_origin = 'full_pascal_trainval'
   convert_gist_datasets(dataset_origin, datasets)
+
+if __name__=='__main__':
+  dataset = 'full_pascal_trainval'
+  cls = 'dog'
+  gist = GistClassifier(cls, dataset)
+  d = gist.dataset
+  images = d.images
+  print gist.get_observation(images[0])
+  
+  
   

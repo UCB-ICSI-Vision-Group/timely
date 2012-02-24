@@ -90,6 +90,7 @@ class Classifier():
     self.tictoc.tic()
     score = self.get_score(image)
     
+    observation['score'] = score
     observation['dt'] = self.tictoc.toc(quiet=True)    
     return observation 
         
