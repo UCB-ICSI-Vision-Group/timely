@@ -261,9 +261,10 @@ def cls_gt_for_dataset(dataset):
   d = Dataset(dataset)
   classes = d.classes
   table = np.zeros((len(d.images), len(classes)))
-  savefile = os.path.exists(config.get_gist_fastinf_table_name(dataset, None))
+  savefile = config.get_gist_fastinf_table_name(dataset, None)
    
-  if savefile:
+  print savefile
+  if os.path.exists(savefile):
     return cPickle.load(open(savefile, 'r'))
   
   for cls_idx in range(comm_rank, len(classes), comm_size):

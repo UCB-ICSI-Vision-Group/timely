@@ -184,7 +184,7 @@ def get_gist_svm_filename(for_cls):
   return join(dirname,for_cls)
 
 def get_gist_fastinf_table_name(dataset, cls):
-  savedir = join(res_dir, dataset, 'gist')
+  savedir = join(res_dir, 'gist', dataset)
   makedirs(savedir)
   if cls == None:
     savefile = join(savedir,'cls_gt')
