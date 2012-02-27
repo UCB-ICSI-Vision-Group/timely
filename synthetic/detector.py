@@ -2,6 +2,7 @@ from abc import abstractmethod
 from scipy.stats import beta
 
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.sliding_windows import WindowParams

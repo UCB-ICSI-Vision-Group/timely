@@ -1,4 +1,5 @@
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.classifier import Classifier
 from synthetic.training import load_svm

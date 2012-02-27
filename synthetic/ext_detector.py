@@ -1,4 +1,5 @@
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.detector import Detector
 from synthetic.csc_classifier import CSCClassifier

@@ -4,6 +4,7 @@ import scipy.io
 
 from common_mpi import *
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.evaluation import Evaluation
@@ -11,6 +12,7 @@ from synthetic.gist_classifier import GistClassifier
 from synthetic.detector import *
 from synthetic.ext_detector import ExternalDetector
 from synthetic.bounding_box import BoundingBox
+from synthetic.belief_state import BeliefState
 
 class ImageAction:
   def __init__(self, name, obj):

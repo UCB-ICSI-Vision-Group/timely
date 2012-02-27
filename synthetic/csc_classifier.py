@@ -1,5 +1,6 @@
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 from synthetic.classifier import Classifier
 from synthetic.dataset import Dataset

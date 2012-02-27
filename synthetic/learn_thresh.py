@@ -5,6 +5,7 @@ Created on Nov 21, 2011
 '''
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 

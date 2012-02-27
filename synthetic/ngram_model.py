@@ -1,5 +1,6 @@
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 class InferenceModel(object):
   def get_probabilities(self):
@@ -26,9 +27,11 @@ class NGramModel(InferenceModel):
 
   def __init__(self,dataset,mode='no_smooth'):
     self.data = self.dataset.get_cls_counts()
-    assert(mode in accepted_modes)
+    assert(mode in self.accepted_modes)
     self.mode = mode
     self.cls_inds = range(self.data.shape[1])
+    # initialize p_c to the prior probabilities
+    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0] 
     print("NGramModel initialized with %s mode"%self.mode)
     self.cache = {}
 

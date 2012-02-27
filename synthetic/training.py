@@ -1,5 +1,6 @@
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 import scipy.cluster.vq as sp
 from sklearn import cluster

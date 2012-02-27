@@ -204,14 +204,14 @@ def c_corr_to_a(num_lines, func):
   return table
   
 if __name__=='__main__':
-  dataset = 'full_pascal_trainval'
-  d = Dataset(dataset)
+  dataset_name = 'full_pascal_trainval'
+  d = Dataset(dataset_name)
   num_clss = 20
   num_bins = 8
   suffix = 'pairwise'
-  filename = config.get_fastinf_mrf_file(dataset, suffix)
-  data_filename = config.get_fastinf_data_file(dataset, suffix)
-  filename_out = config.get_fastinf_res_file(dataset, suffix)
+  filename = config.get_fastinf_mrf_file(d, suffix)
+  data_filename = config.get_fastinf_data_file(d, suffix)
+  filename_out = config.get_fastinf_res_file(d, suffix)
   
   #table = create_meassurement_table(num_clss, plausible_assignments)
   #table = c_corr_to_a(500, plausible_assignments)

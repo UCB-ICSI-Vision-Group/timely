@@ -2,6 +2,7 @@ from sklearn.cross_validation import KFold
 
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 from synthetic.ngram_model import NGramModel
 from synthetic.image import Image
@@ -268,14 +269,14 @@ def cls_for_dataset(dataset):
   return table
 
 if __name__=='__main__':
-  dataset = 'full_pascal_trainval'
+  dataset_name = 'full_pascal_trainval'
   table = cls_gt_for_dataset(dataset)
-  d = Dataset(dataset)
+  d = Dataset(dataset_name)
   num_bins = 5
   suffix = 'gist_pair'
   filename = config.get_fastinf_mrf_file(dataset, suffix)
-  data_filename = config.get_fastinf_data_file(dataset, suffix)
-  filename_out = config.get_fastinf_res_file(dataset, suffix)
+  data_filename = config.get_fastinf_data_file(d, suffix)
+  filename_out = config.get_fastinf_res_file(d, suffix)
   
   table_gt = d.get_cls_ground_truth().arr.astype(int)
   print table.shape

@@ -4,6 +4,7 @@ from mako.template import Template
 
 from common_mpi import *
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.image import BoundingBox

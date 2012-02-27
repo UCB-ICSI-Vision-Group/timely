@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy

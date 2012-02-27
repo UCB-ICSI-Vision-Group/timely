@@ -1,7 +1,8 @@
 import scipy
 
-from common_mpi import *
-from common_imports import *
+from synthetic.common_mpi import *
+from synthetic.common_imports import *
+import synthetic.config as config
 
 from synthetic.image import BoundingBox
 from synthetic.dataset import Dataset

@@ -4,11 +4,14 @@
 @date: 10/27/11
 """
 
-import numpy as np
-import os
-from synthetic.dataset import Dataset
 import scipy.cluster.vq as sp
 from scipy import io 
+
+from common_imports import *
+from common_mpi import *
+import synthetic.config as config
+
+from synthetic.dataset import Dataset
 from synthetic.image import Image
 from synthetic.extractor import count_histogram_for_bin,\
   count_histogram_for_slice
