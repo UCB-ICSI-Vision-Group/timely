@@ -16,8 +16,8 @@ class FixedOrderModel(InferenceModel):
   "Model does not update anything, and p_c is determined by the counts."
 
   def __init__(self,dataset):
-    self.data = self.dataset.get_cls_counts()
-    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0] 
+    self.data = dataset.get_cls_counts()
+    self.p_c = (1.*np.sum(self.data,0)/self.data.shape[0]).tolist()
 
   def update_with_observations(self, observations):
     None
@@ -26,7 +26,7 @@ class NGramModel(InferenceModel):
   accepted_modes = ['no_smooth','smooth','backoff']
 
   def __init__(self,dataset,mode='no_smooth'):
-    self.data = self.dataset.get_cls_counts()
+    self.data = dataset.get_cls_counts()
     assert(mode in self.accepted_modes)
     self.mode = mode
     self.cls_inds = range(self.data.shape[1])

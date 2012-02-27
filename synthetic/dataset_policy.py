@@ -100,7 +100,7 @@ class DatasetPolicy:
         all_dets = self.load_ext_detections(self.dataset, suffix)
         for cls in self.dataset.classes:
           cls_ind = self.dataset.get_ind(cls)
-          all_dets_for_cls = self.all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
+          all_dets_for_cls = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
           det = ExternalDetector(self.dataset, cls, all_dets_for_cls, suffix)
           self.actions.append(ImageAction('%s_%s'%(suffix,cls), det))
     else:
@@ -134,8 +134,6 @@ class DatasetPolicy:
         np.fill_diagonal(self.weights,naive_aps)
       self.learn_weights()
       self.write_out_weights()
-    else:
-      raise RuntimeError('Not yet implemented')
 
   def run_on_dataset(self,force=False):
     """
@@ -275,7 +273,7 @@ class DatasetPolicy:
   def update_actions(self,b):
     "Update the values of actions according to the current belief state."
     if self.policy_mode=='random' or self.policy_mode=='oracle':
-      self.action_values = np.random.rand(self.actions)
+      self.action_values = np.random.rand(len(self.actions))
     elif self.policy_mode=='fixed_order':
       self.action_values = b.get_p_c()
     elif re.search('fastinf',self.policy_mode):
@@ -309,7 +307,7 @@ class DatasetPolicy:
     samples = []
     prev_ap = 0
    
-    self.img_ind = self.dataset.get_img_ind(image) if image else -1 
+    img_ind = self.dataset.get_img_ind(image) if image else -1 
     b = BeliefState(self.dataset,self.actions)
     self.update_actions(b)
     action_ind = self.select_action(b)
@@ -327,9 +325,10 @@ class DatasetPolicy:
       # stuff for the sample collection
       sample['det_naive_ap'] = 0
       sample['det_actual_ap'] = 0
-      if 'dets' in obs.keys:
+      if 'dets' in obs:
+        det = action.obj
         detections = obs['dets']
-        cls_ind = self.dataset.classes.index(action.obj.cls)
+        cls_ind = self.dataset.classes.index(det.cls)
         if detections.shape[0]>0:
           c_vector = np.tile(cls_ind,(np.shape(detections)[0],1))
           i_vector = np.tile(img_ind,(np.shape(detections)[0],1))
@@ -360,7 +359,7 @@ class DatasetPolicy:
       score = obs['score']
       sample['dt'] = obs['dt']
       b.t += obs['dt']
-      b.update_with_score(action, score)
+      b.update_with_score(action_ind, score)
 
       # The updated belief state posterior over C is our classification result
       clses = b.get_p_c() + [img_ind,b.t]

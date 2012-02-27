@@ -4,7 +4,6 @@ from synthetic.common_mpi import *
 import subprocess as subp
 
 from synthetic.dataset import Dataset
-from synthetic.fastinf_gist import *
 from synthetic.csc_classifier import create_csc_stuff
 
 def plausible_assignments(assignments):

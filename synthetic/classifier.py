@@ -34,11 +34,6 @@ class Classifier(object):
 #  def create_vector(self, img):
 #    "Create the feature vector."
 #    # implement in subclasses
-    
-  @abstractmethod
-  def compute_posterior(self, image, dets, oracle=False):
-    "Create the feature vector."
-    # implement in subclasses
   
   def train(self, pos, neg, kernel, C, probab=True):    
     y = [1]*pos.shape[0] + [-1]*neg.shape[0]

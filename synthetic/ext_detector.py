@@ -63,8 +63,11 @@ class ExternalDetector(Detector):
     If oracle=True, returns the correct answer (look up the ground truth).
     """
     if oracle:
-      return Detector.compute_posterior(self, image, dets, oracle)
+      return Detector.compute_score(self, image, dets, oracle)
     img = self.dataset.get_img_ind(image)
     cls = config.pascal_classes.index(self.cls)
-    return self.classif.classify_image(self.svm,dets,cls,img, self.intervals, self.lower, self.upper)
-
+    score = self.classif.classify_image(
+      self.svm,dets,cls,img, self.intervals, self.lower, self.upper)
+    dt = 0
+    # TODO: figure out the dt situation above
+    return (score,dt)

@@ -26,7 +26,7 @@ class TestDatasetPolicy:
 
   def test_load_dpm_detections(self):
     policy = DatasetPolicy(self.dataset,self.train_dataset,detector='ext')
-    dets = policy.load_ext_detections(self.dataset,'dpm','dpm_may25',force=True)
+    dets = policy.load_ext_detections(self.dataset,'dpm_may25',force=True)
     dets = dets.with_column_omitted('time')
 
     # load the ground truth dets, processed in Matlab

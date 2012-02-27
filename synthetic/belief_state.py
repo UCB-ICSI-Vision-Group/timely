@@ -3,7 +3,7 @@ from common_imports import *
 import synthetic.config as config
 
 from synthetic.fastinf_model import FastinfModel
-from synthetic.ngram_model import NGramModel
+from synthetic.ngram_model import NGramModel,FixedOrderModel
 
 class BeliefState(object):
   """
@@ -15,14 +15,14 @@ class BeliefState(object):
   ngram_modes = ['no_smooth','backoff']
   accepted_modes = ngram_modes+['fixed_order','fastinf']
 
-  def __init__(self,dataset,actions,mode='fastinf',bounds=None):
+  def __init__(self,dataset,actions,mode='fixed_order',bounds=None):
     assert(mode in self.accepted_modes)
     self.mode = mode
 
     if mode=='no_smooth' or mode=='backoff':
-      self.model = NGramModel(data,mode)
+      self.model = NGramModel(dataset,mode)
     elif mode=='fixed_order':
-      self.model = FixedOrderModel(data)
+      self.model = FixedOrderModel(dataset)
     elif mode=='fastinf':
       # TODO: work out the suffix situation
       suffix = 'perfect'
