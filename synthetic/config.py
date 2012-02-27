@@ -281,6 +281,7 @@ def get_dets_nov19():
 # Inference
 #####
 fastinf_dir = join(res_dir, 'fastinf')
+fastinf_bin = join(repo_dir, 'fastInf/build/bin/infer_timely')
 makedirs(fastinf_dir)
 def get_fastinf_mrf_file(dataset, suffix):
   dirname = join(fastinf_dir, dataset.name, suffix)

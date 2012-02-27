@@ -54,7 +54,7 @@ class BeliefState(object):
     "Update the taken and observations lists, the model, and get the new marginals."
     self.taken[action_ind] = 1
     self.observations[action_ind] = score
-    self.model.update_with_observations(self.observations)
+    self.model.update_with_observations(self.taken,self.observations)
 
   def featurize(self):
     """

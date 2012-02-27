@@ -8,7 +8,7 @@ class InferenceModel(object):
     return self.p_c
 
   @abstractmethod 
-  def update_with_observations(self,observations):
+  def update_with_observations(self,taken,observations):
     "Update all the probabilities with the given observations."
     None
 
@@ -19,7 +19,7 @@ class FixedOrderModel(InferenceModel):
     self.data = dataset.get_cls_counts()
     self.p_c = (1.*np.sum(self.data,0)/self.data.shape[0]).tolist()
 
-  def update_with_observations(self, observations):
+  def update_with_observations(self, taken, observations):
     None
 
 class NGramModel(InferenceModel):
@@ -37,8 +37,10 @@ class NGramModel(InferenceModel):
 
   def shape(self): return self.data.shape
 
-  def update_with_observations(self, observations):
+  def update_with_observations(self, taken, observations):
     "Update all the probabilities with the given observations."
+    cond_inds = np.flatnonzero(taken)
+    cond_vals = np.flatnonzero(observations)
     self.p_c = [self.cond_prob(cls_ind, cond_inds, cond_vals) for cls_ind in self.cls_inds]
 
   def marg_prob(self, cls_inds, vals=None):

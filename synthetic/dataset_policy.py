@@ -108,9 +108,9 @@ class DatasetPolicy:
 
     # The default weights are just identity weights on the corresponding class
     # priors
-    # TODO: load from something: filename constructed from config_name
     b = BeliefState(self.dataset,self.actions)    
     
+    # TODO: figure out the loading of weights situation
     if self.policy_mode == 'fastinf_manual':
       self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
       # The gist action is first, so offset the weights
@@ -125,6 +125,7 @@ class DatasetPolicy:
         np.fill_diagonal(self.weights,naive_aps)
       self.write_out_weights()
     elif self.policy_mode == 'fastinf_greedy':
+      # TODO
       self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
       # The gist action is first, so offset the weights
       if self.gist:
@@ -134,6 +135,9 @@ class DatasetPolicy:
         np.fill_diagonal(self.weights,naive_aps)
       self.learn_weights()
       self.write_out_weights()
+    elif self.policy_mode == 'fastinf_rl':
+      # TODO
+      None
 
   def run_on_dataset(self,force=False):
     """
