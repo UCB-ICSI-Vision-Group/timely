@@ -1,0 +1,15 @@
+{
+	"folders":
+	[
+		{
+			"path": "/Users/sergeyk/research/timely"
+		}
+	],
+  "settings":
+  {
+    "sublimeclang_options":
+    [
+      "-I/Users/sergeyk/research/timely/fastInf/src/**/"
+    ]
+  }
+}

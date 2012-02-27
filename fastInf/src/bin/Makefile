@@ -8,7 +8,7 @@ ROOTDIR = ../..
 include $(ROOTDIR)/src/Makefile.config
 
 
-BIN = infer makeGrid makeFullGraph mfinfer gibbsSample learning
+BIN = infer makeGrid makeFullGraph mfinfer gibbsSample learning infer_timely
 FULLBIN = $(addprefix $(BINBLDDIR)/,$(BIN))
 BINSRC = $(addsuffix .cpp,$(addprefix $(BINSRCDIR)/,$(BIN)))
 
