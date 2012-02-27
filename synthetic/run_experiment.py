@@ -35,8 +35,8 @@ def load_configs(name):
     
     # Gather multiple values of settings, if given
     num_conditions = 1
+    bounds_list = []
     if 'bounds' in cf:
-      bounds_list = []
       bounds_list = cf['bounds'] \
         if isinstance(cf['bounds'][0], list) else [cf['bounds']]
       num_conditions *= len(bounds_list)
@@ -50,7 +50,8 @@ def load_configs(name):
     configs = []
     for i in range(0,num_conditions):
       configs.append(dict(cf))
-      configs[i]['bounds'] = bounds_list[i%len(bounds_list)]
+      if 'bounds' in cf:
+        configs[i]['bounds'] = bounds_list[i%len(bounds_list)]
       configs[i]['policy_mode'] = cp_modes_list[i%len(cp_modes_list)]
     return configs
 
@@ -96,6 +97,12 @@ def main():
     default=False, help='output detector statistics to det_configs')
 
   args = parser.parse_args()
+
+  # TODO temp profiling
+  #args.config = 'feb27'
+  #args.first_n = 2
+  #args.test_dataset = 'test'
+
   print(args)
 
   # If config file is not given, just run one experiment using default config

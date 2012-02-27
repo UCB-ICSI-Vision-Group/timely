@@ -6,6 +6,7 @@ import subprocess as subp
 from synthetic.dataset import Dataset
 from synthetic.csc_classifier import create_csc_stuff
 
+# TODO: why are these two needed?
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
 
@@ -24,7 +25,7 @@ def discretize_table(table, num_bins):
     d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins))))  
   return d_table
 
-def write_out_mrf(table, num_bins, filename, data_filename, second_table=None,pairwise=True):
+def write_out_mrf(table, num_bins, filename, data_filename, second_table=None, pairwise=True):
   """
   Again we assume the table to be of the form displayed below.
   """

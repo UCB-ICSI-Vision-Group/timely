@@ -25,11 +25,11 @@ class ImageAction:
 class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
-    'suffix': 'jan30', # use this to re-run on same params after changing code
+    'suffix': 'feb27', # use this to re-run on same params after changing code
     'detector': 'perfect', # perfect,perfect_with_noise,ext
     'policy_mode': 'random',
-      # policy mode can be one of random, oracle, fixed_order, 
-      # fastinf_manual, fastinf_greedy, fastinf_rl
+      # policy mode can be one of random, oracle, fixed_order, no_smooth,
+      # backoff, fastinf_manual, fastinf_greedy, fastinf_rl
     'dets_suffixes': ['dpm'], # further specifies which detectors to use (use 'dpm' so tests pass)
     'bounds': None, # start and deadline times for the policy
     'gist': 0, # include the GIST actions? 0/1
@@ -106,13 +106,17 @@ class DatasetPolicy:
     else:
       raise RuntimeError("Unknown mode for detectors")
 
-    # The default weights are just identity weights on the corresponding class
-    # priors
-    b = BeliefState(self.dataset,self.actions)    
+    # fixed_order, random, oracle policy modes get fixed_order inference mode
+    self.inference_mode = 'fixed_order'
+    if re.search('fastinf',self.policy_mode):
+      self.inference_mode = 'fastinf'
+    if self.policy_mode in ['no_smooth','backoff']:
+      self.inference_mode = self.policy_mode
+    b = BeliefState(self.dataset,self.actions,self.inference_mode,self.bounds)
     
-    # TODO: figure out the loading of weights situation
-    if self.policy_mode == 'fastinf_manual':
-      self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
+    # TODO: figure this stuff out
+    if self.policy_mode in ['no_smooth','backoff','fastinf_manual']:
+      self.weights = np.zeros((len(self.actions),len(b.featurize())))
       # The gist action is first, so offset the weights
       if self.gist:
         np.fill_diagonal(self.weights[1:,:],1)
@@ -126,15 +130,7 @@ class DatasetPolicy:
       self.write_out_weights()
     elif self.policy_mode == 'fastinf_greedy':
       # TODO
-      self.weights = np.zeros((len(self.actions),len(self.get_feature_vec(b))))
-      # The gist action is first, so offset the weights
-      if self.gist:
-        np.fill_diagonal(self.weights[1:,:],1)
-      else:
-        naive_aps = [action.obj.config['naive_ap|present'] for action in self.actions]
-        np.fill_diagonal(self.weights,naive_aps)
-      self.learn_weights()
-      self.write_out_weights()
+      None
     elif self.policy_mode == 'fastinf_rl':
       # TODO
       None
@@ -170,15 +166,18 @@ class DatasetPolicy:
     final_clses = comm.reduce(all_clses, op=MPI.SUM, root=0)
     if comm_rank==0:
       dets_table = ut.Table(cols=self.get_det_cols())
+      final_dets = [det for det in final_dets if det.shape[0]>0]
       dets_table.arr = np.vstack(final_dets)
       np.save(det_filename,dets_table)
       clses_table = ut.Table(cols=self.get_cls_cols())
       clses_table.arr = np.vstack(final_clses)
       np.save(cls_filename,clses_table)
       print("Found %d dets"%dets_table.shape()[0])
+      print("Classified %d images"%clses_table.shape()[0])
     safebarrier(comm)
     dets_table = comm.bcast(dets_table,root=0)
     clses_table = comm.bcast(clses_table,root=0)
+    print(self.policy_mode)
     return dets_table,clses_table
 
   def learn_weights(self):
@@ -280,9 +279,8 @@ class DatasetPolicy:
       self.action_values = np.random.rand(len(self.actions))
     elif self.policy_mode=='fixed_order':
       self.action_values = b.get_p_c()
-    elif re.search('fastinf',self.policy_mode):
-      self.action_values = np.dot(self.weights, b.featurize())
     else:
+      self.action_values = np.dot(self.weights, b.featurize())
       raise RuntimeError("Unknown policy_mode: %s"%self.policy_mode)
 
   def select_action(self, b):
@@ -318,7 +316,8 @@ class DatasetPolicy:
     while True:
       sample = {}
       sample['img_ind'] = img_ind
-      sample['state'] = copy.deepcopy(b)
+      # TODO
+      sample['state'] = b#copy.deepcopy(b)
       sample['action_ind'] = action_ind
       action = self.actions[action_ind]
       b.taken[action_ind] = 1
@@ -372,7 +371,8 @@ class DatasetPolicy:
       # Update action values and pick the next action; store sample
       self.update_actions(b)
       action_ind = self.select_action(b)
-      sample['next_state'] = copy.deepcopy(b)
+      # TODO
+      sample['next_state'] = b#copy.deepcopy(b)
       samples.append(sample)
 
       # check for stopping conditions

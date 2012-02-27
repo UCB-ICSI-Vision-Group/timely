@@ -63,7 +63,9 @@ class BeliefState(object):
     if self.mode in ngram_modes:
       features = self.p_c
     if self.mode=='fastinf':
-      features = self.model.get_infogains()
+      features = self.p_c
+      # TODO
+      #features = self.model.get_infogains()
     else:
       raise RuntimeError("Impossible")
 
