@@ -1,4 +1,6 @@
 from common_imports import *
+import synthetic.config as config
+
 from scipy.weave import blitz
 
 class BoundingBox:

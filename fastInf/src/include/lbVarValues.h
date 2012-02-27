@@ -318,6 +318,7 @@ namespace lbLib {
     inline bool isEmpty() const { return _valuesList.isEmpty(); };
 
     bool readAssignmentFromFile(ifstream& in,int size);
+    bool readAssignmentFromString(string assignStr,int size);
 
     inline bool areAssigned(varsVec const& vec) const {
       for (uint i = 0; i < vec.size(); i++)  {
@@ -465,12 +466,15 @@ namespace lbLib {
   }
 
   template<class T> bool lbVarValues<T>::readAssignmentFromFile(ifstream& in,int size){
-    string notKnownStr="?";
-
     char_ptr buffer(new char[lbDefinitions::MAX_BUF_SIZE]);
     assert(!in.eof());
     in.getline(buffer.get(),lbDefinitions::MAX_BUF_SIZE);
     string assignStr = string(buffer.get());
+    return readAssignmentFromString(assignStr,size);
+  }
+
+  template<class T> bool lbVarValues<T>::readAssignmentFromString(string assignStr, int size){
+    string notKnownStr="?";
 
     if (isVerbose(V_ASSIGNMENTS)) {
       cerr << "Reading Assign: " << assignStr << endl;
@@ -484,10 +488,10 @@ namespace lbLib {
 
     for (uint index = 1; index < tokens.size() - 1; index++) {
       if (tokens[index] == notKnownStr) {
-	UnsetValueForVar(index-1);
+  UnsetValueForVar(index-1);
       }
       else {
-	setValueForVar(index-1 ,atoi(tokens[index].c_str()));
+  setValueForVar(index-1 ,atoi(tokens[index].c_str()));
       }
     }
     

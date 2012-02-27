@@ -4,6 +4,7 @@ from mako.template import Template
 
 from common_mpi import *
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.image import BoundingBox
@@ -76,7 +77,7 @@ class Evaluation:
         clses_table = np.load(self.cls_apvst_data_fname)[()]
     else:
       if not dets:
-        dets,clses = self.dp.run_on_dataset()
+        dets,clses = self.dp.run_on_dataset(force=True)
       
       # determine time sampling points
       all_times = dets.subset_arr('time')

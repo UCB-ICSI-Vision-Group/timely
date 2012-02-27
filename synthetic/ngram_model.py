@@ -1,5 +1,6 @@
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 class InferenceModel(object):
   def get_probabilities(self):
@@ -7,7 +8,7 @@ class InferenceModel(object):
     return self.p_c
 
   @abstractmethod 
-  def update_with_observations(self,observations):
+  def update_with_observations(self,taken,observations):
     "Update all the probabilities with the given observations."
     None
 
@@ -15,27 +16,31 @@ class FixedOrderModel(InferenceModel):
   "Model does not update anything, and p_c is determined by the counts."
 
   def __init__(self,dataset):
-    self.data = self.dataset.get_cls_counts()
-    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0] 
+    self.data = dataset.get_cls_counts()
+    self.p_c = (1.*np.sum(self.data,0)/self.data.shape[0]).tolist()
 
-  def update_with_observations(self, observations):
+  def update_with_observations(self, taken, observations):
     None
 
 class NGramModel(InferenceModel):
   accepted_modes = ['no_smooth','smooth','backoff']
 
   def __init__(self,dataset,mode='no_smooth'):
-    self.data = self.dataset.get_cls_counts()
-    assert(mode in accepted_modes)
+    self.data = dataset.get_cls_counts()
+    assert(mode in self.accepted_modes)
     self.mode = mode
     self.cls_inds = range(self.data.shape[1])
+    # initialize p_c to the prior probabilities
+    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0] 
     print("NGramModel initialized with %s mode"%self.mode)
     self.cache = {}
 
   def shape(self): return self.data.shape
 
-  def update_with_observations(self, observations):
+  def update_with_observations(self, taken, observations):
     "Update all the probabilities with the given observations."
+    cond_inds = np.flatnonzero(taken)
+    cond_vals = np.flatnonzero(observations)
     self.p_c = [self.cond_prob(cls_ind, cond_inds, cond_vals) for cls_ind in self.cls_inds]
 
   def marg_prob(self, cls_inds, vals=None):

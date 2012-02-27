@@ -1,8 +1,9 @@
 from common_mpi import *
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.fastinf_model import FastinfModel
-from synthetic.ngram_model import NGramModel
+from synthetic.ngram_model import NGramModel,FixedOrderModel
 
 class BeliefState(object):
   """
@@ -14,14 +15,14 @@ class BeliefState(object):
   ngram_modes = ['no_smooth','backoff']
   accepted_modes = ngram_modes+['fixed_order','fastinf']
 
-  def __init__(self,dataset,actions,mode='fastinf',bounds=None):
-    assert(mode in accepted_modes)
+  def __init__(self,dataset,actions,mode='fixed_order',bounds=None):
+    assert(mode in self.accepted_modes)
     self.mode = mode
 
     if mode=='no_smooth' or mode=='backoff':
-      self.model = NGramModel(data,mode)
+      self.model = NGramModel(dataset,mode)
     elif mode=='fixed_order':
-      self.model = FixedOrderModel(data)
+      self.model = FixedOrderModel(dataset)
     elif mode=='fastinf':
       # TODO: work out the suffix situation
       suffix = 'perfect'
@@ -39,7 +40,7 @@ class BeliefState(object):
 
   def __repr__(self):
     return "BeliefState: \n%s\n%s"%(
-      self.priors, zip(self.taken,self.observations))
+      self.get_p_c(), zip(self.taken,self.observations))
 
   def get_p_c(self):
     return self.model.get_probabilities()
@@ -53,8 +54,7 @@ class BeliefState(object):
     "Update the taken and observations lists, the model, and get the new marginals."
     self.taken[action_ind] = 1
     self.observations[action_ind] = score
-    self.model.update_with_observations(self.observations)
-    self.p_c = self.model.get_probabilities()
+    self.model.update_with_observations(self.taken,self.observations)
 
   def featurize(self):
     """
@@ -63,7 +63,9 @@ class BeliefState(object):
     if self.mode in ngram_modes:
       features = self.p_c
     if self.mode=='fastinf':
-      features = self.model.get_infogains()
+      features = self.p_c
+      # TODO
+      #features = self.model.get_infogains()
     else:
       raise RuntimeError("Impossible")
 

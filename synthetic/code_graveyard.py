@@ -65,10 +65,6 @@ class SyntheticClassifierDetector(Detector):
     synthetic_image = Image.generate_like(image,priors)
     # then do synthetic detection in this image
     
-  def compute_posterior(self, image, detections):
-    # TODO implement
-    return 0.
-
   def visualize_distributions(self,filename):
     """
     Method that plots the two distributions and the expected time of the

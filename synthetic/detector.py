@@ -2,6 +2,7 @@ from abc import abstractmethod
 from scipy.stats import beta
 
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.sliding_windows import WindowParams
@@ -32,6 +33,19 @@ class Detector(object):
       detector_config = Detector.DEFAULT_CONFIG
     self.config = detector_config
 
+  def get_observations(self,image):
+    """
+    Return a dict of
+    - dets
+    - score
+    """
+    dets, dt_dets = self.detect(image)
+    score, dt_score = self.compute_score(image,dets)
+    dt = dt_dets+dt_score
+    return {'dets': dets, 'dt_dets': dt_dets,
+            'score': score, 'dt_score': dt_score,
+            'dt': dt}
+
   @abstractmethod
   def detect(self, image):
     """
@@ -42,14 +56,15 @@ class Detector(object):
     """
     # Implement in specific detectors
 
-  def compute_posterior(self, image, dets, oracle=True):
+  def compute_score(self, image, dets, oracle=True):
     """
-    Return the predicted posterior of the class being present in the image,
-    given the detections.
+    Return a tuple of
+    - classification score for the image, which generated the provided dets.
+    - time it took
     This implementation returns the ground truth answer to the question of
     object presence--so it's a 100% accurate classifier.
     """
-    return image.contains_cls_ind(self.cls_ind)
+    return (image.contains_cls_ind(self.cls_ind), 0)
 
   def expected_naive_ap(self):
     """
@@ -133,7 +148,11 @@ class Detector(object):
     return dets[pick,:]
 
 class SWDetector(Detector):
-  "A detector that must be initialized with a sliding window generator."
+  """
+  A detector that must be initialized with a sliding window generator.
+  Perfect classification performance.
+  """
+
   def __init__(self, dataset, cls, sw_generator, detector_config=None):
     Detector.__init__(self,dataset,cls,detector_config)
     self.sw = sw_generator

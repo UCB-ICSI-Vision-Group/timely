@@ -1,4 +1,5 @@
 from common_imports import *
+import synthetic.config as config
 
 def half_csc(dets_table):
   img_inds = np.unique(dets_table.subset_arr('img_ind'))

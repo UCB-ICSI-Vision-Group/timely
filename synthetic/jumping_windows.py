@@ -5,6 +5,7 @@ window candidate selection
 """
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 import Image
 from numpy.numarray.numerictypes import Int

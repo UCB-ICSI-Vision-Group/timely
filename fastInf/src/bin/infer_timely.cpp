@@ -367,6 +367,30 @@ int main(int argc, char* argv[])
   //print initial partition as approximated by the Free Energy approximation
   cerr << "Initial Partition: " << inf->initialPartitionFunction() << endl;
 
+  string input_line;
+  lbFullAssignment_ptr assign(new lbFullAssignment());
+  while(cin) {
+    cout << "Enter your evidence: ";
+    getline(cin, input_line);
+    cout << "Evidence: " << input_line << endl;
+    int numvars = inf->getModel().getGraph().getNumOfVars();
+    if (assign->readAssignmentFromString(input_line, numvars)) {
+      inf->changeEvidence(*assign);
+      cerr << "Evidence: ";
+      assign->print(cerr, inf->getModel().getGraph().getNumOfVars());    
+      cerr << "Current Partition: " << inf->partitionFunction() << endl;
+      cerr << "Probability: " << inf->evidenceProb() << " (" << inf->evidenceLog2Prob() << ")" << endl << endl;
+      if (_printMarginals > 0) {
+        cerr << "The first " << _printMarginals << " marginals after evidence is set: " << endl;
+        inf->getInferenceMonitor()->printMarginals(cerr, _printMarginals);
+      }
+      if (_printBeliefs > 0) {
+        cerr << endl << endl << "The first " << _printBeliefs << " beliefs after evidence is set: " << endl;
+        inf->getInferenceMonitor()->printBeliefs(cerr, _printBeliefs);
+      }
+    }
+  };
+
   //In case we have evidence, for each instnace:
   // - assign the evidence to the model
   // - print log likelihood and marginals after assigning the evidence

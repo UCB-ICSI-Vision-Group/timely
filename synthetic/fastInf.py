@@ -4,9 +4,9 @@ from synthetic.common_mpi import *
 import subprocess as subp
 
 from synthetic.dataset import Dataset
-from synthetic.fastinf_gist import *
 from synthetic.csc_classifier import create_csc_stuff
 
+# TODO: why are these two needed?
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
 
@@ -25,7 +25,7 @@ def discretize_table(table, num_bins):
     d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins))))  
   return d_table
 
-def write_out_mrf(table, num_bins, filename, data_filename, second_table=None,pairwise=True):
+def write_out_mrf(table, num_bins, filename, data_filename, second_table=None, pairwise=True):
   """
   Again we assume the table to be of the form displayed below.
   """
@@ -237,7 +237,6 @@ def c_corr_to_a(num_lines, func):
     table[i,:] = np.hstack((assignment, classif))
   return table
   
-  
 def run_fastinf_different_settings():  
  
   dataset = 'full_pascal_trainval'
@@ -283,7 +282,6 @@ def run_fastinf_different_settings():
       
       second_table = create_gist_model_for_dataset(d)      
       second_table = discretize_table(second_table, num_bins)  
-      
   
     write_out_mrf(table, num_bins, filename, data_filename,second_table=second_table)
     

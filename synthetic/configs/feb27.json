@@ -1,0 +1,6 @@
+{
+  "suffix": "feb27",
+  "detector": "perfect",
+  "policy_mode": ["random","oracle","fixed_order","fastinf_manual"],
+  "gist": 0
+}

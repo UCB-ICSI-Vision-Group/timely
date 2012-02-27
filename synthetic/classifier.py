@@ -4,6 +4,7 @@ import fnmatch
 import synthetic.config as config
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 from synthetic.training import train_svm, svm_predict, save_svm, load_svm
 
@@ -33,11 +34,6 @@ class Classifier(object):
 #  def create_vector(self, img):
 #    "Create the feature vector."
 #    # implement in subclasses
-    
-  @abstractmethod
-  def compute_posterior(self, image, dets, oracle=False):
-    "Create the feature vector."
-    # implement in subclasses
   
   def train(self, pos, neg, kernel, C, probab=True):    
     y = [1]*pos.shape[0] + [-1]*neg.shape[0]
