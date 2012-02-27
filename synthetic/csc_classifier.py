@@ -43,6 +43,8 @@ class CSCClassifier(Classifier):
     csc_test = csc_test[()]  
     csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
     csc_test.arr = self.normalize_scores(csc_test.arr)
+#    csc_test = np.random.random((562069, 8)
+
     feats = csc_test
     
     if feats.arr.size == 0:
@@ -158,6 +160,9 @@ def get_best_parameters():
 def classify_all_images():
   d = Dataset('full_pascal_trainval')
   suffix = 'default'
+  tt = ut.TicToc()
+  tt.tic()
+  print 'start classifying all images on %d...'%comm_rank
   
   for cls in d.classes:
     csc = CSCClassifier(suffix, cls, d)
@@ -167,7 +172,7 @@ def classify_all_images():
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
 #      if os.path.exists(filename):
 #        continue
-      print '%s image %s'%(cls, img.name)
+      print '%s image %s on %d'%(cls, img.name, comm_rank)
       try:
         score = csc.get_score(img_idx)        
         w = open(filename, 'w')
@@ -177,7 +182,9 @@ def classify_all_images():
         w = open(filename, 'w')
         w.write('0')
         w.close()
-
+        
+  print 'start classified all images in %f secs on %d'%(tt.toc(quiet=True), comm_rank)
+  
 def compile_table_from_classifications(d):  
   errors = 0
   table = np.zeros((len(d.images), len(d.classes)))
@@ -205,14 +212,15 @@ def compile_table_from_classifications(d):
 
 def create_csc_stuff():
 
-
   classify_all_images()
+  
   
   comm.safebarrier()
   d = Dataset('full_pascal_trainval')
   table = compile_table_from_classifications(d)
   filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
+  cPickle.dump(table, open(filename, 'w'))
   
 if __name__=='__main__':
-  None
+  create_csc_stuff()
                     

@@ -48,11 +48,9 @@ class Classifier(object):
      
     return np.multiply(result,test_classification)
         
-  def normalize_scores(self, arr):
-    scores = arr[:,0:1]
-    for idx in range(scores.shape[0]):
-      scores[idx] = 1./(math.exp(-2.*scores[idx]) + 1.)  
-    return np.hstack((scores, arr[:,1:3]))
+  def normalize_scores(self, arr):     
+    arr[:, 0:1] = np.power(np.exp(-2.*arr[:,0:1])+1,-1)
+    return arr
       
   def train_for_all_cls(self, train_dataset, feats, intervals, kernel, lower, upper, cls_idx, C, probab=True):
     cls = train_dataset.classes[cls_idx]
