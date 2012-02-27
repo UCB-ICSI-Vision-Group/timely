@@ -153,6 +153,10 @@ def get_cached_dataset_filename(name):
   return join(dirname, str(VOCyear)+'_'+name+'.pickle')
 
 # ./res_dir/ext_dets/{dataset}_*.npy
+def get_ext_dets_foldname(dataset):
+  dirname = makedirs(join(res_dir,'ext_dets'))
+  return dirname
+  
 def get_ext_dets_filename(dataset, suffix):
   if dataset == None:
     """

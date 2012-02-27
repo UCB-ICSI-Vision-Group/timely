@@ -4,7 +4,10 @@ import synthetic.config as config
 
 from synthetic.classifier import Classifier
 from synthetic.dataset import Dataset
-from synthetic.training import svm_predict
+from synthetic.training import svm_predict, svm_proba
+#import synthetic.config as config
+from synthetic.config import get_ext_dets_filename
+
 
 class CSCClassifier(Classifier):
   def __init__(self, suffix, cls, dataset):
@@ -26,6 +29,13 @@ class CSCClassifier(Classifier):
     vector = self.create_vector(img)
     result = svm_predict(vector, model)
     return result
+  
+  def get_score(self, img):
+    return self.get_predict(img)[0,0]
+  
+  def get_predict(self, img):
+    vector = self.create_vector(img)
+    return svm_predict(vector, self.svm)
     
   def create_vector(self, img):
     filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
@@ -38,11 +48,13 @@ class CSCClassifier(Classifier):
     if feats.arr.size == 0:
       return np.zeros((1,self.intervals+1))
     dpm = feats.subset(['score', 'cls_ind', 'img_ind'])
+
     img_dpm = dpm.filter_on_column('img_ind', img, omit=True)
+
     if img_dpm.arr.size == 0:
       print 'empty vector'
       return np.zeros((1,self.intervals+1))
-    cls_dpm = img_dpm.filter_on_column('cls_ind', self.cls, omit=True)
+    cls_dpm = img_dpm.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
     hist = self.compute_histogram(cls_dpm.arr, self.intervals, self.lower, self.upper)
     vector = np.zeros((1, self.intervals+1))
     vector[0,0:-1] = hist
@@ -61,14 +73,14 @@ def csc_classifier_train_all_params(suffix):
   csc_classifier_train(product_of_parameters)
   
 def csc_classifier_train(parameters, suffix, probab=True, test=True, force_new=False):
-  train_set = 'full_pascal_train'
+  train_set = 'full_pascal_trainval'
   train_dataset = Dataset(train_set)  
   filename = config.get_ext_dets_filename(train_dataset, 'csc_'+suffix)
   csc_train = np.load(filename)
   csc_train = csc_train[()]  
   csc_train = csc_train.subset(['score', 'cls_ind', 'img_ind'])
   score = csc_train.subset(['score']).arr
-  csc_classif = CSCClassifier(suffix)
+  csc_classif = CSCClassifier(suffix,'dog',train_dataset)
   csc_train.arr = csc_classif.normalize_scores(csc_train.arr)
   kernels = ['linear', 'rbf']
   
@@ -143,11 +155,64 @@ def get_best_parameters():
     parameters.append(params)
   return parameters
 
-if __name__=='__main__':
-  csc = CSCClassifier('default')  
+def classify_all_images():
+  d = Dataset('full_pascal_trainval')
+  suffix = 'default'
   
-  # list of lists of svm settings
-  # [lowers, uppers, kernels, intervallss, clss, Cs]
-  parameters = get_best_parameters()
-  csc_classifier_train(parameters, 'default', probab=True, test=False, force_new=True)
-    
+  for cls in d.classes:
+    csc = CSCClassifier(suffix, cls, d)
+    ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
+    for img_idx in range(comm_rank, len(d.images), comm_size):
+      img = d.images[img_idx]      
+      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
+#      if os.path.exists(filename):
+#        continue
+      print '%s image %s'%(cls, img.name)
+      try:
+        score = csc.get_score(img_idx)        
+        w = open(filename, 'w')
+        w.write('%f'%score)
+        w.close()
+      except:
+        w = open(filename, 'w')
+        w.write('0')
+        w.close()
+
+def compile_table_from_classifications(d):  
+  errors = 0
+  table = np.zeros((len(d.images), len(d.classes)))
+  
+  for cls_idx in range(comm_rank, len(d.classes), comm_size):
+    cls = d.classes[cls_idx]
+    ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
+    for img_idx in range(len(d.images)):
+      img = d.images[img_idx] 
+      print '%s image %s'%(cls, img.name)
+      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
+      print filename
+      try:
+        w = open(filename, 'r')
+        score = float(w.read())
+        w.close() 
+        
+      except:
+        score = 0
+        errors += 1
+      table[img_idx, cls_idx] = score
+  table = comm.reduce(table)
+  print 'errors: %d'%errors
+  return table
+
+def create_csc_stuff():
+
+
+  classify_all_images()
+  
+  comm.safebarrier()
+  d = Dataset('full_pascal_trainval')
+  table = compile_table_from_classifications(d)
+  filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
+  
+if __name__=='__main__':
+  None
+                    

@@ -1,6 +1,7 @@
 from abc import abstractmethod
 import fnmatch
 
+import synthetic.config as config
 from common_imports import *
 from common_mpi import *
 import synthetic.config as config
@@ -68,7 +69,7 @@ class Classifier(object):
     neg = []
     print comm_rank, 'trains', cls, intervals, kernel, lower, upper, C
     for img in range(len(train_dataset.images)):
-      vector = self.create_vector(feats, train_dataset.classes.index(cls), img, intervals, lower, upper)
+      vector = self.create_vector(img)
       if img in pos_images:
         pos.append(vector)
       else:

@@ -7,6 +7,7 @@ import synthetic.config as config
 
 from synthetic.image import *
 from synthetic.sliding_windows import SlidingWindows
+from synthetic import config
 
 class Dataset:
   """
