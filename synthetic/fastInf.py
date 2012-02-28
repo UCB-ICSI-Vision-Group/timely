@@ -268,11 +268,7 @@ def c_corr_to_a(num_lines, func):
 def store_bound(d, suffix, bounds):
   bound_file = config.get_mrf_bound_filename(d, suffix)
   if not os.path.exists(bound_file):
-    np.savetxt(bound_file, bounds)
-  else:
-    saved_bound = np.loadtxt(bound_file)
-    np.testing.assert_equal(bounds, saved_bound)
-  
+    np.savetxt(bound_file, bounds)  
 
 def run_fastinf_different_settings(dataset, ms, rs, suffixs):  
  
@@ -288,6 +284,8 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
     suffix = setin[0]
     m = setin[1]
     r = setin[2]
+    
+    print 'node %d runs %s, m=%s, r=%s'%(comm_rank, suffix, m, r)
 
     filename = config.get_fastinf_mrf_file(d, suffix)
     data_filename = config.get_fastinf_data_file(d, suffix)
@@ -306,6 +304,8 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
       table = cPickle.load(open(filename_csc,'r'))
       bounds, discr_table = discretize_table(table, num_bins)
+      print table_gt.shape
+      print discr_table.shape
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'GIST_CSC':
@@ -321,7 +321,9 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       store_bound(d, 'GIST', sec_bounds)  
     
     if suffix == 'GIST' or suffix == 'CSC':
-      store_bound(d, suffix, bounds)   
+      store_bound(d, suffix, bounds)
+    
+    print 'set up table on %d, write out mrf for %s, m=%s, r=%s'%(comm_rank, suffix, m, r)   
       
     write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
@@ -334,6 +336,8 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       for s in add_sets:
         sec_bound_file += '_'+s
       np.savetxt(sec_bound_file, sec_bounds)
+      
+    print '%d start running lbp for %s, m=%s, r=%s'%(comm_rank, suffix, m, r)
       
     execute_lbp(filename, data_filename, filename_out, add_settings=add_sets)
     
@@ -364,7 +368,7 @@ if __name__=='__main__':
   elif part == 1:
     dataset = 'full_pascal_trainval'
     suffixs = ['perfect', 'GIST']    
-  elif part == 3:
+  elif part == 2:
     dataset = 'full_pascal_train'
     suffixs = ['CSC', 'GIST_CSC']
     rs = ['', '1']

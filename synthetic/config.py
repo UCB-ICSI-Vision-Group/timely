@@ -154,7 +154,10 @@ def get_cached_dataset_filename(name):
 
 # ./res_dir/ext_dets/{dataset}_*.npy
 def get_ext_dets_foldname(dataset):
-  dirname = makedirs(join(res_dir,'ext_dets'))
+  if dataset == 'full_pascal_trainval':
+    dirname = makedirs(join(res_dir,'ext_dets'))
+  else:
+    dirname = makedirs(join(res_dir,'ext_dets',dataset.name))
   return dirname
 
 def get_ext_dets_vector_foldname(dataset):

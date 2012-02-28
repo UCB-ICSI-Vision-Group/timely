@@ -246,7 +246,7 @@ def create_csc_stuff(d, classify_images=True, force_new=False):
       cPickle.dump(table, open(filename, 'w'))
   
 if __name__=='__main__':
-  d = Dataset('full_pascal_trainval')
+  d = Dataset('full_pascal_train')
   
-  create_csc_stuff(d, classify_images=True, force_new=True)
+  create_csc_stuff(d, classify_images=True, force_new=False)
                     
