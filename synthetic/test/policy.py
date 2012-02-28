@@ -16,7 +16,7 @@ class TestDatasetPolicy:
 
   def test_perfect_detector(self):
     policy = DatasetPolicy(self.dataset,self.train_dataset,detector='perfect',bounds=None)
-    dets,clses = policy.run_on_dataset()
+    dets,clses,samples = policy.run_on_dataset()
     dets = dets.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
     gt = self.dataset.get_ground_truth()
     gt = gt.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])

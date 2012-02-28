@@ -73,14 +73,12 @@ class BeliefState(object):
     """
     Return featurized representation of the current belief state.
     """
-    if self.mode in self.ngram_modes:
-      features = self.get_p_c()
-    elif self.mode=='fastinf':
+    if self.mode=='fastinf':
       features = self.get_p_c()
       # TODO
       #features = self.model.get_infogains()
     else:
-      raise RuntimeError("Impossible: fixed_order policy should never get here.")
+      features = self.get_p_c()
 
     #def H(x): return np.sum([-x_i*ut.log(x_i) -(1-x_i)*ut.log(1-x_i) for x_i in x])
     #entropy = H(b['priors'].priors)

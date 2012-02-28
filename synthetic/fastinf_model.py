@@ -25,6 +25,11 @@ class FastinfModel(InferenceModel):
     print(self.p_c)
     print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
 
+  def save_cache(self):
+    "Write cache out to file with cPickle."
+    with open(self.cache_fname,'w') as f:
+      cPickle.dump(self.cache,f)
+
   def update_with_observations(self, taken, observations):
     # TODO: discretize in the same way as the trained thing here
     self.tt.tic()

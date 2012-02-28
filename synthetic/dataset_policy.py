@@ -138,53 +138,90 @@ class DatasetPolicy:
       # TODO
       None
 
-  def run_on_dataset(self,force=False):
+  def run_on_dataset(self,test=True,sample_size=-1,force=False):
     """
+    Run MPI-parallelized over the images of the dataset (or a random subset).
     Return list of detections and classifications for the whole dataset.
-    Check for cached files first.
+    If test is True, runs on test dataset, otherwise train dataset.
+    If sample_size != -1, does not check for cached files, as the objective
+    is to collect samples, not the actual dets and clses.
+    Otherwise, check for cached files first, unless force is True.
+    Only returns results if comm_rank==0
     """
+    dets_table = None
+    clses_table = None
+
+    dataset = self.dataset
+    if not test:
+      dataset = self.train_dataset
+
+    # If we are collecting samples, we don't care about caches
+    if sample_size > 0:
+      force = True
+
     # check for cached results
     det_filename = config.get_dp_dets_filename(self)
     cls_filename = config.get_dp_clses_filename(self)
-    dets_table = None
-    if not force and opexists(det_filename) and opexists(cls_filename):
+    samples_filename = config.get_dp_samples_filename(self)
+    if not force \
+        and opexists(det_filename) and opexists(cls_filename) \
+        and opexists(samples_filename):
       dets_table = np.load(det_filename)[()]
       clses_table = np.load(cls_filename)[()]
+      with open(samples_filename) as f:
+        samples = cPickle.load(f)
       print("DatasetPolicy: Loaded dets and clses from cache.")
-      return dets_table,clses_table
-    
+      return dets_table,clses_table,samples
+
+    images = dataset.images
+    if sample_size>0:
+      images = ut.random_subset(dataset.images, sample_size)
+
     all_dets = []
     all_clses = []
-    for i in range(comm_rank,len(self.dataset.images),comm_size):
-      dets,clses,samples = self.run_on_image(self.dataset.images[i])
+    all_samples = []
+    for i in range(comm_rank,len(images),comm_size):
+      dets,clses,samples = self.run_on_image(images[i])
       all_dets.append(dets)
       all_clses.append(clses)
-    final_dets = None
-    final_clses = None
-    if comm_rank == 0:
-      final_dets = []
-      final_clses = []
+      all_samples.append(samples)
+    final_dets = [] if comm_rank == 0 else None
+    final_clses = [] if comm_rank == 0 else None
+    final_samples = [] if comm_rank == 0 else None
+
     safebarrier(comm)
     final_dets = comm.reduce(all_dets, op=MPI.SUM, root=0)
     final_clses = comm.reduce(all_clses, op=MPI.SUM, root=0)
+    final_samples = comm.reduce(all_samples,root=0)
+    if self.inference_mode=='fastinf':
+      all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
     if comm_rank==0:
       dets_table = ut.Table(cols=self.get_det_cols())
       final_dets = [det for det in final_dets if det.shape[0]>0]
       dets_table.arr = np.vstack(final_dets)
-      np.save(det_filename,dets_table)
       clses_table = ut.Table(cols=self.get_cls_cols())
       clses_table.arr = np.vstack(final_clses)
-      np.save(cls_filename,clses_table)
       print("Found %d dets"%dets_table.shape()[0])
       print("Classified %d images"%clses_table.shape()[0])
+
+      # Only save results if we are not collecting samples
+      if not sample_size > 0:
+        np.save(det_filename,dets_table)
+        np.save(cls_filename,clses_table)
+        with open(samples_filename,'w') as f:
+          cPickle.dump(final_samples,f)
+
+      # Save the fastinf cache
+      if self.inference_mode=='fastinf':
+        self.inf_model.cache = dict(all_fm_cache_items)
+        self.inf_model.save_cache()
+
+    # Broadcast results to all workers, because Evaluation splits its work as well.
     safebarrier(comm)
     dets_table = comm.bcast(dets_table,root=0)
     clses_table = comm.bcast(clses_table,root=0)
-
-    # TODO: figure out how to save the self.fm cache here!
-
     print(self.policy_mode)
-    return dets_table,clses_table
+    return dets_table,clses_table,final_samples
 
   def learn_weights(self):
     """
@@ -208,7 +245,7 @@ class DatasetPolicy:
     # collect samples and display the statistics of times and naive and
     # actual_ap increases for each class 
     det_configs = {}
-    all_samples = self.collect_samples(sample_size=-1)
+    all_dets,all_clses,all_samples = self.run_on_dataset()
     if all_samples:
       sample_array = np.array((
         [s['a'] for s in samples],
@@ -250,26 +287,6 @@ class DatasetPolicy:
       with open(filename,'w') as f:
         json.dump(det_configs,f)
     safebarrier(comm)
-
-  def collect_samples(self, sample_size=200):
-    """
-    Runs MPI-parallelized sample collection with the current policy on
-    the train dataset.
-    If sample_size==-1, uses whole dataset.
-    """
-    sample_images = self.dataset.images
-    if not sample_size<0:
-      sample_images = ut.random_subset(self.dataset.image,sample_size)
-    all_samples = []
-    for i in range(comm_rank,len(sample_images),comm_size):
-      dets, clses, samples = self.run_on_image(sample_images[i])
-      all_samples.append(samples)
-    final_samples = None
-    if comm_rank==0:
-      final_samples = []
-    safebarrier(comm)
-    final_samples = comm.reduce(all_samples,root=0)
-    return final_samples
 
   def write_out_weights(self, name='default'):
     """Write self.weights out to canonical filename given the name."""
@@ -324,8 +341,7 @@ class DatasetPolicy:
     while True:
       sample = {}
       sample['img_ind'] = img_ind
-      # TODO
-      sample['state'] = b#copy.deepcopy(b)
+      sample['state'] = b.featurize()
       sample['action_ind'] = action_ind
       action = self.actions[action_ind]
       b.taken[action_ind] = 1
@@ -379,8 +395,7 @@ class DatasetPolicy:
       # Update action values and pick the next action; store sample
       self.update_actions(b)
       action_ind = self.select_action(b)
-      # TODO
-      sample['next_state'] = b#copy.deepcopy(b)
+      sample['next_state'] = b.featurize()
       samples.append(sample)
 
       # check for stopping conditions
@@ -484,7 +499,6 @@ class DatasetPolicy:
         all_dets_table.arr = np.vstack(final_dets)
         np.save(filename,all_dets_table)
         print("Found %d dets"%all_dets_table.shape()[0])
-      safebarrier(comm)
       all_dets_table = comm.bcast(all_dets_table,root=0)
     time_elapsed = time.time()-t
     print("DatasetPolicy.load_ext_detections took %.3f"%time_elapsed)
