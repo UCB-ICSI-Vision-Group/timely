@@ -19,14 +19,13 @@ class FastinfDiscretizer(object):
     self.d = d
     self.bounds = np.loadtxt(config.get_mrf_bound_filename(d, suffix))
 
-  def discretize_value(self, val):
+  def discretize_value(self, val, clf_idx):
     """
     For d, suffix discretize val for all 20 classes. 
-    Returns (20,) array
+    Returns discretized value for clf_idx
     """
-    # TODO: why for all classes??????
-    discr_val = determine_bin(np.tile(val, (1,len(self.d.classes)))[0,:], self.bounds, self.bounds.shape[0]-1, asInt=True)
-    return discr_val.astype(int)
+    discr_val = determine_bin(np.tile(val, (1,len(self.bounds.shape[1])))[0,:], self.bounds, self.bounds.shape[0]-1, asInt=True)
+    return discr_val.astype(int)[clf_idx]
   
 def determine_bin(col, bounds, num_bins, asInt=True):
   """ 
