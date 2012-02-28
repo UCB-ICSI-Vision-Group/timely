@@ -1,10 +1,12 @@
 from synthetic.common_imports import *
 from synthetic.common_mpi import *
 
+import synthetic.config as config
 import subprocess as subp
 
 from synthetic.dataset import Dataset
 from synthetic.csc_classifier import create_csc_stuff
+from synthetic.fastinf_gist import create_gist_model_for_dataset
 
 # TODO: why are these two needed?
 def plausible_assignments(assignments):
@@ -17,13 +19,32 @@ def correct_assignments(assignments):
     None
   None
 
-def discretize_table(table, num_bins):
-  float_values = False
-  if float_values:
-    d_table = np.hstack((table[:,:table.shape[1]/2],np.divide(np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins)),float(num_bins)) + 1/float(2*num_bins)))
+def discretize_table(table, num_bins, asInt=True):
+  new_table = np.zeros(table.shape)
+  for coldex in range(table.shape[1]):
+    col = table[:, coldex]
+    bounds = ut.importance_sample(col, num_bins+1)
+    
+    # determine which bin these fall in
+    col_bin = np.zeros((table.shape[0],1))
+    bin_values = np.zeros(bounds.shape)
+    last_val = 0.
+    for bidx, b in enumerate(bounds):
+      bin_values[bidx] = (last_val + b)/2.
+      last_val = b
+      col_bin += np.matrix(col < b, dtype=int).T
+    bin_values = bin_values[1:]    
+    col_bin[col_bin == 0] = 1  
+    if asInt:
+      a = num_bins - col_bin
+      new_table[:, coldex] = a[:,0] 
+    else:    
+      for rowdex in range(table.shape[0]):
+        new_table[rowdex, coldex] = bin_values[int(col_bin[rowdex]-1)]
+  if asInt:    
+    return new_table.astype(int)
   else:
-    d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins))))  
-  return d_table
+    return new_table
 
 def write_out_mrf(table, num_bins, filename, data_filename, second_table=None, pairwise=True):
   """
@@ -236,15 +257,11 @@ def c_corr_to_a(num_lines, func):
     classif = func(assignment)
     table[i,:] = np.hstack((assignment, classif))
   return table
-  
-def run_fastinf_different_settings():  
+
+def run_fastinf_different_settings(dataset, ms, rs, suffixs):  
  
-  dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
   num_bins = 5
-  suffixs = ['CSC', 'GIST_CSC']#,'perfect', 'GIST']
-  ms = ['0', '2', '5']
-  rs = ['', '0.5', '1']
   settings = list(itertools.product(suffixs, ms, rs))
   table_gt = d.get_cls_ground_truth().arr.astype(int)
   print 'run with a total of %d settings'%len(settings)
@@ -256,9 +273,9 @@ def run_fastinf_different_settings():
     m = setin[1]
     r = setin[2]
 
-    filename = config.get_fastinf_mrf_file(dataset, suffix)
-    data_filename = config.get_fastinf_data_file(dataset, suffix)
-    filename_out = config.get_fastinf_res_file(dataset, suffix)
+    filename = config.get_fastinf_mrf_file(d, suffix)
+    data_filename = config.get_fastinf_data_file(d, suffix)
+    filename_out = config.get_fastinf_res_file(d, suffix)
     
     if suffix == 'perfect':      
       table = np.hstack((table_gt, table_gt))
@@ -269,21 +286,23 @@ def run_fastinf_different_settings():
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'CSC':
-      filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
-      table = cPickle.loads(open(filename,'r'))
-      discr_table = discretize_table(table, num_bins)  
+      filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
+      table = cPickle.load(open(filename_csc,'r'))
+      discr_table = discretize_table(table, num_bins)
+      print discr_table  
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'GIST_CSC':
-      filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
-      table = cPickle.loads(open(filename,'r'))
-      discr_table = discretize_table(table, num_bins)  
+      filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
+      table = cPickle.load(open(filename_csc,'r'))
+      discr_table = discretize_table(table, num_bins)      
       table = np.hstack((table_gt, discr_table))
       
       second_table = create_gist_model_for_dataset(d)      
       second_table = discretize_table(second_table, num_bins)  
-  
-    write_out_mrf(table, num_bins, filename, data_filename,second_table=second_table)
+    
+    print table
+    write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
     add_sets = ['-m',m]
     if not r == '':
@@ -292,9 +311,24 @@ def run_fastinf_different_settings():
     
 
 if __name__=='__main__':
-  create_csc_stuff()
   
-  comm.safebarrier()
   
-  run_fastinf_different_settings()
+  
+  if comm_rank < 32:
+    dataset = 'full_pascal_trainval'
+    suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
+    ms = ['0', '2', '5']
+    rs = ['', '0.5', '1']  
+  else:
+    dataset = 'full_pascal_train'
+    suffixs = ['CSC', 'GIST_CSC']
+    ms = ['0', '2', '5']
+    rs = ['', '1']
+  
+  dataset = 'full_pascal_trainval'
+  suffixs = ['GIST_CSC']
+  ms = ['5']
+  rs = ['1']
+   
+  run_fastinf_different_settings(dataset, ms, rs, suffixs)
   

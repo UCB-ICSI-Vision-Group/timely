@@ -30,8 +30,14 @@ class CSCClassifier(Classifier):
     result = svm_predict(vector, model)
     return result
   
-  def get_score(self, img):
+  def get_score(self, img, probab=False):
+    if probab:
+      return self.get_probab(img)[1]
     return self.get_predict(img)[0,0]
+  
+  def get_probab(self, img):
+    vector = self.create_vector(img)
+    return svm_proba(vector, self.svm)
   
   def get_predict(self, img):
     vector = self.create_vector(img)
@@ -43,6 +49,8 @@ class CSCClassifier(Classifier):
     csc_test = csc_test[()]  
     csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
     csc_test.arr = self.normalize_scores(csc_test.arr)
+#    csc_test = np.random.random((562069, 8)
+
     feats = csc_test
     
     if feats.arr.size == 0:
@@ -146,6 +154,10 @@ def old_training_stuff():
 
 def get_best_parameters():
   parameters = []
+  d = Dataset('full_pascal_trainval')
+  
+  # this is just a dummy, we don't really need it, just to read best vals
+  csc = CSCClassifier('default', 'dog', d)
   best_table = csc.get_best_table()
   for row_idx in range(best_table.shape()[0]):
     row = best_table.arr[row_idx, :]
@@ -155,9 +167,12 @@ def get_best_parameters():
     parameters.append(params)
   return parameters
 
-def classify_all_images():
+def classify_all_images(force_new=False):
   d = Dataset('full_pascal_trainval')
   suffix = 'default'
+  tt = ut.TicToc()
+  tt.tic()
+  print 'start classifying all images on %d...'%comm_rank
   
   for cls in d.classes:
     csc = CSCClassifier(suffix, cls, d)
@@ -165,19 +180,17 @@ def classify_all_images():
     for img_idx in range(comm_rank, len(d.images), comm_size):
       img = d.images[img_idx]      
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
-#      if os.path.exists(filename):
-#        continue
-      print '%s image %s'%(cls, img.name)
-      try:
-        score = csc.get_score(img_idx)        
-        w = open(filename, 'w')
-        w.write('%f'%score)
-        w.close()
-      except:
-        w = open(filename, 'w')
-        w.write('0')
-        w.close()
-
+      if not force_new and os.path.exists(filename):
+        continue
+      print '%s image %s on %d'%(cls, img.name, comm_rank)
+    
+      score = csc.get_score(img_idx, probab=True)        
+      w = open(filename, 'w')
+      w.write('%f'%score)
+      w.close()
+            
+  print 'Classified all images in %f secs on %d'%(tt.toc(quiet=True), comm_rank)
+  
 def compile_table_from_classifications(d):  
   errors = 0
   table = np.zeros((len(d.images), len(d.classes)))
@@ -187,15 +200,14 @@ def compile_table_from_classifications(d):
     ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
     for img_idx in range(len(d.images)):
       img = d.images[img_idx] 
-      print '%s image %s'%(cls, img.name)
+      print '%s image %s on %d'%(cls, img.name, comm_rank)
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
-      print filename
       try:
         w = open(filename, 'r')
         score = float(w.read())
-        w.close() 
-        
+        w.close()         
       except:
+        print '\terror on %s'%img.name
         score = 0
         errors += 1
       table[img_idx, cls_idx] = score
@@ -203,16 +215,24 @@ def compile_table_from_classifications(d):
   print 'errors: %d'%errors
   return table
 
-def create_csc_stuff():
+def create_csc_stuff(classify_images=True):
 
-
-  classify_all_images()
-  
-  comm.safebarrier()
+  if classify_images:
+    classify_all_images(force_new=True)
+      
   d = Dataset('full_pascal_trainval')
-  table = compile_table_from_classifications(d)
-  filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
+  filename = os.path.join(dirname,'table')
+  
+  if not os.path.exists(filename):
+    safebarrier(comm)    
+    table = compile_table_from_classifications(d)
+    
+    if comm_rank == 0:      
+      print 'save table as %s'%filename
+      cPickle.dump(table, open(filename, 'w'))
   
 if __name__=='__main__':
-  None
+#  create_csc_stuff(classify_images=True)
+  csc_classifier_train(get_best_parameters(), 'default', probab=True, test=False, force_new=True)
                     

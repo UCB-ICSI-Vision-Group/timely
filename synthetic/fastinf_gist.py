@@ -1,7 +1,6 @@
 from synthetic.common_imports import *
 from synthetic.common_mpi import *
 
-from synthetic.fastInf import *
 from synthetic.gist_classifier import GistClassifier, cls_for_dataset
 from synthetic.dataset import Dataset
 
@@ -10,37 +9,6 @@ def create_gist_model_for_dataset(d):
 
   table = cls_for_dataset(dataset)    
   return table  
-
-def discretize_table(table, num_bins, asInt=True):
-  new_table = np.zeros(table.shape)
-  print table[0,:]
-  for coldex in range(table.shape[1]):
-    col = table[:, coldex]
-    print type(col)
-    print sum(abs(col))
-    print col
-    bounds = ut.importance_sample(col, num_bins+1)
-    
-    # determine which bin these fall in
-    col_bin = np.zeros((table.shape[0],1))
-    bin_values = np.zeros(bounds.shape)
-    last_val = 0.
-    for bidx, b in enumerate(bounds):
-      bin_values[bidx] = (last_val + b)/2.
-      last_val = b
-      col_bin += np.matrix(col < b, dtype=int).T
-    bin_values = bin_values[1:]    
-    col_bin[col_bin == 0] = 1  
-    if asInt:
-      a = num_bins - col_bin
-      new_table[:, coldex] = a[:,0] 
-    else:    
-      for rowdex in range(table.shape[0]):
-        new_table[rowdex, coldex] = bin_values[int(col_bin[rowdex]-1)]
-  if asInt:    
-    return new_table.astype(int)
-  else:
-    return new_table
   
 def create_tables():
   datasets = ['full_pascal_trainval','full_pascal_test','full_pascal_train','full_pascal_val']
@@ -57,7 +25,10 @@ def create_tables():
 #    table[img_idx, :] = gist.get_priors(img)
 #  return table
 
+
+
 if __name__=='__main__':
+  from synthetic.fastInf import *
   #create_tables()
   num_bins = 5
   dataset = 'full_pascal_trainval'
