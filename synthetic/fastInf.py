@@ -238,15 +238,11 @@ def c_corr_to_a(num_lines, func):
     classif = func(assignment)
     table[i,:] = np.hstack((assignment, classif))
   return table
-  
-def run_fastinf_different_settings():  
+
+def run_fastinf_different_settings(dataset, ms, rs, suffixs):  
  
-  dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
   num_bins = 5
-  suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
-  ms = ['0', '2', '5']
-  rs = ['', '0.5', '1']
   settings = list(itertools.product(suffixs, ms, rs))
   table_gt = d.get_cls_ground_truth().arr.astype(int)
   print 'run with a total of %d settings'%len(settings)
@@ -294,9 +290,24 @@ def run_fastinf_different_settings():
     
 
 if __name__=='__main__':
-  #create_csc_stuff()
   
-  safebarrier(comm)
   
-  run_fastinf_different_settings()
+  
+  if comm_rank < 32:
+    dataset = 'full_pascal_trainval'
+    suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
+    ms = ['0', '2', '5']
+    rs = ['', '0.5', '1']  
+  else:
+    dataset = 'full_pascal_train'
+    suffixs = ['CSC', 'GIST_CSC']
+    ms = ['0', '2', '5']
+    rs = ['', '1']
+  
+  dataset = 'full_pascal_trainval'
+  suffixs = ['GIST_CSC']
+  ms = ['5']
+  rs = ['1']
+   
+  run_fastinf_different_settings(dataset, ms, rs, suffixs)
   

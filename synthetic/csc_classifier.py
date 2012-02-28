@@ -212,18 +212,19 @@ def compile_table_from_classifications(d):
 def create_csc_stuff(classify_images=True):
 
   if classify_images:
-    classify_all_images(force_new=False)  
-  
-  safebarrier(comm)
+    classify_all_images(force_new=False)
+      
   d = Dataset('full_pascal_trainval')
-  table = compile_table_from_classifications(d)
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
+  filename = os.path.join(dirname,'table')
   
-  if comm_rank == 0:
-    dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
-    filename = os.path.join(dirname,'table')
-    print 'save table as %s'%filename
-    cPickle.dump(table, open(filename, 'w'))
-    np.savetxt(filename+ '_np', table)
+  if not os.path.exists(filename):
+    safebarrier(comm)    
+    table = compile_table_from_classifications(d)
+    
+    if comm_rank == 0:      
+      print 'save table as %s'%filename
+      cPickle.dump(table, open(filename, 'w'))
   
 if __name__=='__main__':
   create_csc_stuff(classify_images=True)
