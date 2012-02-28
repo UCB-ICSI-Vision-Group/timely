@@ -7,4 +7,4 @@ dataset.images = dataset.images[:first_n]
 train_dataset = Dataset('full_pascal_trainval')
 config = load_configs('feb27')[0]
 dp = DatasetPolicy(dataset, train_dataset, **config)
-%prun dets,clses = dp.run_on_dataset(force=True)
+%prun dets,clses,samples = dp.run_on_dataset(force=True)

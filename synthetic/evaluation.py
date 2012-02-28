@@ -69,7 +69,8 @@ class Evaluation:
     """
     bounds = self.dp.bounds if self.dp and self.dp.bounds else None
 
-    tables = None
+    dets_table = None
+    clses_table = None
     if opexists(self.det_apvst_data_fname) and \
        opexists(self.cls_apvst_data_fname) and not force:
       if comm_rank==0:
@@ -77,7 +78,7 @@ class Evaluation:
         clses_table = np.load(self.cls_apvst_data_fname)[()]
     else:
       if not dets:
-        dets,clses = self.dp.run_on_dataset(force=True)
+        dets,clses,samples = self.dp.run_on_dataset(force=True)
       
       # determine time sampling points
       all_times = dets.subset_arr('time')
@@ -158,7 +159,9 @@ class Evaluation:
     performances, and so gets rid of error bars.
     """
     bounds = self.dp.bounds if self.dp and self.dp.bounds else None
-
+    
+    dets_table = None
+    clses_table = None
     if opexists(self.det_apvst_data_whole_fname) and \
        opexists(self.cls_apvst_data_whole_fname) and not force:
       if comm_rank==0:
@@ -166,7 +169,7 @@ class Evaluation:
         clses_table = np.load(self.cls_apvst_data_whole_fname)[()]
     else:
       if not dets:
-        dets,clses = self.dp.run_on_dataset()
+        dets,clses,samples = self.dp.run_on_dataset()
 
       # determine time sampling points
       all_times = dets.subset_arr('time')
@@ -260,7 +263,6 @@ class Evaluation:
     colors = ['black','orange','#4084ff','purple']
     styles = ['-','--','-..','-.']
     prod = [x for x in itertools.product(colors,styles)]
-    print(all_bounds)
     none_bounds = [None for table in tables]
     # TODO: oooh that's messy
     if np.all(all_bounds==none_bounds):
@@ -275,7 +277,6 @@ class Evaluation:
     for i,table in enumerate(tables):
       print("Plotting %s"%table.name)
       bounds = all_bounds[i]
-      print 'i:', i
       style = prod[i][1]
       color = prod[i][0]
       times = table.subset_arr('time')
@@ -289,12 +290,10 @@ class Evaluation:
       auc = Evaluation.compute_auc(times,vals,bounds)
 
       high_bound_val = vals[-1]
-      print bounds
       if bounds != None:
         high_bound_val = vals[times.tolist().index(bounds[1])]
 
       label = "(%.2f, %.2f) %s"%(auc,high_bound_val,table.name)
-      print(label)
       plt.plot(times, vals, style,
           linewidth=2,color=color,label=label)
 
@@ -322,7 +321,7 @@ class Evaluation:
     """
     if not dets:
       assert(self.dp != None)
-      dets,clses = self.dp.run_on_dataset()
+      dets,clses,samples = self.dp.run_on_dataset()
 
     # Per-Class
     num_classes = len(self.dataset.classes)

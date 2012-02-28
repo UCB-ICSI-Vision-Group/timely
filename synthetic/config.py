@@ -142,6 +142,10 @@ def get_dp_dets_filename(dataset_policy):
 def get_dp_clses_filename(dataset_policy):
   return join(get_evals_dp_dir(dataset_policy), 'cached_clses.npy')
 
+# ./results/evaluations/{dataset_name}/{dp_config_name}/cached_samples.npy
+def get_dp_samples_filename(dataset_policy):
+  return join(get_evals_dp_dir(dataset_policy), 'cached_samples.pickle')
+
 # results/evaluations/{dataset_name}/{dp_config_name}/weights/
 def get_dp_weights_dirname(dataset_policy):
   dirname = get_evals_dp_dir(dataset_policy)
@@ -313,4 +317,4 @@ def get_fastinf_res_file(dataset, suffix):
 
 def get_fastinf_cache_file(dataset,suffix):  
   dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
-  return join(dirname, 'cache.npy')
+  return join(dirname, 'cache.pickle')
