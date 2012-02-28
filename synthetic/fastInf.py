@@ -36,6 +36,7 @@ def determine_bin(col, bounds, num_bins, asInt=True):
   col_bin = np.zeros((col.shape[0],1))
   bin_values = np.zeros(bounds.shape)
   last_val = 0.
+  
   for bidx, b in enumerate(bounds):
     bin_values[bidx] = (last_val + b)/2.
     last_val = b
@@ -397,6 +398,9 @@ def run_all_in_3_parts():
   print '\trs:', rs
      
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
+  
+def write_out_perfect_bounds():
+  None
 
 if __name__=='__main__':
   #run_all_in_3_parts()
