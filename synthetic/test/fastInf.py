@@ -8,8 +8,10 @@ class TestFastInf:
     
   def test_discretization_sane(self):
     d = self.d
-    num_bins = 34
-    table = np.random.randn(len(d.classes),3000)
+    num_bins = 15
+    table = np.random.randn(2501,1)
+    #table += np.min(table)
+    print table
     bounds, discr_table = discretize_table(table, num_bins)
     
     print np.min(bounds[:,0]), np.max(bounds[:,0])
@@ -30,6 +32,23 @@ class TestFastInf:
     comp = np.absolute(bounds-bounds_gt).astype(int)
     np.testing.assert_equal(comp, np.zeros(comp.shape))  
     
+  def test_importance_sample_two(self):
+    num_bins = 20
+    values = range(num_bins)
+    values += [0]*8
+    values += [1]*10    
+    values += [2]*7
+    values += [3]*3
+    
+    table = np.asmatrix(values).T
+    print table.shape
+    plt.hist(values, num_bins)
+    _, discr_table = discretize_table(table, num_bins)
+    x = np.hstack(discr_table.T.tolist())
+    plt.hist(x, num_bins)
+    plt.show()
+    
+        
   def test_determine_bin(self):
     values = np.array([0, 0.05,0.073,0.0234,0.1,0.13423,0.123534,0.1253,0.212,0.2252,0.43,0.3]).astype(float)
     bounds = np.array([0,0.1,0.2,0.3,np.max(values)])
@@ -56,6 +75,6 @@ if __name__=='__main__':
   tester = TestFastInf()
   #tester.test_determine_bin()
   #tester.test_discretization_sane()
-  #tester.test_importance_sample()  
-  tester.test_discretize_value_perfect()                        
+  tester.test_importance_sample_two()  
+  #tester.test_discretize_value_perfect()                        
   

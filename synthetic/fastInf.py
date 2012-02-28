@@ -67,6 +67,7 @@ def discretize_table(table, num_bins, asInt=True):
     else:
       bounds = ut.importance_sample(col, num_bins+1)
     all_bounds[:, coldex] = bounds
+    ut.keyboard()
     
     new_table[:, coldex] = determine_bin(col, bounds, num_bins, asInt)
   if asInt:    
