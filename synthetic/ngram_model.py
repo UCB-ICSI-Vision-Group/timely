@@ -10,28 +10,29 @@ class InferenceModel(object):
   @abstractmethod 
   def update_with_observations(self,taken,observations):
     "Update all the probabilities with the given observations."
-    None
 
 class FixedOrderModel(InferenceModel):
   "Model does not update anything, and p_c is determined by the counts."
 
   def __init__(self,dataset):
-    self.data = dataset.get_cls_counts()
-    self.p_c = (1.*np.sum(self.data,0)/self.data.shape[0]).tolist()
+    self.data = dataset.get_cls_ground_truth().arr
+    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0]
 
   def update_with_observations(self, taken, observations):
-    None
+    "Simply set p_c to the observations."
+    inds = np.flatnonzero(taken)
+    self.p_c[inds] = observations[inds]
 
 class NGramModel(InferenceModel):
   accepted_modes = ['no_smooth','smooth','backoff']
 
   def __init__(self,dataset,mode='no_smooth'):
-    self.data = dataset.get_cls_counts()
+    self.data = dataset.get_cls_ground_truth().arr
     assert(mode in self.accepted_modes)
     self.mode = mode
     self.cls_inds = range(self.data.shape[1])
     # initialize p_c to the prior probabilities
-    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0] 
+    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0]
     print("NGramModel initialized with %s mode"%self.mode)
     self.cache = {}
 
@@ -39,9 +40,9 @@ class NGramModel(InferenceModel):
 
   def update_with_observations(self, taken, observations):
     "Update all the probabilities with the given observations."
-    cond_inds = np.flatnonzero(taken)
-    cond_vals = np.flatnonzero(observations)
-    self.p_c = [self.cond_prob(cls_ind, cond_inds, cond_vals) for cls_ind in self.cls_inds]
+    cond_inds = np.flatnonzero(taken).tolist()
+    cond_vals = [observations[i] for i in cond_inds]
+    self.p_c = np.array([self.cond_prob(cls_ind, cond_inds, cond_vals) for cls_ind in self.cls_inds])
 
   def marg_prob(self, cls_inds, vals=None):
     """

@@ -126,6 +126,8 @@ def main():
 
   dets_tables = []
   clses_tables = []
+  dets_tables_whole = []
+  clses_tables_whole = []
   all_bounds = []
 
   for config_f in configs:
@@ -144,6 +146,8 @@ def main():
       if comm_rank==0:
         dets_tables.append(dets_table)
         clses_tables.append(clses_table)
+        dets_tables_whole.append(dets_table_whole)
+        clses_tables_whole.append(clses_table_whole)
 
     # optionally, evaluate in the standard PR regime
     if args.wholeset_prs:
@@ -154,10 +158,21 @@ def main():
     # filename of the final plot is the config file name
     dirname = config.get_evals_dir(dataset.get_name())
     filename = args.config
-    ff = os.path.join(dirname, '%s.png'%filename)
-    ff_no_legend = os.path.join(dirname, '%s_no_legend.png'%filename)
+    # det avg
+    ff = opjoin(dirname, '%s.png'%filename)
+    ff_no_legend = opjoin(dirname, '%s_no_legend.png'%filename)
     Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True)
     Evaluation.plot_ap_vs_t(dets_tables, ff_no_legend, all_bounds, with_legend=False)
+    # det whole
+    ff = opjoin(dirname, '%s_whole.png'%filename)
+    ff_no_legend = opjoin(dirname, '%s_whole_no_legend.png'%filename)
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff, all_bounds, with_legend=True)
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_no_legend, all_bounds, with_legend=False)
+    # cls
+    ff = opjoin(dirname, '%s_cls_whole.png'%filename)
+    ff_no_legend = opjoin(dirname, '%s_cls_whole_no_legend.png'%filename)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff, all_bounds, with_legend=True)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_no_legend, all_bounds, with_legend=False)
     
 if __name__ == '__main__':
   main()

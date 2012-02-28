@@ -143,8 +143,8 @@ class Evaluation:
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_fname, bounds)
-        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_fname, bounds)
+        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_fname, bounds, force)
+        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_fname, bounds, force)
       except:
         print("Could not plot")
     return (dets_table,clses_table)
@@ -222,8 +222,8 @@ class Evaluation:
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_whole_fname, bounds)
-        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_whole_fname, bounds)
+        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_whole_fname, bounds, force)
+        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_whole_fname, bounds, force)
       except:
         print("Could not plot")
     return (dets_table,clses_table)
@@ -241,7 +241,7 @@ class Evaluation:
     return auc
 
   @classmethod
-  def plot_ap_vs_t(cls, tables, filename, all_bounds=None, with_legend=True):
+  def plot_ap_vs_t(cls, tables, filename, all_bounds=None, with_legend=True, force=False):
     """
     Take list of Tables containing AP vs. Time information.
     Bounds are given as a list of the same length as tables, or not at all.
@@ -253,13 +253,20 @@ class Evaluation:
     Save plot to given filename.
     Does not return anything.
     """
+    if opexists(filename) and not force:
+      print("Plot already exists, not doing anything")
+      return
     plt.clf()
     colors = ['black','orange','#4084ff','purple']
     styles = ['-','--','-..','-.']
     prod = [x for x in itertools.product(colors,styles)]
     print(all_bounds)
-    if not all_bounds:
-      all_bounds = [None for table in tables]
+    none_bounds = [None for table in tables]
+    # TODO: oooh that's messy
+    if np.all(all_bounds==none_bounds):
+      None
+    elif not all_bounds:
+      all_bounds = none_bounds
     elif not isinstance(all_bounds[0], types.ListType):
       all_bounds = [all_bounds for table in tables]
     else:
@@ -282,7 +289,8 @@ class Evaluation:
       auc = Evaluation.compute_auc(times,vals,bounds)
 
       high_bound_val = vals[-1]
-      if bounds:
+      print bounds
+      if bounds != None:
         high_bound_val = vals[times.tolist().index(bounds[1])]
 
       label = "(%.2f, %.2f) %s"%(auc,high_bound_val,table.name)

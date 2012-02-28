@@ -15,25 +15,38 @@ class BeliefState(object):
   ngram_modes = ['no_smooth','backoff']
   accepted_modes = ngram_modes+['fixed_order','fastinf']
 
-  def __init__(self,dataset,actions,mode='fixed_order',bounds=None):
+  def __init__(self,dataset,actions,mode='fixed_order',bounds=None,model=None):
     assert(mode in self.accepted_modes)
     self.mode = mode
-
-    if mode=='no_smooth' or mode=='backoff':
-      self.model = NGramModel(dataset,mode)
-    elif mode=='fixed_order':
-      self.model = FixedOrderModel(dataset)
-    elif mode=='fastinf':
-      # TODO: work out the suffix situation
-      suffix = 'perfect'
-      self.model = FastinfModel(dataset,suffix)
-    else:
-      raise RuntimeError("Unknown mode")
-
     self.dataset = dataset
     self.actions = actions
     self.t = 0
     self.bounds = bounds
+
+    if mode=='no_smooth' or mode=='backoff':
+      if model:
+        assert(isinstance(model,NGramModel))
+        self.model = model
+      else:
+        self.model = NGramModel(dataset,mode)
+    elif mode=='fixed_order':
+      if model:
+        assert(isinstance(model,FixedOrderModel))
+        self.model = model
+      else:
+        self.model = FixedOrderModel(dataset)
+    elif mode=='fastinf':
+      # TODO: work out the suffix situation
+      suffix = 'perfect'
+      if model:
+        assert(isinstance(model,FastinfModel))
+        self.model = model
+        self.model.reinit_marginals()
+      else:
+        num_actions = len(self.actions)
+        self.model = FastinfModel(dataset,suffix,num_actions)
+    else:
+      raise RuntimeError("Unknown mode")
 
     # zero stuff out
     self.reset_actions()
@@ -60,28 +73,28 @@ class BeliefState(object):
     """
     Return featurized representation of the current belief state.
     """
-    if self.mode in ngram_modes:
-      features = self.p_c
-    if self.mode=='fastinf':
-      features = self.p_c
+    if self.mode in self.ngram_modes:
+      features = self.get_p_c()
+    elif self.mode=='fastinf':
+      features = self.get_p_c()
       # TODO
       #features = self.model.get_infogains()
     else:
-      raise RuntimeError("Impossible")
+      raise RuntimeError("Impossible: fixed_order policy should never get here.")
 
-    def H(x): return np.sum([-x_i*ut.log(x_i) -(1-x_i)*ut.log(1-x_i) for x_i in x])
-    entropy = H(b['priors'].priors)
+    #def H(x): return np.sum([-x_i*ut.log(x_i) -(1-x_i)*ut.log(1-x_i) for x_i in x])
+    #entropy = H(b['priors'].priors)
     #features += [entropy]
 
     time_to_start = 0
-    if b.bounds:
-      if b.bounds[0]>0:
-        time_to_start = max(0, (b.bounds[0]-b['t'])/b.bounds[0])
-      time_to_deadline = max(0, (b.bounds[1]-b['t'])/b.bounds[1])
+    if self.bounds:
+      if self.bounds[0]>0:
+        time_to_start = max(0, (self.bounds[0]-b['t'])/self.bounds[0])
+      time_to_deadline = max(0, (self.bounds[1]-b['t'])/self.bounds[1])
     else:
       time_to_start = 0
       time_to_deadline = 1
     #features += [time_to_start,time_to_deadline]
     #features += [time_to_deadline]
 
-    return np.array(features)
+    return features

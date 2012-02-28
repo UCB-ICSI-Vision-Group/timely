@@ -13,6 +13,7 @@ from synthetic.detector import *
 from synthetic.ext_detector import ExternalDetector
 from synthetic.bounding_box import BoundingBox
 from synthetic.belief_state import BeliefState
+from synthetic.fastinf_model import FastinfModel
 
 class ImageAction:
   def __init__(self, name, obj):
@@ -112,7 +113,9 @@ class DatasetPolicy:
       self.inference_mode = 'fastinf'
     if self.policy_mode in ['no_smooth','backoff']:
       self.inference_mode = self.policy_mode
-    b = BeliefState(self.dataset,self.actions,self.inference_mode,self.bounds)
+
+    b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds)
+    self.inf_model = b.model
     
     # TODO: figure this stuff out
     if self.policy_mode in ['no_smooth','backoff','fastinf_manual']:
@@ -177,6 +180,9 @@ class DatasetPolicy:
     safebarrier(comm)
     dets_table = comm.bcast(dets_table,root=0)
     clses_table = comm.bcast(clses_table,root=0)
+
+    # TODO: figure out how to save the self.fm cache here!
+
     print(self.policy_mode)
     return dets_table,clses_table
 
@@ -281,7 +287,6 @@ class DatasetPolicy:
       self.action_values = b.get_p_c()
     else:
       self.action_values = np.dot(self.weights, b.featurize())
-      raise RuntimeError("Unknown policy_mode: %s"%self.policy_mode)
 
   def select_action(self, b):
     """
@@ -309,8 +314,11 @@ class DatasetPolicy:
     samples = []
     prev_ap = 0
    
-    img_ind = self.dataset.get_img_ind(image) if image else -1 
-    b = BeliefState(self.dataset,self.actions)
+    img_ind = self.dataset.get_img_ind(image) if image else -1
+    if self.inf_model:
+      b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,self.inf_model)
+    else:
+      b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds)
     self.update_actions(b)
     action_ind = self.select_action(b)
     while True:
@@ -365,7 +373,7 @@ class DatasetPolicy:
       b.update_with_score(action_ind, score)
 
       # The updated belief state posterior over C is our classification result
-      clses = b.get_p_c() + [img_ind,b.t]
+      clses = b.get_p_c().tolist() + [img_ind,b.t]
       all_clses.append(clses)
 
       # Update action values and pick the next action; store sample
@@ -389,8 +397,10 @@ class DatasetPolicy:
       naive_aps = np.array([s['det_naive_ap'] for s in samples])
       sorted_inds = np.argsort(-naive_aps)
       all_detections = np.take(all_detections, sorted_inds)
-      all_clses = np.take(all_clses, sorted_inds)
       times = np.take(times, sorted_inds)
+      all_clses = np.array(all_clses)[sorted_inds]
+      time_ind = self.get_cls_cols().index('time')
+      all_clses[:,time_ind] = times
 
     # now construct the final return array, with correct times
     assert(len(all_detections)==len(all_clses)==len(times))
@@ -415,9 +425,6 @@ class DatasetPolicy:
           all_detections = all_detections[:first_overdeadline_ind,:]
     else:
       all_detections = np.array([])
-    
-    # and for clses:
-    all_clses = np.array(all_clses)
 
     print("DatasetPolicy on image took %.3f s"%tt.qtoc())
     return (all_detections,all_clses,samples)
