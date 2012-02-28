@@ -269,7 +269,7 @@ def cls_for_dataset(dataset):
 
 if __name__=='__main__':
   from synthetic.fastInf import write_out_mrf, execute_lbp, discretize_table
-  dataset_name = 'full_pascal_trainval'
+  dataset_name = 'full_pascal_train'
   table = cls_gt_for_dataset(dataset)
   d = Dataset(dataset_name)
   num_bins = 5

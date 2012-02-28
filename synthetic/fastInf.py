@@ -13,13 +13,42 @@ import argparse
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
 
+def discretize_value(val, d, suffix):
+  """
+  For d, suffix discretize val for all 20 classes. 
+  Returns (20,) array
+  """
+  bounds = get_discretization_bounds(d, suffix)
+  discr_val = determine_bin(np.tile(val, (1,len(d.classes)))[0,:], bounds, bounds.shape[0]-1, asInt=True)
+  return discr_val.astype(int)
+
 def get_discretization_bounds(d, suffix):
   """
   For a given setting return bounds as num_bins x num_cols
   """
-  filename = config.get_fastinf_mrf_file(d, suffix) + '_bounds' 
-  return np.load(filename)
+  return np.loadtxt(config.get_mrf_bound_filename(d, suffix))
   
+def determine_bin(col, bounds, num_bins, asInt=True):
+  """ 
+  Determine in which bin the values fall
+  """
+  ret_tab = np.zeros((col.shape[0],1))
+  col_bin = np.zeros((col.shape[0],1))
+  bin_values = np.zeros(bounds.shape)
+  last_val = 0.
+  for bidx, b in enumerate(bounds):
+    bin_values[bidx] = (last_val + b)/2.
+    last_val = b
+    col_bin += np.matrix(col < b, dtype=int).T
+  bin_values = bin_values[1:]    
+  col_bin[col_bin == 0] = 1  
+  if asInt:
+    a = num_bins - col_bin
+    ret_tab = a[:,0] 
+  else:    
+    for rowdex in range(col.shape[0]):
+      ret_tab[rowdex, 0] = bin_values[int(col_bin[rowdex]-1)]
+  return ret_tab
 
 def discretize_table(table, num_bins, asInt=True):
   """
@@ -28,26 +57,17 @@ def discretize_table(table, num_bins, asInt=True):
   """
   all_bounds = np.zeros((num_bins+1, table.shape[1]))
   new_table = np.zeros(table.shape)
+  
   for coldex in range(table.shape[1]):
     col = table[:, coldex]
-    bounds = ut.importance_sample(col, num_bins+1)
+     
+    if np.where(col==col[0])[0].shape[0] == col.shape[0]:
+      bounds = (np.arange(num_bins+1)/num_bins)
+    else:
+      bounds = ut.importance_sample(col, num_bins+1)
     all_bounds[:, coldex] = bounds
-    # determine which bin these fall in
-    col_bin = np.zeros((table.shape[0],1))
-    bin_values = np.zeros(bounds.shape)
-    last_val = 0.
-    for bidx, b in enumerate(bounds):
-      bin_values[bidx] = (last_val + b)/2.
-      last_val = b
-      col_bin += np.matrix(col < b, dtype=int).T
-    bin_values = bin_values[1:]    
-    col_bin[col_bin == 0] = 1  
-    if asInt:
-      a = num_bins - col_bin
-      new_table[:, coldex] = a[:,0] 
-    else:    
-      for rowdex in range(table.shape[0]):
-        new_table[rowdex, coldex] = bin_values[int(col_bin[rowdex]-1)]
+    
+    new_table[:, coldex] = determine_bin(col, bounds, num_bins, asInt)
   if asInt:    
     return (all_bounds, new_table.astype(int))
   else:
@@ -304,8 +324,6 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
       table = cPickle.load(open(filename_csc,'r'))
       bounds, discr_table = discretize_table(table, num_bins)
-      print table_gt.shape
-      print discr_table.shape
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'GIST_CSC':
@@ -342,8 +360,8 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
     execute_lbp(filename, data_filename, filename_out, add_settings=add_sets)
     
 
-if __name__=='__main__':
-  
+def run_all_in_3_parts():
+    
   # I run 3 different experiments to be able to abort them separately...
   # that a total of 48 experiments
   parser = argparse.ArgumentParser(
@@ -380,4 +398,11 @@ if __name__=='__main__':
   
      
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
+
+if __name__=='__main__':
+  #run_all_in_3_parts()
+  dataset = 'full_pascal_trainval'
+  d = Dataset(dataset)
+  suffix = 'GIST'
+  print discretize_value(.2242, d, suffix)
   
