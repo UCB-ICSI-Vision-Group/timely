@@ -7,7 +7,7 @@ from synthetic.dataset import Dataset
 from synthetic.training import svm_predict, svm_proba
 #import synthetic.config as config
 from synthetic.config import get_ext_dets_filename
-from synthetic.dpm_classifier import create_vector
+#from synthetic.dpm_classifier import create_vector
 
 
 class CSCClassifier(Classifier):
@@ -33,7 +33,7 @@ class CSCClassifier(Classifier):
   
   def get_score(self, img, probab=False):
     if probab:
-      return self.get_probab(img)[1]
+      return self.get_probab(img)[0][1]
     return self.get_predict(img)[0,0]
   
   def get_probab(self, img):
@@ -43,10 +43,16 @@ class CSCClassifier(Classifier):
   def get_predict(self, img):
     vector = self.get_vector(img)
     return svm_predict(vector, self.svm)
+  
+  def get_all_vectors(self):
+    for img_idx in range(comm_rank, len(self.dataset.images), comm_size):
+      print 'on %d get vect %d/%d'%(comm_rank, img_idx, len(self.dataset.images))
+      self.get_vector(img_idx)
     
   def get_vector(self, img):
-    filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),img.name)
-    if not os.path.exists(filename):
+    image = self.dataset.images[img]
+    filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
+    if os.path.exists(filename):
       return np.load(filename)
     else:
       vector = self.create_vector(img)
@@ -242,9 +248,5 @@ def create_csc_stuff(d, classify_images=True, force_new=False):
 if __name__=='__main__':
   d = Dataset('full_pascal_trainval')
   
-#  print get_best_parameters()[7]
-#  print config.pascal_classes.index('cat') 
-  csc_classifier_train(get_best_parameters(), 'default', probab=True, test=False, force_new=True)
-  safebarrier(comm)
   create_csc_stuff(d, classify_images=True, force_new=True)
                     
