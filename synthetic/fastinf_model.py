@@ -5,12 +5,15 @@ from common_mpi import *
 import synthetic.config as config
 
 from synthetic.ngram_model import InferenceModel
+from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,suffix,num_actions):
+  def __init__(self,dataset,suffix,num_actions,m='0',r2=''):
     self.dataset = dataset
+    self.suffix = suffix
+    self.fd = FastinfDiscretizer(self.dataset, self.suffix)
     self.num_actions = num_actions
-    self.res_fname = config.get_fastinf_res_file(dataset,suffix)
+    self.res_fname = config.get_fastinf_res_file(dataset,suffix,m,r2)
     self.cache_fname = config.get_fastinf_cache_file(dataset,suffix)
     if opexists(self.cache_fname):
       with open(self.cache_fname) as f:
@@ -31,11 +34,10 @@ class FastinfModel(InferenceModel):
       cPickle.dump(self.cache,f)
 
   def update_with_observations(self, taken, observations):
-    # TODO: discretize in the same way as the trained thing here
     self.tt.tic()
     evidence = self.dataset.num_classes()*['?']
     for i in np.flatnonzero(taken):
-      evidence[i] = str(observations[i])
+      evidence[i] = str(self.fd.discretize_value(observations[i]))
     evidence = "(%s %s )"%(self.dataset.num_classes()*' ?', ' '.join(evidence))
     marginals = self.get_marginals(evidence)
     print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
