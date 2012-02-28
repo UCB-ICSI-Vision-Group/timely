@@ -19,13 +19,32 @@ def correct_assignments(assignments):
     None
   None
 
-def discretize_table(table, num_bins):
-  float_values = False
-  if float_values:
-    d_table = np.hstack((table[:,:table.shape[1]/2],np.divide(np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins)),float(num_bins)) + 1/float(2*num_bins)))
+def discretize_table(table, num_bins, asInt=True):
+  new_table = np.zeros(table.shape)
+  for coldex in range(table.shape[1]):
+    col = table[:, coldex]
+    bounds = ut.importance_sample(col, num_bins+1)
+    
+    # determine which bin these fall in
+    col_bin = np.zeros((table.shape[0],1))
+    bin_values = np.zeros(bounds.shape)
+    last_val = 0.
+    for bidx, b in enumerate(bounds):
+      bin_values[bidx] = (last_val + b)/2.
+      last_val = b
+      col_bin += np.matrix(col < b, dtype=int).T
+    bin_values = bin_values[1:]    
+    col_bin[col_bin == 0] = 1  
+    if asInt:
+      a = num_bins - col_bin
+      new_table[:, coldex] = a[:,0] 
+    else:    
+      for rowdex in range(table.shape[0]):
+        new_table[rowdex, coldex] = bin_values[int(col_bin[rowdex]-1)]
+  if asInt:    
+    return new_table.astype(int)
   else:
-    d_table = np.hstack((table[:,:table.shape[1]/2],np.floor(np.multiply(table[:, table.shape[1]/2:],num_bins))))  
-  return d_table
+    return new_table
 
 def write_out_mrf(table, num_bins, filename, data_filename, second_table=None, pairwise=True):
   """
@@ -267,21 +286,23 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'CSC':
-      filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
-      table = cPickle.loads(open(filename,'r'))
-      discr_table = discretize_table(table, num_bins)  
+      filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
+      table = cPickle.load(open(filename_csc,'r'))
+      discr_table = discretize_table(table, num_bins)
+      print discr_table  
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'GIST_CSC':
-      filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
-      table = cPickle.loads(open(filename,'r'))
-      discr_table = discretize_table(table, num_bins)  
+      filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
+      table = cPickle.load(open(filename_csc,'r'))
+      discr_table = discretize_table(table, num_bins)      
       table = np.hstack((table_gt, discr_table))
       
       second_table = create_gist_model_for_dataset(d)      
       second_table = discretize_table(second_table, num_bins)  
-  
-    write_out_mrf(table, num_bins, filename, data_filename,second_table=second_table)
+    
+    print table
+    write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
     add_sets = ['-m',m]
     if not r == '':

@@ -8,7 +8,6 @@ from synthetic.ngram_model import NGramModel
 from synthetic.image import Image
 from synthetic.training import *
 from synthetic.classifier import Classifier
-from synthetic.fastInf import write_out_mrf, execute_lbp, discretize_table
 
 class GistClassifier(Classifier):
   """
@@ -269,6 +268,7 @@ def cls_for_dataset(dataset):
   return table
 
 if __name__=='__main__':
+  from synthetic.fastInf import write_out_mrf, execute_lbp, discretize_table
   dataset_name = 'full_pascal_trainval'
   table = cls_gt_for_dataset(dataset)
   d = Dataset(dataset_name)

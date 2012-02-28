@@ -30,8 +30,14 @@ class CSCClassifier(Classifier):
     result = svm_predict(vector, model)
     return result
   
-  def get_score(self, img):
+  def get_score(self, img, probab=False):
+    if probab:
+      return self.get_probab(img)[1]
     return self.get_predict(img)[0,0]
+  
+  def get_probab(self, img):
+    vector = self.create_vector(img)
+    return svm_proba(vector, self.svm)
   
   def get_predict(self, img):
     vector = self.create_vector(img)
@@ -174,7 +180,7 @@ def classify_all_images(force_new=False):
         continue
       print '%s image %s on %d'%(cls, img.name, comm_rank)
       try:
-        score = csc.get_score(img_idx)        
+        score = csc.get_score(img_idx, probab=True)        
         w = open(filename, 'w')
         w.write('%f'%score)
         w.close()
@@ -212,7 +218,7 @@ def compile_table_from_classifications(d):
 def create_csc_stuff(classify_images=True):
 
   if classify_images:
-    classify_all_images(force_new=False)
+    classify_all_images(force_new=True)
       
   d = Dataset('full_pascal_trainval')
   dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
