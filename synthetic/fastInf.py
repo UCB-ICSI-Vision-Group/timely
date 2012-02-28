@@ -13,14 +13,11 @@ import argparse
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
 
-def get_discretization_bounds(d, suffix, add_settings):
+def get_discretization_bounds(d, suffix):
   """
   For a given setting return bounds as num_bins x num_cols
   """
-  filename = config.get_fastinf_mrf_file(d, suffix) + '_bounds'
-  for s in add_settings:
-    filename += '_'+s
-  
+  filename = config.get_fastinf_mrf_file(d, suffix) + '_bounds' 
   return np.load(filename)
   
 
@@ -29,12 +26,12 @@ def discretize_table(table, num_bins, asInt=True):
   discretize the given table and also return the bounds for the column 
   discretization. as num_bins x num_cols
   """
-  all_bounds = np.zeros((num_bins, table.shape[1]))
+  all_bounds = np.zeros((num_bins+1, table.shape[1]))
   new_table = np.zeros(table.shape)
   for coldex in range(table.shape[1]):
     col = table[:, coldex]
     bounds = ut.importance_sample(col, num_bins+1)
-    all_bounds[coldex, :] = bounds
+    all_bounds[:, coldex] = bounds
     # determine which bin these fall in
     col_bin = np.zeros((table.shape[0],1))
     bin_values = np.zeros(bounds.shape)
@@ -268,6 +265,15 @@ def c_corr_to_a(num_lines, func):
     table[i,:] = np.hstack((assignment, classif))
   return table
 
+def store_bound(d, suffix, bounds):
+  bound_file = config.get_mrf_bound_filename(d, suffix)
+  if not os.path.exists(bound_file):
+    np.savetxt(bound_file, bounds)
+  else:
+    saved_bound = np.loadtxt(bound_file)
+    np.testing.assert_equal(bounds, saved_bound)
+  
+
 def run_fastinf_different_settings(dataset, ms, rs, suffixs):  
  
   d = Dataset(dataset)
@@ -300,7 +306,6 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
       table = cPickle.load(open(filename_csc,'r'))
       bounds, discr_table = discretize_table(table, num_bins)
-      print discr_table  
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'GIST_CSC':
@@ -309,25 +314,21 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       table = cPickle.load(open(filename_csc,'r'))
       bounds, discr_table = discretize_table(table, num_bins)      
       table = np.hstack((table_gt, discr_table))
+      store_bound(d, 'CSC', bounds)
       
       second_table = create_gist_model_for_dataset(d)      
-      sec_bounds, second_table = discretize_table(second_table, num_bins)  
+      sec_bounds, second_table = discretize_table(second_table, num_bins)      
+      store_bound(d, 'GIST', sec_bounds)  
     
-        
-    
+    if suffix == 'GIST' or suffix == 'CSC':
+      store_bound(d, suffix, bounds)   
       
     write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
     add_sets = ['-m',m]
     if not r == '':
       add_sets += ['-r2', r]
-      
-    # save the used bounds
-    bound_file = '%s_bounds'%filename
-    for s in add_sets:
-      bound_file += '_' + s
-    np.savetxt(bound_file, bounds)
-    
+          
     if not second_table == None:
       sec_bound_file = '%s_secbounds'%filename
       for s in add_sets:

@@ -293,6 +293,10 @@ def get_fastinf_mrf_file(dataset, suffix):
   dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
   return join(dirname, 'mrf.txt')
 
+def get_mrf_bound_filename(dataset, suffix):
+  dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
+  return join(dirname, 'bounds.txt')
+
 def get_mrf_model(num_vars):
   return join(fastinf_dir, 'basic_model_%d'%num_vars)
   
