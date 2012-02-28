@@ -13,12 +13,16 @@ import argparse
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
 
-def correct_assignments(assignments):
-  classif = np.zeros(assignments.shape)
-  for i in range(assignments.size):
-    # classify each
-    None
-  None
+def get_discretization_bounds(d, suffix, add_settings):
+  """
+  For a given setting return bounds as num_bins x num_cols
+  """
+  filename = config.get_fastinf_mrf_file(d, suffix) + '_bounds'
+  for s in add_settings:
+    filename += '_'+s
+  
+  return np.load(filename)
+  
 
 def discretize_table(table, num_bins, asInt=True):
   """
@@ -309,12 +313,27 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       second_table = create_gist_model_for_dataset(d)      
       sec_bounds, second_table = discretize_table(second_table, num_bins)  
     
+        
     
+      
     write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
     add_sets = ['-m',m]
     if not r == '':
       add_sets += ['-r2', r]
+      
+    # save the used bounds
+    bound_file = '%s_bounds'%filename
+    for s in add_sets:
+      bound_file += '_' + s
+    np.savetxt(bound_file, bounds)
+    
+    if not second_table == None:
+      sec_bound_file = '%s_secbounds'%filename
+      for s in add_sets:
+        sec_bound_file += '_'+s
+      np.savetxt(sec_bound_file, sec_bounds)
+      
     execute_lbp(filename, data_filename, filename_out, add_settings=add_sets)
     
 
