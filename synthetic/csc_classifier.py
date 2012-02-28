@@ -170,8 +170,8 @@ def classify_all_images():
     for img_idx in range(comm_rank, len(d.images), comm_size):
       img = d.images[img_idx]      
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
-#      if os.path.exists(filename):
-#        continue
+      if os.path.exists(filename):
+        continue
       print '%s image %s on %d'%(cls, img.name, comm_rank)
       try:
         score = csc.get_score(img_idx)        
@@ -183,7 +183,7 @@ def classify_all_images():
         w.write('0')
         w.close()
         
-  print 'start classified all images in %f secs on %d'%(tt.toc(quiet=True), comm_rank)
+  print 'Classified all images in %f secs on %d'%(tt.toc(quiet=True), comm_rank)
   
 def compile_table_from_classifications(d):  
   errors = 0
@@ -215,7 +215,7 @@ def create_csc_stuff():
   classify_all_images()
   
   
-  comm.safebarrier()
+  safebarrier(comm)
   d = Dataset('full_pascal_trainval')
   table = compile_table_from_classifications(d)
   filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))

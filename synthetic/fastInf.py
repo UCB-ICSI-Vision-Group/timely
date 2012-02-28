@@ -1,10 +1,12 @@
 from synthetic.common_imports import *
 from synthetic.common_mpi import *
 
+import synthetic.config as config
 import subprocess as subp
 
 from synthetic.dataset import Dataset
 from synthetic.csc_classifier import create_csc_stuff
+from synthetic.fastinf_gist import create_gist_model_for_dataset
 
 # TODO: why are these two needed?
 def plausible_assignments(assignments):
@@ -242,7 +244,7 @@ def run_fastinf_different_settings():
   dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
   num_bins = 5
-  suffixs = ['CSC', 'GIST_CSC']#,'perfect', 'GIST']
+  suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
   ms = ['0', '2', '5']
   rs = ['', '0.5', '1']
   settings = list(itertools.product(suffixs, ms, rs))
@@ -256,9 +258,9 @@ def run_fastinf_different_settings():
     m = setin[1]
     r = setin[2]
 
-    filename = config.get_fastinf_mrf_file(dataset, suffix)
-    data_filename = config.get_fastinf_data_file(dataset, suffix)
-    filename_out = config.get_fastinf_res_file(dataset, suffix)
+    filename = config.get_fastinf_mrf_file(d, suffix)
+    data_filename = config.get_fastinf_data_file(d, suffix)
+    filename_out = config.get_fastinf_res_file(d, suffix)
     
     if suffix == 'perfect':      
       table = np.hstack((table_gt, table_gt))
@@ -292,9 +294,9 @@ def run_fastinf_different_settings():
     
 
 if __name__=='__main__':
-  create_csc_stuff()
+  #create_csc_stuff()
   
-  comm.safebarrier()
+  safebarrier(comm)
   
   run_fastinf_different_settings()
   
