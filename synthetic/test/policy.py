@@ -47,7 +47,6 @@ class TestDatasetPolicy:
     print(dets)
     print('----correct:')
     print(dets_correct)
-    #ut.keyboard()
     assert(dets_correct == dets)
 
 if __name__ == '__main__':

@@ -284,20 +284,20 @@ fastinf_dir = join(res_dir, 'fastinf')
 fastinf_bin = join(repo_dir, 'fastInf/build/bin/infer_timely')
 makedirs(fastinf_dir)
 def get_fastinf_mrf_file(dataset, suffix):
-  dirname = join(fastinf_dir, dataset.name, suffix)
-  makedirs(dirname)
+  dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
   return join(dirname, 'mrf.txt')
 
 def get_mrf_model(num_vars):
   return join(fastinf_dir, 'basic_model_%d'%num_vars)
   
 def get_fastinf_data_file(dataset, suffix):
-  dirname = join(fastinf_dir, dataset.name, suffix)
-  makedirs(dirname)
+  dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
   return join(dirname, 'data.txt')
 
 def get_fastinf_res_file(dataset, suffix):
-  dirname = join(fastinf_dir, dataset.name, suffix)
-  makedirs(dirname)
+  dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
   return join(dirname, 'res.txt')
-  
+
+def get_fastinf_cache_file(dataset,suffix):  
+  dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
+  return join(dirname, 'cache.npy')
