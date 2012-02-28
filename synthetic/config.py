@@ -311,9 +311,15 @@ def get_fastinf_data_file(dataset, suffix):
   dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
   return join(dirname, 'data.txt')
 
-def get_fastinf_res_file(dataset, suffix):
+def get_fastinf_res_file(dataset, suffix, m='0', r2=''):
+  add_settings = ['-m',m]
+  if not r2 == '':
+    add_settings += ['-r2', r2]
   dirname = makedirs(join(fastinf_dir, dataset.name, suffix))
-  return join(dirname, 'res.txt')
+  filename = 'res.txt'
+  for s in add_settings:
+      filename += '_'+s
+  return join(dirname, filename)
 
 def get_fastinf_cache_file(dataset,suffix):  
   dirname = makedirs(join(fastinf_dir, dataset.name, suffix))

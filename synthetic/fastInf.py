@@ -6,27 +6,27 @@ import subprocess as subp
 
 from synthetic.dataset import Dataset
 from synthetic.csc_classifier import create_csc_stuff
-from synthetic.fastinf_gist import create_gist_model_for_dataset
+from synthetic.gist_classifier import cls_for_dataset
 import argparse
 
 # TODO: why are these two needed?
 def plausible_assignments(assignments):
   return np.absolute(assignments - np.random.random(assignments.shape)/3.)
 
-def discretize_value(val, d, suffix):
-  """
-  For d, suffix discretize val for all 20 classes. 
-  Returns (20,) array
-  """
-  bounds = get_discretization_bounds(d, suffix)
-  discr_val = determine_bin(np.tile(val, (1,len(d.classes)))[0,:], bounds, bounds.shape[0]-1, asInt=True)
-  return discr_val.astype(int)
+class FastinfDiscretizer(object):
+  def __init__(self,d,suffix):
+    # For a given setting return bounds as num_bins x num_cols
+    self.d = d
+    self.bounds = np.loadtxt(config.get_mrf_bound_filename(d, suffix))
 
-def get_discretization_bounds(d, suffix):
-  """
-  For a given setting return bounds as num_bins x num_cols
-  """
-  return np.loadtxt(config.get_mrf_bound_filename(d, suffix))
+  def discretize_value(self, val):
+    """
+    For d, suffix discretize val for all 20 classes. 
+    Returns (20,) array
+    """
+    # TODO: why for all classes??????
+    discr_val = determine_bin(np.tile(val, (1,len(self.d.classes)))[0,:], self.bounds, self.bounds.shape[0]-1, asInt=True)
+    return discr_val.astype(int)
   
 def determine_bin(col, bounds, num_bins, asInt=True):
   """ 
@@ -255,8 +255,6 @@ def create_meassurement_table(num_clss, func):
   return table
 
 def execute_lbp(filename_mrf, filename_data, filename_out, add_settings=[]):
-  for s in add_settings:
-    filename_out += '_'+s
   cmd = ['../fastInf/build/bin/learning', '-i', filename_mrf, 
                          '-e', filename_data, '-o', filename_out] + add_settings
 
@@ -292,8 +290,11 @@ def store_bound(d, suffix, bounds):
   if not os.path.exists(bound_file):
     np.savetxt(bound_file, bounds)  
 
-def run_fastinf_different_settings(dataset, ms, rs, suffixs):  
- 
+def create_gist_model_for_dataset(d):
+  dataset = d.name
+  return cls_for_dataset(dataset)
+
+def run_fastinf_different_settings(dataset, ms, rs, suffixs):
   d = Dataset(dataset)
   num_bins = 5
   settings = list(itertools.product(suffixs, ms, rs))
@@ -305,13 +306,12 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
     setin = settings[setindx]
     suffix = setin[0]
     m = setin[1]
-    r = setin[2]
+    r2 = setin[2]
     
-    print 'node %d runs %s, m=%s, r=%s'%(comm_rank, suffix, m, r)
+    print 'node %d runs %s, m=%s, r2=%s'%(comm_rank, suffix, m, r2)
 
     filename = config.get_fastinf_mrf_file(d, suffix)
     data_filename = config.get_fastinf_data_file(d, suffix)
-    filename_out = config.get_fastinf_res_file(d, suffix)
     
     if suffix == 'perfect':      
       table = np.hstack((table_gt, table_gt))
@@ -343,13 +343,13 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
     if suffix == 'GIST' or suffix == 'CSC':
       store_bound(d, suffix, bounds)
     
-    print 'set up table on %d, write out mrf for %s, m=%s, r=%s'%(comm_rank, suffix, m, r)   
+    print 'set up table on %d, write out mrf for %s, m=%s, r2=%s'%(comm_rank, suffix, m, r2)   
       
     write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
-    add_sets = ['-m',m]
-    if not r == '':
-      add_sets += ['-r2', r]
+    add_settings = ['-m',m]
+    if not r2 == '':
+      add_settings += ['-r2', r2]
           
     if not second_table == None:
       sec_bound_file = '%s_secbounds'%filename
@@ -357,10 +357,10 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
         sec_bound_file += '_'+s
       np.savetxt(sec_bound_file, sec_bounds)
       
-    print '%d start running lbp for %s, m=%s, r=%s'%(comm_rank, suffix, m, r)
-      
-    execute_lbp(filename, data_filename, filename_out, add_settings=add_sets)
+    print '%d start running lbp for %s, m=%s, r2=%s'%(comm_rank, suffix, m, r2)
     
+    filename_out = config.get_fastinf_res_file(d, suffix, m, r2)
+    execute_lbp(filename, data_filename, filename_out, add_settings=add_sets)
 
 def run_all_in_3_parts():
     
@@ -397,7 +397,6 @@ def run_all_in_3_parts():
   print '\tsuff:', suffixs
   print '\tms:', ms
   print '\trs:', rs
-  
      
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
   
