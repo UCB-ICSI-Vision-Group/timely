@@ -7,6 +7,7 @@ import subprocess as subp
 from synthetic.dataset import Dataset
 from synthetic.csc_classifier import create_csc_stuff
 from synthetic.fastinf_gist import create_gist_model_for_dataset
+import argparse
 
 # TODO: why are these two needed?
 def plausible_assignments(assignments):
@@ -20,11 +21,16 @@ def correct_assignments(assignments):
   None
 
 def discretize_table(table, num_bins, asInt=True):
+  """
+  discretize the given table and also return the bounds for the column 
+  discretization. as num_bins x num_cols
+  """
+  all_bounds = np.zeros((num_bins, table.shape[1]))
   new_table = np.zeros(table.shape)
   for coldex in range(table.shape[1]):
     col = table[:, coldex]
     bounds = ut.importance_sample(col, num_bins+1)
-    
+    all_bounds[coldex, :] = bounds
     # determine which bin these fall in
     col_bin = np.zeros((table.shape[0],1))
     bin_values = np.zeros(bounds.shape)
@@ -42,9 +48,9 @@ def discretize_table(table, num_bins, asInt=True):
       for rowdex in range(table.shape[0]):
         new_table[rowdex, coldex] = bin_values[int(col_bin[rowdex]-1)]
   if asInt:    
-    return new_table.astype(int)
+    return (all_bounds, new_table.astype(int))
   else:
-    return new_table
+    return (all_bounds, new_table)
 
 def write_out_mrf(table, num_bins, filename, data_filename, second_table=None, pairwise=True):
   """
@@ -282,26 +288,28 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       
     elif suffix == 'GIST':
       table = create_gist_model_for_dataset(d)      
-      discr_table = discretize_table(table, num_bins)  
+      bounds, discr_table = discretize_table(table, num_bins)  
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'CSC':
+      create_csc_stuff(d)
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
       table = cPickle.load(open(filename_csc,'r'))
-      discr_table = discretize_table(table, num_bins)
+      bounds, discr_table = discretize_table(table, num_bins)
       print discr_table  
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'GIST_CSC':
+      create_csc_stuff(d)
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
       table = cPickle.load(open(filename_csc,'r'))
-      discr_table = discretize_table(table, num_bins)      
+      bounds, discr_table = discretize_table(table, num_bins)      
       table = np.hstack((table_gt, discr_table))
       
       second_table = create_gist_model_for_dataset(d)      
-      second_table = discretize_table(second_table, num_bins)  
+      sec_bounds, second_table = discretize_table(second_table, num_bins)  
     
-    print table
+    
     write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
     add_sets = ['-m',m]
@@ -312,23 +320,26 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
 
 if __name__=='__main__':
   
+  # I run 3 different experiments to be able to abort them separately...
+  # that a total of 48 experiments
   
+  part = 0 
+  suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
+  ms = ['0', '2', '5']
+  rs = ['', '0.5', '1']
   
-  if comm_rank < 32:
+  if part == 0:
     dataset = 'full_pascal_trainval'
-    suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
-    ms = ['0', '2', '5']
-    rs = ['', '0.5', '1']  
-  else:
+    suffixs = ['CSC', 'GIST_CSC']
+    
+  elif part == 1:
+    dataset = 'full_pascal_trainval'
+    suffixs = ['perfect', 'GIST']
+    
+  elif part == 3:
     dataset = 'full_pascal_train'
     suffixs = ['CSC', 'GIST_CSC']
-    ms = ['0', '2', '5']
     rs = ['', '1']
-  
-  dataset = 'full_pascal_trainval'
-  suffixs = ['GIST_CSC']
-  ms = ['5']
-  rs = ['1']
-   
+     
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
   
