@@ -7,6 +7,7 @@ from synthetic.dataset import Dataset
 from synthetic.training import svm_predict, svm_proba
 #import synthetic.config as config
 from synthetic.config import get_ext_dets_filename
+from synthetic.dpm_classifier import create_vector
 
 
 class CSCClassifier(Classifier):
@@ -26,7 +27,7 @@ class CSCClassifier(Classifier):
   def classify_image(self, img):
     model = self.svm
     #, dets, cls, img, intervals, lower, upper 
-    vector = self.create_vector(img)
+    vector = self.get_vector(img)
     result = svm_predict(vector, model)
     return result
   
@@ -36,12 +37,21 @@ class CSCClassifier(Classifier):
     return self.get_predict(img)[0,0]
   
   def get_probab(self, img):
-    vector = self.create_vector(img)
+    vector = self.get_vector(img)
     return svm_proba(vector, self.svm)
   
   def get_predict(self, img):
-    vector = self.create_vector(img)
+    vector = self.get_vector(img)
     return svm_predict(vector, self.svm)
+    
+  def get_vector(self, img):
+    filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),img.name)
+    if not os.path.exists(filename):
+      return np.load(filename)
+    else:
+      vector = self.create_vector(img)
+      np.save(filename, vector)
+      return vector      
     
   def create_vector(self, img):
     filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
@@ -49,7 +59,6 @@ class CSCClassifier(Classifier):
     csc_test = csc_test[()]  
     csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
     csc_test.arr = self.normalize_scores(csc_test.arr)
-#    csc_test = np.random.random((562069, 8)
 
     feats = csc_test
     
@@ -231,8 +240,11 @@ def create_csc_stuff(d, classify_images=True, force_new=False):
       cPickle.dump(table, open(filename, 'w'))
   
 if __name__=='__main__':
-  #create_csc_stuff(classify_images=True)
-  print get_best_parameters()[7]
-  print config.pascal_classes.index('cat') 
-  csc_classifier_train([get_best_parameters()[7]], 'default', probab=True, test=False, force_new=True)
+  d = Dataset('full_pascal_trainval')
+  
+#  print get_best_parameters()[7]
+#  print config.pascal_classes.index('cat') 
+  csc_classifier_train(get_best_parameters(), 'default', probab=True, test=False, force_new=True)
+  safebarrier(comm)
+  create_csc_stuff(d, classify_images=True, force_new=True)
                     

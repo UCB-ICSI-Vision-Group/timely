@@ -62,7 +62,7 @@ class Classifier(object):
     neg = []
     print comm_rank, 'trains', cls, intervals, kernel, lower, upper, C
     for img_idx, img in enumerate(range(len(train_dataset.images))):
-      vector = self.create_vector(img)
+      vector = self.get_vector(img)
       print 'load image %d/%d'%(img_idx, len(train_dataset.images))
       if img in pos_images:
         pos.append(vector)
