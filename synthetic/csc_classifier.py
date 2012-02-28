@@ -154,6 +154,10 @@ def old_training_stuff():
 
 def get_best_parameters():
   parameters = []
+  d = Dataset('full_pascal_trainval')
+  
+  # this is just a dummy, we don't really need it, just to read best vals
+  csc = CSCClassifier('default', 'dog', d)
   best_table = csc.get_best_table()
   for row_idx in range(best_table.shape()[0]):
     row = best_table.arr[row_idx, :]
@@ -179,16 +183,12 @@ def classify_all_images(force_new=False):
       if not force_new and os.path.exists(filename):
         continue
       print '%s image %s on %d'%(cls, img.name, comm_rank)
-      try:
-        score = csc.get_score(img_idx, probab=True)        
-        w = open(filename, 'w')
-        w.write('%f'%score)
-        w.close()
-      except:
-        w = open(filename, 'w')
-        w.write('0')
-        w.close()
-        
+    
+      score = csc.get_score(img_idx, probab=True)        
+      w = open(filename, 'w')
+      w.write('%f'%score)
+      w.close()
+            
   print 'Classified all images in %f secs on %d'%(tt.toc(quiet=True), comm_rank)
   
 def compile_table_from_classifications(d):  
@@ -233,5 +233,6 @@ def create_csc_stuff(classify_images=True):
       cPickle.dump(table, open(filename, 'w'))
   
 if __name__=='__main__':
-  create_csc_stuff(classify_images=True)
+#  create_csc_stuff(classify_images=True)
+  csc_classifier_train(get_best_parameters(), 'default', probab=True, test=False, force_new=True)
                     
