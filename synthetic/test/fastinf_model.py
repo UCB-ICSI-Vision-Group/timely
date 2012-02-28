@@ -9,14 +9,14 @@ def test():
   dataset = Dataset('full_pascal_trainval')
   fm = FastinfModel(dataset,'perfect',20)
   # NOTE: just took values from a run of the thing
-  correct = [float(x) for x in "0.050273  0.050599  0.070062  0.038771  0.050848  0.040276  0.1553\
+  prior_correct = [float(x) for x in "0.050273  0.050599  0.070062  0.038771  0.050848  0.040276  0.1553\
   0.071435  0.11141   0.030083  0.050744  0.087569  0.058135  0.049606\
   0.40039   0.054032  0.020131  0.073353  0.054743  0.055462".split()]
-  assert(np.all(fm.p_c == correct))
+  assert(np.all(fm.p_c == prior_correct))
   observations = np.zeros(20)
   taken = np.zeros(20)
   fm.update_with_observations(taken,observations)
-  assert(np.all(fm.p_c == correct))
+  assert(np.all(fm.p_c == prior_correct))
   observations[5] = 1
   taken[5] = 1
   fm.update_with_observations(taken,observations)
@@ -33,4 +33,9 @@ def test():
    4.04000000e-02   7.95920000e-02   4.52520000e-01   4.49710000e-04\
    1.68850000e-02   1.50560000e-02   4.26550000e-02   1.38560000e-02".split()]
   assert(np.all(fm.p_c == correct))
-  
+
+  # reinit_marginals
+  fm.reinit_marginals()
+  assert(np.all(fm.p_c == prior_correct))
+
+  print(fm.cache)

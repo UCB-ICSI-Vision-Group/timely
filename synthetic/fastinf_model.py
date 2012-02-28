@@ -33,13 +33,12 @@ class FastinfModel(InferenceModel):
       evidence[i] = str(observations[i])
     evidence = "(%s %s )"%(self.dataset.num_classes()*' ?', ' '.join(evidence))
     marginals = self.get_marginals(evidence)
-    print(self.p_c)
     print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
 
   def reinit_marginals(self):
     "Sends totally uninformative evidence to get back to the priors."
-    evidence = "(%s )"%(self.dataset.num_classes()+self.num_actions)*' ?'
-    self.get_marginals(evidence)
+    observations = taken = np.zeros(self.num_actions)
+    self.update_with_observations(taken,observations)
 
   def get_marginals(self,evidence=None):
     """
@@ -51,8 +50,10 @@ class FastinfModel(InferenceModel):
       print "Evidence:"
       print evidence
       if evidence in self.cache:
-        print "Returning marginals from cache"
-        return self.cache[evidence]
+        print "Fetching cached marginals"
+        marginals = self.cache[evidence]
+        self.p_c = np.array([m[1] for m in marginals[:20]])
+        return marginals
       self.process.sendline(evidence)
     self.process.expect('Enter your evidence')
     output = self.process.before
@@ -76,7 +77,7 @@ class FastinfModel(InferenceModel):
       print("ERROR: cannot find marginals in output")
     marginals = []
     for line in lines[ind+1:]:
-      if re.search('Partition',line):
+      if re.search('Partition',line) or re.search('^\w*$',line):
         break
       vals = line.split()[1:]
       vals = [float(v) for v in vals]
