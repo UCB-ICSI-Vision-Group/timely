@@ -341,24 +341,38 @@ if __name__=='__main__':
   
   # I run 3 different experiments to be able to abort them separately...
   # that a total of 48 experiments
+  parser = argparse.ArgumentParser(
+    description="Run fastInf experiments.")
+
+  parser.add_argument('-e',type=int,
+    default=0,
+    choices=[0,1,2],
+    help="""Select which portion of the training is to be run.""")
   
-  part = 0 
+  args = parser.parse_args()
+  
+  part = args.e
+  
   suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
   ms = ['0', '2', '5']
   rs = ['', '0.5', '1']
   
   if part == 0:
     dataset = 'full_pascal_trainval'
-    suffixs = ['CSC', 'GIST_CSC']
-    
+    suffixs = ['CSC', 'GIST_CSC']    
   elif part == 1:
     dataset = 'full_pascal_trainval'
-    suffixs = ['perfect', 'GIST']
-    
+    suffixs = ['perfect', 'GIST']    
   elif part == 3:
     dataset = 'full_pascal_train'
     suffixs = ['CSC', 'GIST_CSC']
     rs = ['', '1']
+  print 'Execute fastInf part %d'%part
+  print '\tds:', dataset
+  print '\tsuff:', suffixs
+  print '\tms:', ms
+  print '\trs:', rs
+  
      
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
   
