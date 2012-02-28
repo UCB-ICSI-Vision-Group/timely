@@ -167,8 +167,7 @@ def get_best_parameters():
     parameters.append(params)
   return parameters
 
-def classify_all_images(force_new=False):
-  d = Dataset('full_pascal_trainval')
+def classify_all_images(d, force_new=False):
   suffix = 'default'
   tt = ut.TicToc()
   tt.tic()
@@ -215,12 +214,11 @@ def compile_table_from_classifications(d):
   print 'errors: %d'%errors
   return table
 
-def create_csc_stuff(classify_images=True):
+def create_csc_stuff(d, classify_images=True, force_new=False):
 
   if classify_images:
-    classify_all_images(force_new=True)
+    classify_all_images(d, force_new=force_new)
       
-  d = Dataset('full_pascal_trainval')
   dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
   filename = os.path.join(dirname,'table')
   
@@ -233,6 +231,8 @@ def create_csc_stuff(classify_images=True):
       cPickle.dump(table, open(filename, 'w'))
   
 if __name__=='__main__':
-#  create_csc_stuff(classify_images=True)
-  csc_classifier_train(get_best_parameters(), 'default', probab=True, test=False, force_new=True)
+  #create_csc_stuff(classify_images=True)
+  print get_best_parameters()[7]
+  print config.pascal_classes.index('cat') 
+  csc_classifier_train([get_best_parameters()[7]], 'default', probab=True, test=False, force_new=True)
                     

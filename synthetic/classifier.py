@@ -61,8 +61,9 @@ class Classifier(object):
     pos = []
     neg = []
     print comm_rank, 'trains', cls, intervals, kernel, lower, upper, C
-    for img in range(len(train_dataset.images)):
+    for img_idx, img in enumerate(range(len(train_dataset.images))):
       vector = self.create_vector(img)
+      print 'load image %d/%d'%(img_idx, len(train_dataset.images))
       if img in pos_images:
         pos.append(vector)
       else:
@@ -72,6 +73,7 @@ class Classifier(object):
     neg = np.concatenate(neg)
     # take as many negatives as there are positives
     neg = np.random.permutation(neg)[:pos.shape[0]]
+    print '%d trains the model for'%comm_rank, cls, intervals, kernel, lower, upper, C
     model = self.train(pos, neg, kernel, C, probab=probab)
    
     save_svm(model, filename)
