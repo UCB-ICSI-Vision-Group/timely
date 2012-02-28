@@ -157,7 +157,7 @@ def get_best_parameters():
     parameters.append(params)
   return parameters
 
-def classify_all_images():
+def classify_all_images(force_new=False):
   d = Dataset('full_pascal_trainval')
   suffix = 'default'
   tt = ut.TicToc()
@@ -170,7 +170,7 @@ def classify_all_images():
     for img_idx in range(comm_rank, len(d.images), comm_size):
       img = d.images[img_idx]      
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
-      if os.path.exists(filename):
+      if not force_new and os.path.exists(filename):
         continue
       print '%s image %s on %d'%(cls, img.name, comm_rank)
       try:
@@ -194,15 +194,14 @@ def compile_table_from_classifications(d):
     ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
     for img_idx in range(len(d.images)):
       img = d.images[img_idx] 
-      print '%s image %s'%(cls, img.name)
+      print '%s image %s on %d'%(cls, img.name, comm_rank)
       filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
-      print filename
       try:
         w = open(filename, 'r')
         score = float(w.read())
-        w.close() 
-        
+        w.close()         
       except:
+        print '\terror on %s'%img.name
         score = 0
         errors += 1
       table[img_idx, cls_idx] = score
@@ -210,17 +209,22 @@ def compile_table_from_classifications(d):
   print 'errors: %d'%errors
   return table
 
-def create_csc_stuff():
+def create_csc_stuff(classify_images=True):
 
-  classify_all_images()
-  
+  if classify_images:
+    classify_all_images(force_new=False)  
   
   safebarrier(comm)
   d = Dataset('full_pascal_trainval')
   table = compile_table_from_classifications(d)
-  filename = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),'table'))
-  cPickle.dump(table, open(filename, 'w'))
+  
+  if comm_rank == 0:
+    dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
+    filename = os.path.join(dirname,'table')
+    print 'save table as %s'%filename
+    cPickle.dump(table, open(filename, 'w'))
+    np.savetxt(filename+ '_np', table)
   
 if __name__=='__main__':
-  create_csc_stuff()
+  create_csc_stuff(classify_images=True)
                     
