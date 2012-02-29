@@ -48,7 +48,9 @@ class Classifier(object):
      
     return np.multiply(result,test_classification)
         
-  def normalize_scores(self, arr):     
+  def normalize_dpm_scores(self, arr):     
+    # TODO from sergeyk: this is silly, this method should take a 1-d array and return the transformed array
+    # why are you relying on scores being in a specific column?
     arr[:, 0:1] = np.power(np.exp(-2.*arr[:,0:1])+1,-1)
     return arr
       

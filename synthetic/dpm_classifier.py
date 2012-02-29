@@ -34,7 +34,7 @@ if __name__=='__main__':
   dpm_train = dpm_train[()]  
   dpm_train = dpm_train.subset(['score', 'cls_ind', 'img_ind'])
   dpm_classif = DPMClassifier()
-  dpm_train.arr = dpm_classif.normalize_scores(dpm_train.arr)
+  dpm_train.arr = dpm_classif.normalize_dpm_scores(dpm_train.arr)
   
   val_set = 'full_pascal_val'
   test_dataset = Dataset(val_set)  
@@ -43,7 +43,7 @@ if __name__=='__main__':
   dpm_test = np.load(filename)
   dpm_test = dpm_test[()]  
   dpm_test = dpm_test.subset(['score', 'cls_ind', 'img_ind'])
-  dpm_test.arr = dpm_classif.normalize_scores(dpm_test.arr) 
+  dpm_test.arr = dpm_classif.normalize_dpm_scores(dpm_test.arr) 
   
   lowers = [0.,0.2,0.4]
   uppers = [1.,0.8,0.6]

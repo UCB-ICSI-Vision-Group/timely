@@ -56,17 +56,17 @@ class ExternalDetector(Detector):
     dets = dets.with_column_omitted('time')
     return (dets.arr, time_passed)
 
-  def compute_score(self, image, dets, oracle=False):
+  def compute_score(self, image, oracle=False):
     """
     Return the 0/1 decision of whether the cls of this detector is present in
     the image, given the detections table.
     If oracle=True, returns the correct answer (look up the ground truth).
     """
     if oracle:
-      return Detector.compute_score(self, image, dets, oracle)
-    img = self.dataset.get_img_ind(image)
-    cls = config.pascal_classes.index(self.cls)
-    score = self.classif.classify_image(img)
+      return Detector.compute_score(self, image, oracle)
+    img_ind = self.dataset.get_img_ind(image)
+    dets = self.dets.filter_on_column('img_ind',img_ind)
+    score = self.classif.classify_image(img_ind,dets)
     dt = 0
     # TODO: figure out the dt situation above
     return (score,dt)
