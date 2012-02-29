@@ -158,21 +158,24 @@ def main():
     # filename of the final plot is the config file name
     dirname = config.get_evals_dir(dataset.get_name())
     filename = args.config
+    
     # det avg
-    ff = opjoin(dirname, '%s.png'%filename)
-    ff_no_legend = opjoin(dirname, '%s_no_legend.png'%filename)
+    ff = opjoin(dirname, '%s_det_avg.png'%filename)
+    ff_nl = opjoin(dirname, '%s_det_avg_nl.png'%filename)
     Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True)
-    Evaluation.plot_ap_vs_t(dets_tables, ff_no_legend, all_bounds, with_legend=False)
+    Evaluation.plot_ap_vs_t(dets_tables, ff_nl, all_bounds, with_legend=False)
+
     # det whole
-    ff = opjoin(dirname, '%s_whole.png'%filename)
-    ff_no_legend = opjoin(dirname, '%s_whole_no_legend.png'%filename)
+    ff = opjoin(dirname, '%s_det_whole.png'%filename)
+    ff_nl = opjoin(dirname, '%s_det_whole_nl.png'%filename)
     Evaluation.plot_ap_vs_t(dets_tables_whole, ff, all_bounds, with_legend=True)
-    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_no_legend, all_bounds, with_legend=False)
-    # cls
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_nl, all_bounds, with_legend=False)
+
+    # cls whole
     ff = opjoin(dirname, '%s_cls_whole.png'%filename)
-    ff_no_legend = opjoin(dirname, '%s_cls_whole_no_legend.png'%filename)
+    ff_nl = opjoin(dirname, '%s_cls_whole_nl.png'%filename)
     Evaluation.plot_ap_vs_t(clses_tables_whole, ff, all_bounds, with_legend=True)
-    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_no_legend, all_bounds, with_legend=False)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_nl, all_bounds, with_legend=False)
     
 if __name__ == '__main__':
   main()
