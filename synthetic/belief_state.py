@@ -39,13 +39,13 @@ class BeliefState(object):
       if model:
         assert(isinstance(model,FastinfModel))
         self.model = model
-        self.model.reinit_marginals()
       else:
         num_actions = len(self.actions)
         self.model = FastinfModel(dataset,self.fastinf_suffix,num_actions)
     else:
       raise RuntimeError("Unknown mode")
 
+    self.model.reset()
     self.t = 0
     self.reset_actions()
 
