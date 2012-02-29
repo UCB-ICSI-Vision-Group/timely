@@ -9,9 +9,11 @@ class TestFastInf:
   def test_discretization_sane(self):
     d = self.d
     num_bins = 15
-    table = np.random.randn(2501,1)
+    table = np.random.randn(48,1)
     #table += np.min(table)
     print table
+    print table.shape
+    print type(table)
     bounds, discr_table = discretize_table(table, num_bins)
     
     print np.min(bounds[:,0]), np.max(bounds[:,0])
@@ -40,14 +42,16 @@ class TestFastInf:
     values += [2]*7
     values += [3]*3
     
-    table = np.asmatrix(values).T
-    print table.shape
+    table = np.vstack(values)
+    table = table/float(np.max(table))
+    
+    #print table[:, 0]
     plt.hist(values, num_bins)
-    _, discr_table = discretize_table(table, num_bins)
+    bounds, discr_table = discretize_table(table, num_bins)
+    print bounds 
     x = np.hstack(discr_table.T.tolist())
     plt.hist(x, num_bins)
-    plt.show()
-    
+    plt.show()    
         
   def test_determine_bin(self):
     values = np.array([0, 0.05,0.073,0.0234,0.1,0.13423,0.123534,0.1253,0.212,0.2252,0.43,0.3]).astype(float)

@@ -42,6 +42,7 @@ def determine_bin(col, bounds, num_bins, asInt=True):
     col_bin += np.matrix(col < b, dtype=int).T
   bin_values = bin_values[1:]    
   col_bin[col_bin == 0] = 1  
+  
   if asInt:
     a = num_bins - col_bin
     ret_tab = a[:,0] 
@@ -64,10 +65,11 @@ def discretize_table(table, num_bins, asInt=True):
     if np.where(col==col[0])[0].shape[0] == col.shape[0]:
       bounds = (np.arange(num_bins+1)/num_bins)
     else:
+      print col
       bounds = ut.importance_sample(col, num_bins+1)
+      
     all_bounds[:, coldex] = bounds
-    ut.keyboard()
-    
+      
     new_table[:, coldex] = determine_bin(col, bounds, num_bins, asInt)
   if asInt:    
     return (all_bounds, new_table.astype(int))

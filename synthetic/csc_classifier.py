@@ -230,14 +230,14 @@ def compile_table_from_classifications(d):
   return table
 
 def create_csc_stuff(d, classify_images=True, force_new=False):
-
-  if classify_images:
-    classify_all_images(d, force_new=force_new)
-      
+        
   dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
   filename = os.path.join(dirname,'table')
   
   if not os.path.exists(filename):
+    if classify_images:
+      classify_all_images(d, force_new=force_new)
+
     safebarrier(comm)    
     table = compile_table_from_classifications(d)
     
