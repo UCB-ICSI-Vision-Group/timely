@@ -66,8 +66,7 @@ class ExternalDetector(Detector):
       return Detector.compute_score(self, image, dets, oracle)
     img = self.dataset.get_img_ind(image)
     cls = config.pascal_classes.index(self.cls)
-    score = self.classif.classify_image(
-      self.svm,dets,cls,img, self.intervals, self.lower, self.upper)
+    score = self.classif.classify_image(img)
     dt = 0
     # TODO: figure out the dt situation above
     return (score,dt)

@@ -97,7 +97,9 @@ class Classifier(object):
     """
   
   def load_svm(self):
-    model = load_svm(config.get_classifier_filename(self,self.cls))
+    svm_file = config.get_classifier_filename(self,self.cls)
+    print svm_file
+    model = load_svm(svm_file)
     return model
   
   def test_svm(self, test_dataset, feats, intervals, kernel, lower, upper, \
