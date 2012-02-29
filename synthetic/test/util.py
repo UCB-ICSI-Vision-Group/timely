@@ -3,6 +3,7 @@ from nose.tools import *
 
 import numpy as np
 import synthetic.util as ut
+from synthetic.util import histogram
 
 def test_random_subset_up_to_N():
   Ns = [1,2,10,100]
@@ -58,3 +59,12 @@ def test_row_subset_table():
   assert(t2.shape() == (2,3))
   t2 = t.row_subset(np.array([0., 2.]))
   assert(t2.shape() == (2,3))
+
+def test_histogram():
+  data = np.random.randint(0,10,(5000,))
+  
+  print histogram(data, 5)
+  
+
+if __name__=='__main__':
+  test_histogram()

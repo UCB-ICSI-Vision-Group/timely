@@ -33,30 +33,32 @@ class CSCClassifier(Classifier):
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
     """
-    if dets == None:
+    if not dets:
       vector = self.get_vector(img)
     else:
-      vector = self.create_vector_from_dets(dets)
+      vector = self.create_vector_from_dets(dets,img)
     if probab:
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)[0,0]
   
   def create_vector_from_dets(self, dets, img):
-    dets = dets[()]  
-    dets = dets.subset(['score', 'cls_ind', 'img_ind'])
-    dets.arr = self.normalize_scores(dets.arr)
+    if 'cls_ind' in dets.cols:
+      dets = dets.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
+
+    dets = dets.subset(['score', 'img_ind'])
+    dets.arr = self.normalize_dpm_scores(dets.arr)
     
+    # TODO from sergeyk: what is .size? Be specific and use .shape[0] or .shape[1]
     if dets.arr.size == 0:
       return np.zeros((1,self.intervals+1))
-    dpm = dets.subset(['score', 'cls_ind', 'img_ind'])
 
-    img_dpm = dpm.filter_on_column('img_ind', img, omit=True)
+    img_dpm = dets.filter_on_column('img_ind', img, omit=True)
 
     if img_dpm.arr.size == 0:
       print 'empty vector'
       return np.zeros((1,self.intervals+1))
-    cls_dpm = img_dpm.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
-    hist = self.compute_histogram(cls_dpm.arr, self.intervals, self.lower, self.upper)
+
+    hist = self.compute_histogram(img_dpm.arr, self.intervals, self.lower, self.upper)
     vector = np.zeros((1, self.intervals+1))
     vector[0,0:-1] = hist
     vector[0,-1] = img_dpm.shape()[0]
@@ -66,11 +68,11 @@ class CSCClassifier(Classifier):
     image = self.dataset.images[img]
     filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
     if os.path.exists(filename):
-      return np.load(filename)
+      return np.load(filename)[()]
     else:
       vector = self.create_vector(img)
       np.save(filename, vector)
-      return vector      
+      return vector
     
   def create_vector(self, img):
     filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
@@ -104,7 +106,7 @@ def csc_classifier_train(parameters, suffix, probab=True, test=True, force_new=F
   csc_train = csc_train.subset(['score', 'cls_ind', 'img_ind'])
   score = csc_train.subset(['score']).arr
   csc_classif = CSCClassifier(suffix,'dog',train_dataset)
-  csc_train.arr = csc_classif.normalize_scores(csc_train.arr)
+  csc_train.arr = csc_classif.normalize_dpm_scores(csc_train.arr)
   kernels = ['linear', 'rbf']
   
   val_set = 'full_pascal_val'
@@ -113,7 +115,7 @@ def csc_classifier_train(parameters, suffix, probab=True, test=True, force_new=F
   csc_test = np.load(filename)
   csc_test = csc_test[()]  
   csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
-  csc_test.arr = csc_classif.normalize_scores(csc_test.arr)   
+  csc_test.arr = csc_classif.normalize_dpm_scores(csc_test.arr)   
   
   for params_idx in range(comm_rank, len(parameters), comm_size):
     params = parameters[params_idx] 
@@ -145,7 +147,7 @@ def old_training_stuff():
     csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
     score = csc_test.subset(['score']).arr
     csc_classif = CSCClassifier(suffix)
-    csc_test.arr = csc_classif.normalize_scores(csc_test.arr)
+    csc_test.arr = csc_classif.normalize_dpm_scores(csc_test.arr)
     
     classes = config.pascal_classes
     

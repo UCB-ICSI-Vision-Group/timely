@@ -40,7 +40,7 @@ class Detector(object):
     - score
     """
     dets, dt_dets = self.detect(image)
-    score, dt_score = self.compute_score(image,dets)
+    score, dt_score = self.compute_score(image)
     dt = dt_dets+dt_score
     return {'dets': dets, 'dt_dets': dt_dets,
             'score': score, 'dt_score': dt_score,
@@ -56,7 +56,7 @@ class Detector(object):
     """
     # Implement in specific detectors
 
-  def compute_score(self, image, dets, oracle=True):
+  def compute_score(self, image, oracle=True):
     """
     Return a tuple of
     - classification score for the image, which generated the provided dets.

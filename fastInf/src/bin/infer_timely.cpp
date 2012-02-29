@@ -367,6 +367,31 @@ int main(int argc, char* argv[])
   //print initial partition as approximated by the Free Energy approximation
   cerr << "Initial Partition: " << inf->initialPartitionFunction() << endl;
 
+  //In case we have evidence, for each instance:
+  // - assign the evidence to the model
+  // - print log likelihood and marginals after assigning the evidence
+  timer t2;
+  t.restart();
+  for (int i = 0; i < (int) _evidence.size(); i++) {
+    t2.restart();
+    inf->changeEvidence(*(_evidence[i]));
+    cerr << "Evidence: ";
+    _evidence[i]->print(cerr, inf->getModel().getGraph().getNumOfVars());    
+    cerr << "Current Partition: " << inf->partitionFunction() << endl;
+    cerr << "Probability: " << inf->evidenceProb() << " (" << inf->evidenceLog2Prob() << ")" << endl << endl;
+    if (_printMarginals > 0) {
+      cerr << "The first " << _printMarginals << " marginals after evidence is set: " << endl;
+      inf->getInferenceMonitor()->printMarginals(cerr, _printMarginals);
+    }
+    if (_printBeliefs > 0) {
+      cerr << endl << endl << "The first " << _printBeliefs << " beliefs after evidence is set: " << endl;
+      inf->getInferenceMonitor()->printBeliefs(cerr, _printBeliefs);
+    }
+    t2.check("After a piece of evidence");
+  }
+  t.check("Right after all the evidence has been gone through");
+
+  // Now wait for evidence on stdin
   string input_line;
   lbFullAssignment_ptr assign(new lbFullAssignment());
   while(cin) {
@@ -390,30 +415,6 @@ int main(int argc, char* argv[])
       }
     }
   };
-
-  //In case we have evidence, for each instnace:
-  // - assign the evidence to the model
-  // - print log likelihood and marginals after assigning the evidence
-  timer t2;
-  t.restart();
-  for (int i = 0; i < (int) _evidence.size(); i++) {
-    t2.restart();
-    inf->changeEvidence(*(_evidence[i]));
-    cerr << "Evidence: ";
-    _evidence[i]->print(cerr, inf->getModel().getGraph().getNumOfVars());    
-    cerr << "Current Partition: " << inf->partitionFunction() << endl;
-    cerr << "Probability: " << inf->evidenceProb() << " (" << inf->evidenceLog2Prob() << ")" << endl << endl;
-    if (_printMarginals > 0) {
-      cerr << "The first " << _printMarginals << " marginals after evidence is set: " << endl;
-      inf->getInferenceMonitor()->printMarginals(cerr, _printMarginals);
-    }
-    if (_printBeliefs > 0) {
-      cerr << endl << endl << "The first " << _printBeliefs << " beliefs after evidence is set: " << endl;
-      inf->getInferenceMonitor()->printBeliefs(cerr, _printBeliefs);
-    }
-    t2.check("After a piece of evidence");
-  }
-  t.check("Right after all the evidence has been gone through");
 
   if (success) {
     cerr << "SUCCEEDED" << endl;

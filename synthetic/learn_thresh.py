@@ -24,7 +24,7 @@ if __name__=='__main__':
   csc_train = csc_train.subset(['score', 'cls_ind', 'img_ind'])
   score = csc_train.subset(['score']).arr
   classif = Classifier()
-  csc_train.arr = classif.normalize_scores(csc_train.arr)
+  csc_train.arr = classif.normalize_dpm_scores(csc_train.arr)
 
   numpos = train_dataset.get_ground_truth().shape()[0]
   
