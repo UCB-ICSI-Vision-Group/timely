@@ -574,13 +574,4 @@ class Evaluation:
     # find piecewise area under the curve
     i = np.add(np.nonzero(mrec[1:] != mrec[0:-1]),1)
     ap = np.sum((mrec[i]-mrec[np.subtract(i,1)])*mprec[i])
-    return ap
-
-
-if __name__=='__main__':
-  csc_table = cPickle.load(open(os.path.join(config.test_support_dir, 'csc_table'), 'r'))
-  table_gt = cPickle.load(open(os.path.join(config.test_support_dir, 'table_gt'), 'r'))
-    
-  res = Evaluation.compute_cls_map(csc_table, table_gt)
-  print res
-  
+    return ap  

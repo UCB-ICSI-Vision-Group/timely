@@ -1,17 +1,26 @@
 import numpy as np
+import cPickle
+import os
 
 import synthetic.util as ut
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.evaluation import Evaluation
 from synthetic.sliding_windows import SlidingWindows
+import synthetic.config as config
+import math
+
 
 class TestEvaluationPerfect:
+  def __init__(self):
+    self.csc_table = cPickle.load(open(os.path.join(config.test_support_dir, 'csc_table'), 'r'))
+    self.table_gt = cPickle.load(open(os.path.join(config.test_support_dir, 'table_gt'), 'r'))
+  
   def setup(self):
     train_dataset = Dataset('test_pascal_train',force=True)
     dataset = Dataset('test_pascal_val',force=True)
     self.dp = DatasetPolicy(dataset,train_dataset,detector='perfect')
-    self.evaluation = Evaluation(self.dp)
+    self.evaluation = Evaluation(self.dp)    
 
   def test_compute_pr_multiclass(self):
     cols = ['x','y','w','h','cls_ind','img_ind','diff'] 
@@ -91,3 +100,41 @@ class TestEvaluationPerfect:
     assert(np.all(correct_ap==ap))
     assert(np.all(correct_rec==rec))
     assert(np.all(correct_prec==prec))
+  
+  def test_compute_cls_map(self):
+    res = Evaluation.compute_cls_map(self.csc_table, self.table_gt)
+    assert(round(res,11) == 0.47206391958)
+    
+  def test_compute_cls_map_half(self):
+    table_csc_half = ut.Table()
+    table_csc_half.cols = list(self.csc_table.cols)
+    for _ in range(10):
+      rand_inds = np.random.permutation(range(5011))[:2500]
+      table_csc_half.arr = self.csc_table.arr[rand_inds,:]      
+      res = Evaluation.compute_cls_map(table_csc_half, self.table_gt)
+      assert(round(res,6) > .45)
+  
+  def test_compute_cls_map_gt(self):
+    res = Evaluation.compute_cls_map(self.table_gt, self.table_gt)
+    assert(round(res,6) == 1)
+    
+  def test_compute_cls_map_gt_half(self):
+    rand_inds = np.random.permutation(range(5011))[:2500]
+    table_gt_half = ut.Table()
+    table_gt_half.arr = np.hstack((self.table_gt.arr,np.array(np.arange(5011), ndmin=2).T))
+    table_gt_half.arr = table_gt_half.arr[rand_inds,:]
+    table_gt_half.cols = list(self.table_gt.cols) + ['img_ind']
+    res = Evaluation.compute_cls_map(table_gt_half, self.table_gt)
+    assert(round(res,6) == 1)
+  
+  def test_compute_cls_map_random_clf(self):
+    clf_table = ut.Table()
+    num_test = 10
+    ress = np.zeros((num_test,))
+    for idx in range(num_test):
+      clf_table.arr = np.hstack((np.random.rand(5011, 20),np.array(np.arange(5011), ndmin=2).T))
+      clf_table.cols = list(self.table_gt.cols) + ['img_ind']
+      res = Evaluation.compute_cls_map(clf_table, self.table_gt)
+      ress[idx] = res
+    assert(np.mean(ress) < 0.09)
+  
