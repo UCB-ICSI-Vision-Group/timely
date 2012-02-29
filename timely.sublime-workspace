@@ -4,6 +4,22 @@
 		"selected_items":
 		[
 			[
+				"inf",
+				"inference_mode"
+			],
+			[
+				"Da",
+				"DatasetPolicy"
+			],
+			[
+				"d",
+				"d"
+			],
+			[
+				"read",
+				"readAssignmentFromString"
+			],
+			[
 				"clse",
 				"clses_to_this_point"
 			],
@@ -43,24 +59,32 @@
 	"build_system": "",
 	"command_palette":
 	{
-		"height": 116.0,
+		"height": 182.0,
 		"selected_items":
 		[
 			[
-				"clang",
-				"Preferences: SublimeClang Settings – User"
+				":wa",
+				":w - Save"
+			],
+			[
+				":q",
+				"Set Syntax: SQL"
 			],
 			[
 				":w",
 				":w - Save"
 			],
 			[
-				":wa",
-				":w - Save"
+				"package",
+				"Package Control: Remove Package"
 			],
 			[
-				"package",
-				"Package Control: Upgrade Package"
+				"clang",
+				"SublimeClang: Clear cache"
+			],
+			[
+				"sublime",
+				"SublimeClang: Clear cache"
 			],
 			[
 				"pacakage",
@@ -132,62 +156,89 @@
 	},
 	"file_history":
 	[
-		"/Users/sergeyk/research/timely/fastInf/src/bin/infer.cpp",
-		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/User/SublimeClang.sublime-settings",
-		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/SublimeClang/SublimeClang.sublime-settings",
+		"/Users/sergeyk/research/timely/fastInf/src/bin/infer_timely.cpp",
+		"/Users/sergeyk/research/timely/fastInf/src/lib/lbInferenceObject.cpp",
+		"/Users/sergeyk/research/timely/fastInf/src/include/lbInferenceObject.h",
+		"/Users/sergeyk/research/timely/synthetic/detector.py",
+		"/Users/sergeyk/research/timely/synthetic/ext_detector.py",
 		"/Users/sergeyk/research/timely/synthetic/csc_classifier.py",
+		"/Users/sergeyk/research/timely/synthetic/classifier.py",
+		"/Users/sergeyk/research/timely/synthetic/dpm_classifier.py",
+		"/Users/sergeyk/research/timely/synthetic/learn_thresh.py",
+		"/Users/sergeyk/research/timely/synthetic/configs/feb28_just_fastinf.json",
+		"/Users/sergeyk/research/timely/synthetic/belief_state.py",
+		"/Users/sergeyk/research/timely/synthetic/fastInf.py",
+		"/Users/sergeyk/research/timely/synthetic/dataset_policy.py",
+		"/Users/sergeyk/research/timely/synthetic/config.py",
+		"/Users/sergeyk/research/timely/synthetic/fastinf_model.py",
+		"/Users/sergeyk/research/timely/synthetic/configs/feb28.json",
+		"/Users/sergeyk/research/timely/synthetic/configs/single26.json",
+		"/Users/sergeyk/research/timely/synthetic/run_experiment.py",
+		"/Users/sergeyk/research/timely/synthetic/util.py",
+		"/Users/sergeyk/research/timely/synthetic/evaluation.py",
+		"/Users/sergeyk/research/timely/synthetic/fastinf_gist.py",
+		"/Users/sergeyk/research/timely/synthetic/gist_classifier.py",
+		"/Users/sergeyk/research/timely/synthetic/sliding_windows.py",
+		"/Users/sergeyk/research/timely/synthetic/configs/feb27_just_fastinf.json",
+		"/Users/sergeyk/research/timely/synthetic/configs/feb27.json",
+		"/Users/sergeyk/research/timely/synthetic/profiling.py",
+		"/Users/sergeyk/research/timely/synthetic/test/policy.py",
+		"/Users/sergeyk/research/timely/fastinf/src/lib/lbRegionBP.cpp",
+		"/Users/sergeyk/research/timely/synthetic/test/fastinf_model.py",
+		"/Users/sergeyk/research/timely/synthetic/ngram_model.py",
+		"/Users/sergeyk/research/timely/synthetic/dataset.py",
+		"/Users/sergeyk/research/timely/fastInf/src/include/lbVarValues.h",
+		"/Users/sergeyk/research/timely/fastInf/src/include/lbAssignment.h",
+		"/Users/sergeyk/research/timely/fastInf/src/lib/lbBeliefPropagation.cpp",
+		"/Users/sergeyk/research/timely/fastInf/src/include/lbBeliefPropagation.h",
+		"/Users/sergeyk/research/timely/data/results/fastinf/full_pascal_trainval/perfect/data.txt",
+		"/Users/sergeyk/research/timely/data/results/mrf/data.txt",
+		"/Users/sergeyk/research/timely/data/results/fastinf/full_pascal_trainval/perfect/data10.txt",
+		"/Users/sergeyk/research/timely/synthetic/test/image.py",
+		"/Users/sergeyk/research/timely/synthetic/code_graveyard.py",
+		"/Users/sergeyk/research/timely/synthetic/common_imports.py",
+		"/Users/sergeyk/research/timely/temp/interact.py",
+		"/Users/sergeyk/research/timely/synthetic/test/detector.py",
+		"/Users/sergeyk/research/timely/synthetic/pyramid.py",
+		"/Users/sergeyk/research/timely/synthetic/training.py",
+		"/Users/sergeyk/research/timely/synthetic/train_all_codebooks.py",
+		"/Users/sergeyk/research/timely/synthetic/run.py",
+		"/Users/sergeyk/research/timely/synthetic/jumping_windows.py",
+		"/Users/sergeyk/research/timely/synthetic/image.py",
+		"/Users/sergeyk/research/timely/synthetic/half_csc.py",
+		"/Users/sergeyk/research/timely/synthetic/class_priors.py_old",
+		"/Users/sergeyk/research/timely/synthetic/bounding_box.py",
+		"/Users/sergeyk/research/timely/fastInf/src/Makefile",
+		"/Users/sergeyk/research/timely/data/results/mrf/data_missing.txt",
+		"/Users/sergeyk/research/timely/fastInf/src/bin/infer.cpp",
+		"/Users/sergeyk/research/timely/temp/reader.py",
+		"/Users/sergeyk/research/timely/timely.sublime-project",
+		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/SublimeClang/SublimeClang.sublime-settings",
+		"/Users/sergeyk/research/timely/fastInf/src/include/lbDefinitions.h",
+		"/Users/sergeyk/research/timely/timely.sublime-workspace",
+		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/User/SublimeClang.sublime-settings",
 		"/Users/sergeyk/research/timely/fastInf/src/learn/lbNewtonOptimizer.cpp",
 		"/Users/sergeyk/research/timely/fastInf/src/learn/lbGSLLearningObject.cpp",
 		"/Users/sergeyk/research/timely/fastInf/src/bin/learning.cpp",
-		"/Users/sergeyk/research/timely/synthetic/training.py",
-		"/Users/sergeyk/research/timely/synthetic/common_imports.py",
-		"/Users/sergeyk/research/timely/synthetic/dataset.py",
-		"/Users/sergeyk/research/timely/synthetic/gist_classifier.py",
-		"/Users/sergeyk/research/timely/synthetic/fastInf.py",
-		"/Users/sergeyk/research/timely/synthetic/util.py",
-		"/Users/sergeyk/research/timely/synthetic/belief_state.py",
-		"/Users/sergeyk/research/timely/synthetic/ngram_model.py",
-		"/Users/sergeyk/research/timely/synthetic/fastinf_model.py",
-		"/Users/sergeyk/research/timely/synthetic/config.py",
 		"/Users/sergeyk/research/timely/fastInf/src/include/Matrix.h",
 		"/Users/sergeyk/research/timely/synthetic/test/classifier.py",
 		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/Default/Preferences.sublime-settings",
-		"/Users/sergeyk/research/timely/synthetic/classifier.py",
-		"/Users/sergeyk/research/timely/synthetic/jumping_windows.py",
-		"/Users/sergeyk/research/timely/synthetic/run.py",
-		"/Users/sergeyk/research/timely/synthetic/run_experiment.py",
-		"/Users/sergeyk/research/timely/synthetic/sliding_windows.py",
 		"/Users/sergeyk/research/timely/synthetic/test/dataset.py",
-		"/Users/sergeyk/research/timely/synthetic/fastinf_gist.py",
-		"/Users/sergeyk/research/timely/synthetic/evaluation.py",
-		"/Users/sergeyk/research/timely/synthetic/class_priors.py_old",
-		"/Users/sergeyk/research/timely/synthetic/learn_thresh.py",
 		"/Users/sergeyk/research/timely/synthetic/priorsJT.py",
 		"/Users/sergeyk/research/timely/synthetic/mat_gist2np.py",
-		"/Users/sergeyk/research/timely/synthetic/test/image.py",
-		"/Users/sergeyk/research/timely/synthetic/test/policy.py",
 		"/Users/sergeyk/research/timely/synthetic/test/pyramid.py",
-		"/Users/sergeyk/research/timely/synthetic/train_all_codebooks.py",
-		"/Users/sergeyk/research/timely/synthetic/detector.py",
-		"/Users/sergeyk/research/timely/synthetic/dataset_policy.py",
 		"/Users/sergeyk/research/timely/synthetic/common_mpi.py",
-		"/Users/sergeyk/research/timely/synthetic/ext_detector.py",
-		"/Users/sergeyk/research/timely/synthetic/dpm_classifier.py",
 		"/Users/sergeyk/research/timely/synthetic/image_classifier.py",
 		"/Users/sergeyk/research/timely/README.md",
 		"/Users/sergeyk/research/timely/synthetic/test/class_priors.py",
 		"/Users/sergeyk/research/timely/synthetic/class_priors.py",
 		"/Users/sergeyk/research/timely/synthetic/FastinfModel.py",
 		"/Users/sergeyk/research/timely/fastInf/glpk/configure",
-		"/Users/sergeyk/research/timely/synthetic/configs/single26.json",
 		"/Users/sergeyk/research/timely/synthetic/configs/plot4/random_and_oracle.json",
 		"/Users/sergeyk/research/timely/synthetic/configs/plot4/fo_and_backoff.json",
 		"/Users/sergeyk/research/timely/synthetic/configs/junction_tree.json",
 		"/Users/sergeyk/research/timely/fastInf/src/learn/lbSuffStat.cpp",
 		"/Users/sergeyk/research/timely/synthetic/gist_detector.py",
-		"/Users/sergeyk/research/timely/synthetic/test/detector.py",
-		"/Users/sergeyk/research/timely/fastInf/src/lib/lbInferenceObject.cpp",
-		"/Users/sergeyk/research/timely/data/results/mrf/data_missing.txt",
 		"/Users/sergeyk/research/timely/fastInf/src/nets/grid2x2.clusters",
 		"/Users/sergeyk/research/timely/fastInf/src/nets/grid2x2.net",
 		"/Users/sergeyk/research/timely/fastInf/src/nets/simpleNet",
@@ -220,7 +271,6 @@
 		"/Users/sergeyk/research/timely/writeups/eccv12/eccv2012submission.tex",
 		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/User/Python.sublime-settings",
 		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/User/Base File.sublime-settings",
-		"/Users/sergeyk/research/timely/synthetic/image.py",
 		"/Users/sergeyk/research/timely/synthetic/test/sliding_windows.py",
 		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/Default/Base File.sublime-settings",
 		"/Users/sergeyk/Library/Application Support/Sublime Text 2/Packages/Default/Global.sublime-settings",
@@ -233,33 +283,7 @@
 		"/Users/sergeyk/research/timely/synthetic/configs/plot4/oracle_10.json",
 		"/Users/sergeyk/research/timely/synthetic/configs/plot4.json",
 		"/Users/sergeyk/research/timely/synthetic/configs/README.md",
-		"/Users/sergeyk/research/timely/synthetic/configs/plot4/_random_10.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/plot4/qwda_fixed_10.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/plot4/slope_a_fixed_10.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/double26/a_fixed_10.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/debug22/csc.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/single26/a_fixed_30.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/single26/a_fixed_20.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/single26/a_fixed_10.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/final/fixed_order_10.json",
-		"/Users/sergeyk/research/timely/synthetic/configs/csc.json",
-		"/Users/sergeyk/research/timely/synthetic/bounding_box.py",
-		"/Users/sergeyk/.zshrc",
-		"/Users/sergeyk/research/timely/synthetic/test/bounding_box.py",
-		"/Users/sergeyk/research/timely/.gitignore",
-		"/Users/sergeyk/research/timely/__init__.py",
-		"/Users/sergeyk/research/timely/synthetic/code_graveyard.py",
-		"/Users/sergeyk/research/timely/synthetic/jumping_windows_with_grid.py",
-		"/Users/sergeyk/research/timely/config.py",
-		"/Users/sergeyk/research/timely/synthetic/__init__.py",
-		"/Users/sergeyk/research/timely/synthetic/extractor.py",
-		"/Users/sergeyk/research/timely/synthetic/safebarrier.py",
-		"/Users/sergeyk/research/timely/synthetic/run_pedersoli.py",
-		"/Users/sergeyk/research/timely/synthetic/justJT",
-		"/Users/sergeyk/research/timely/synthetic/half_csc.py",
-		"/Users/sergeyk/research/timely/synthetic/convert_thresh.py",
-		"/Users/sergeyk/research/poselet_art/poselets/code/README.txt",
-		"/Users/sergeyk/research/timely/synthetic/TODO.txt"
+		"/Users/sergeyk/research/timely/synthetic/configs/plot4/_random_10.json"
 	],
 	"find":
 	{
@@ -267,9 +291,16 @@
 	},
 	"find_in_files":
 	{
-		"height": 0.0,
+		"height": 91.0,
 		"where_history":
 		[
+			"/Users/sergeyk/research/timely/synthetic",
+			"/Users/sergeyk/research/timely/fastInf/src",
+			"/Users/sergeyk/research/timely/fastInf",
+			"/Users/sergeyk/research/timely/synthetic",
+			"/Users/sergeyk/research/timely/fastinf",
+			"/Users/sergeyk/research/timely/synthetic",
+			"/Users/sergeyk/research/timely/**/*.py",
 			"/Users/sergeyk/research/timely/fastInf/src",
 			"/Users/sergeyk/research/timely/synthetic/",
 			"/Users/sergeyk/research/timely/fastInf/src",
@@ -291,6 +322,87 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"normalize_dpm_scores",
+			"normalize_scores",
+			"compute_score",
+			"partitionFunction",
+			"entropyFunction",
+			"entropy",
+			"setEntropy",
+			"setEnt",
+			"entropy",
+			"evidence",
+			"cls_for_da",
+			"create_gist",
+			"get_discretization_bounds",
+			"get_fastinf_res_file",
+			"execute_lbp",
+			"execute_Lbp",
+			"r2",
+			"importance_sample",
+			"importance",
+			"self.inf",
+			"inference_model",
+			"inf_model",
+			"self.da",
+			"images",
+			"run_on_dataset",
+			"TODO",
+			"print",
+			"collect_samples",
+			"sample['state",
+			"entropy",
+			"print",
+			"FastinfMo",
+			"BeliefState",
+			"cPickle",
+			"fastinf",
+			"print(\"observed",
+			"print(\"observed\"",
+			"print",
+			"ut.key",
+			"b.bounds",
+			"ngram_modes",
+			"BeliefState",
+			"self.p_c",
+			"get_p_c",
+			"ut.key",
+			"clses",
+			"oracle",
+			"get_cls_cols",
+			"deepcopy",
+			"'state'",
+			"get_fea",
+			"get_Feature",
+			"inference_",
+			"fastinf",
+			"random",
+			"plausi",
+			"correct_assign",
+			"get_",
+			"update_with_observations",
+			"update_with_obser",
+			"fastinf_manu",
+			"compute_posterior",
+			"dataset",
+			"get_fastinf_res_file",
+			"accepted",
+			"accepted_modes",
+			"from common_imports import ",
+			"config",
+			"from common_imports import",
+			"from common_import import",
+			"from common_imports import *\nfrom common_imports import *\nfrom common_imports import",
+			"from common_imports import *\nfrom common_imports import *\nfrom common_imports import ",
+			"\\t",
+			"read",
+			"readAssignmentFromFile",
+			"lbFullAssignment",
+			"infer",
+			"t.chec",
+			"calcProbs",
+			"readEvidenceFromFile",
+			"/\"",
 			"csc",
 			"nms",
 			"lbNewtonDiagonalOptimizer",
@@ -337,95 +449,17 @@
 			"img_ind",
 			"b['img",
 			"img_ind",
-			"prev_ap",
-			"self.learn_pol",
-			"feature_vec",
-			"max_unta",
-			"no_policy",
-			"get_ext_dets",
-			"mode",
-			"dp.all_dets",
-			"NGramMo",
-			"self.namennn",
-			"self.name",
-			"_printMarginals",
-			"printMarginals(",
-			"printMarginals",
-			"_evidence",
-			"readEvidenceFromFile",
-			"clusterFile",
-			"@Exact",
-			"cls_gt",
-			"npos",
-			"try",
-			"compute_pr",
-			"compute_",
-			"compute_pr",
-			"all_gt",
-			"[()]",
-			"tables",
-			"get_classifier_filename",
-			"get_classifier_svm_filename",
-			"get_classifier_svm_name",
-			"point.arr",
-			"all_clses",
-			"unique",
-			"fname",
-			"0",
-			"1",
-			"get_feature_ve",
-			"init_belief_state",
-			"b =",
-			"b['pr",
-			"self.priors",
-			"b['priors']",
-			"self.priors",
-			"ClassPriors",
-			"run_on",
-			"detect_in_data",
-			"cls_cou",
-			"cs_cou",
-			"collect",
-			"collect(",
-			"collect_with_index_column",
-			"get_gt_col",
-			"randi",
-			"get_gt_cols",
-			"get_gr",
-			"template",
-			"filename",
-			"compute_pr_and",
-			"compute_hard_neg",
-			"compute_pr(",
-			"compute_pr",
-			"run_on_image",
-			"img_ind",
-			"self.bounds",
-			"action_se",
-			"self.t",
-			"self.time_elapsed",
-			"self.taken",
-			"pick_next_action_ind",
-			"ap_estimate",
-			"ap_estimates",
-			"self.ap_estimates",
-			"self.values",
-			"reset_action",
-			"norm_const",
-			"          ",
-			"y_to_go",
-			"img_ind",
-			"time.time()",
-			"time_elapsed",
-			"dets_cols",
-			"get_dp_detections_filename"
+			"prev_ap"
 		],
 		"highlight": true,
 		"in_selection": false,
 		"preserve_case": false,
-		"regex": true,
+		"regex": false,
 		"replace_history":
 		[
+			"normalize_dpm_scores",
+			"self.bounds",
+			"Accepted",
 			"  ",
 			"",
 			"comm_size",
@@ -515,16 +549,224 @@
 		"selected_items":
 		[
 			[
-				"infer",
-				"bin/infer.cpp"
+				"class",
+				"synthetic/classifier.py"
+			],
+			[
+				"feb28",
+				"synthetic/configs/feb28_just_fastinf.json"
+			],
+			[
+				"csc_c",
+				"synthetic/csc_classifier.py"
+			],
+			[
+				"ext_de",
+				"synthetic/ext_detector.py"
+			],
+			[
+				"infer_",
+				"fastInf/src/bin/infer_timely.cpp"
+			],
+			[
+				"csc",
+				"synthetic/csc_classifier.py"
+			],
+			[
+				"classifer",
+				"synthetic/classifier.py"
+			],
+			[
+				"ext_d",
+				"synthetic/ext_detector.py"
+			],
+			[
+				"fastinf",
+				"synthetic/fastInf.py"
 			],
 			[
 				"config",
 				"synthetic/config.py"
 			],
 			[
-				"csc",
-				"synthetic/csc_classifier.py"
+				"fastin",
+				"synthetic/fastInf.py"
+			],
+			[
+				"slidi",
+				"synthetic/sliding_windows.py"
+			],
+			[
+				"util",
+				"synthetic/util.py"
+			],
+			[
+				"eval",
+				"synthetic/evaluation.py"
+			],
+			[
+				"datpol",
+				"synthetic/dataset_policy.py"
+			],
+			[
+				"dataset",
+				"synthetic/dataset_policy.py"
+			],
+			[
+				"evaluation",
+				"synthetic/evaluation.py"
+			],
+			[
+				"evalu",
+				"synthetic/evaluation.py"
+			],
+			[
+				"run_e",
+				"synthetic/run_experiment.py"
+			],
+			[
+				"testfast",
+				"synthetic/test/fastinf_model.py"
+			],
+			[
+				"ngram",
+				"synthetic/ngram_model.py"
+			],
+			[
+				"classifie",
+				"synthetic/classifier.py"
+			],
+			[
+				"gist_ca",
+				"synthetic/gist_classifier.py"
+			],
+			[
+				"run_ex",
+				"synthetic/run_experiment.py"
+			],
+			[
+				"fastinf_mode",
+				"synthetic/fastinf_model.py"
+			],
+			[
+				"eva",
+				"synthetic/evaluation.py"
+			],
+			[
+				"run",
+				"synthetic/run_experiment.py"
+			],
+			[
+				"belief",
+				"synthetic/belief_state.py"
+			],
+			[
+				"data.",
+				"data/results/fastinf/full_pascal_trainval/perfect/data.txt"
+			],
+			[
+				"data10",
+				"data/results/fastinf/full_pascal_trainval/perfect/data10.txt"
+			],
+			[
+				"fastinf_mo",
+				"synthetic/test/fastinf_model.py"
+			],
+			[
+				"testimage",
+				"synthetic/test/image.py"
+			],
+			[
+				"tepol",
+				"synthetic/test/policy.py"
+			],
+			[
+				"detect",
+				"synthetic/detector.py"
+			],
+			[
+				"pol",
+				"synthetic/dataset_policy.py"
+			],
+			[
+				"fastinf_gi",
+				"synthetic/fastinf_gist.py"
+			],
+			[
+				"gist_",
+				"synthetic/gist_classifier.py"
+			],
+			[
+				"fasti",
+				"synthetic/fastInf.py"
+			],
+			[
+				"common",
+				"synthetic/common_imports.py"
+			],
+			[
+				"fast",
+				"synthetic/fastinf_model.py"
+			],
+			[
+				"testpol",
+				"synthetic/test/policy.py"
+			],
+			[
+				"testdete",
+				"synthetic/test/detector.py"
+			],
+			[
+				"test/pol",
+				"synthetic/test/policy.py"
+			],
+			[
+				"pyr",
+				"synthetic/pyramid.py"
+			],
+			[
+				"common_import",
+				"synthetic/common_imports.py"
+			],
+			[
+				"interact",
+				"temp/interact.py"
+			],
+			[
+				"data",
+				"data/results/fastinf/full_pascal_trainval/perfect/data.txt"
+			],
+			[
+				"assignment",
+				"fastInf/src/include/lbAssignment.h"
+			],
+			[
+				"make",
+				"fastInf/src/Makefile"
+			],
+			[
+				"inter",
+				"temp/interact.py"
+			],
+			[
+				"reader",
+				"temp/reader.py"
+			],
+			[
+				"lbbeliefp",
+				"fastInf/src/lib/lbBeliefPropagation.cpp"
+			],
+			[
+				"lbde",
+				"fastInf/src/include/lbDefinitions.h"
+			],
+			[
+				"infer.c",
+				"fastInf/src/bin/infer.cpp"
+			],
+			[
+				"infer",
+				"bin/infer.cpp"
 			],
 			[
 				"matrix",
@@ -539,40 +781,12 @@
 				"fastInf/src/bin/learning.cpp"
 			],
 			[
-				"fastinf",
-				"synthetic/fastInf.py"
-			],
-			[
 				"training",
 				"synthetic/training.py"
 			],
 			[
-				"common",
-				"synthetic/common_imports.py"
-			],
-			[
-				"dataset",
-				"synthetic/dataset.py"
-			],
-			[
 				"gist_cl",
 				"synthetic/gist_classifier.py"
-			],
-			[
-				"util",
-				"synthetic/util.py"
-			],
-			[
-				"belief",
-				"synthetic/belief_state.py"
-			],
-			[
-				"ngram",
-				"synthetic/ngram_model.py"
-			],
-			[
-				"fast",
-				"synthetic/fastinf_model.py"
 			],
 			[
 				"ngram_",
@@ -587,16 +801,8 @@
 				"synthetic/common_imports.py"
 			],
 			[
-				"common_import",
-				"synthetic/common_imports.py"
-			],
-			[
 				"ext",
 				"synthetic/ext_detector.py"
-			],
-			[
-				"detect",
-				"synthetic/detector.py"
 			],
 			[
 				"classifier",
@@ -607,10 +813,6 @@
 				"synthetic/dpm_classifier.py"
 			],
 			[
-				"class",
-				"synthetic/classifier.py"
-			],
-			[
 				"ngram_mo",
 				"synthetic/ngram_model.py"
 			],
@@ -619,24 +821,12 @@
 				"synthetic/test/class_priors.py"
 			],
 			[
-				"fastinf_mo",
-				"synthetic/fastinf_model.py"
-			],
-			[
 				"config.",
 				"synthetic/config.py"
 			],
 			[
-				"fastin",
-				"synthetic/fastInf.py"
-			],
-			[
 				"read",
 				"README.md"
-			],
-			[
-				"testdete",
-				"synthetic/test/detector.py"
 			],
 			[
 				"dete",
@@ -645,10 +835,6 @@
 			[
 				"inference",
 				"fastInf/src/lib/lbInferenceObject.cpp"
-			],
-			[
-				"data",
-				"data/results/mrf/data_missing.txt"
 			],
 			[
 				"datasetpo",
@@ -691,18 +877,6 @@
 				"dataset.py"
 			],
 			[
-				"eval",
-				"evaluation.py"
-			],
-			[
-				"run",
-				"run_experiment.py"
-			],
-			[
-				"eva",
-				"evaluation.py"
-			],
-			[
 				"testeval",
 				"test/evaluation.py"
 			],
@@ -739,20 +913,12 @@
 				"evaluation.py"
 			],
 			[
-				"ext_de",
-				"synthetic/ext_detector.py"
-			],
-			[
 				"ex",
 				"synthetic/ext_detector.py"
 			],
 			[
 				"dpm",
 				"synthetic/dpm_classifier.py"
-			],
-			[
-				"testpol",
-				"synthetic/test/policy.py"
 			],
 			[
 				"c",
@@ -775,16 +941,8 @@
 				"synthetic/configs/junction_tree.json"
 			],
 			[
-				"run_e",
-				"synthetic/run_experiment.py"
-			],
-			[
 				"test/de",
 				"synthetic/test/detector.py"
-			],
-			[
-				"test/pol",
-				"synthetic/test/policy.py"
 			],
 			[
 				"dataet",
@@ -869,6 +1027,6 @@
 	"show_open_files": false,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 209.0,
+	"side_bar_width": 286.0,
 	"status_bar_visible": true
 }
