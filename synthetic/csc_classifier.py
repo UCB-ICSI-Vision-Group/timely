@@ -41,14 +41,14 @@ class CSCClassifier(Classifier):
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)[0,0]
   
-  def create_vector_from_dets(self, feats, img):
-    feats = feats[()]  
-    feats = feats.subset(['score', 'cls_ind', 'img_ind'])
-    feats.arr = self.normalize_scores(feats.arr)
+  def create_vector_from_dets(self, dets, img):
+    dets = dets[()]  
+    dets = dets.subset(['score', 'cls_ind', 'img_ind'])
+    dets.arr = self.normalize_scores(dets.arr)
     
-    if feats.arr.size == 0:
+    if dets.arr.size == 0:
       return np.zeros((1,self.intervals+1))
-    dpm = feats.subset(['score', 'cls_ind', 'img_ind'])
+    dpm = dets.subset(['score', 'cls_ind', 'img_ind'])
 
     img_dpm = dpm.filter_on_column('img_ind', img, omit=True)
 
