@@ -24,50 +24,27 @@ class CSCClassifier(Classifier):
     self.lower = settings[setting_table.cols.index('lower')]
     self.upper = settings[setting_table.cols.index('upper')]
     
-  def classify_image(self, img):
-    result = self.get_score(img)
+  def classify_image(self, img, dets=None):
+    result = self.get_score(img, dets=dets)    
     return result
   
-  def get_score(self, img, probab=True):
+  def get_score(self, img, dets=None, probab=True):
     """
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
     """
-    if probab:
-      return self.get_probab(img)[0][1]
-    return self.get_predict(img)[0,0]
-  
-  def get_probab(self, img):
-    vector = self.get_vector(img)
-    return svm_proba(vector, self.svm)
-  
-  def get_predict(self, img):
-    vector = self.get_vector(img)
-    return svm_predict(vector, self.svm)
-  
-  def get_all_vectors(self):
-    for img_idx in range(comm_rank, len(self.dataset.images), comm_size):
-      print 'on %d get vect %d/%d'%(comm_rank, img_idx, len(self.dataset.images))
-      self.get_vector(img_idx)
-    
-  def get_vector(self, img):
-    image = self.dataset.images[img]
-    filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
-    if os.path.exists(filename):
-      return np.load(filename)
+    if dets == None:
+      vector = self.get_vector(img)
     else:
-      vector = self.create_vector(img)
-      np.save(filename, vector)
-      return vector      
-    
-  def create_vector(self, img):
-    filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
-    csc_test = np.load(filename)
-    csc_test = csc_test[()]  
-    csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
-    csc_test.arr = self.normalize_scores(csc_test.arr)
-
-    feats = csc_test
+      vector = self.create_vector_from_dets(dets)
+    if probab:
+      return svm_proba(vector, self.svm)[0][1]
+    return svm_predict(vector, self.svm)[0,0]
+  
+  def create_vector_from_dets(self, feats, img):
+    feats = feats[()]  
+    feats = feats.subset(['score', 'cls_ind', 'img_ind'])
+    feats.arr = self.normalize_scores(feats.arr)
     
     if feats.arr.size == 0:
       return np.zeros((1,self.intervals+1))
@@ -84,6 +61,28 @@ class CSCClassifier(Classifier):
     vector[0,0:-1] = hist
     vector[0,-1] = img_dpm.shape()[0]
     return vector
+     
+  def get_vector(self, img):
+    image = self.dataset.images[img]
+    filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
+    if os.path.exists(filename):
+      return np.load(filename)
+    else:
+      vector = self.create_vector(img)
+      np.save(filename, vector)
+      return vector      
+    
+  def create_vector(self, img):
+    filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
+    csc_test = np.load(filename)
+
+    feats = csc_test
+    return self.create_vector_from_dets(feats, img)    
+  
+  def get_all_vectors(self):
+    for img_idx in range(comm_rank, len(self.dataset.images), comm_size):
+      print 'on %d get vect %d/%d'%(comm_rank, img_idx, len(self.dataset.images))
+      self.get_vector(img_idx)
 
 def csc_classifier_train_all_params(suffix):
   lowers = [0.]#,0.2,0.4]
