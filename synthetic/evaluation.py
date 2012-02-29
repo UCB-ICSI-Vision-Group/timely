@@ -538,7 +538,6 @@ class Evaluation:
         continue
       ap,rec,prec=cls.compute_cls_pr(clses.subset_arr(col),gt.subset_arr(col))
       aps.append(ap)
-      print '%s\t%f'%(col, ap)
     return np.mean(aps)
 
   @classmethod
