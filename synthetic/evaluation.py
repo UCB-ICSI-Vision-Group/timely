@@ -194,18 +194,21 @@ class Evaluation:
         det_arr[i,:] = [point,ap]
 
         # go through the per-image classifications and only keep the latest time
-        # for each cut-off time
-        clses_at_this_point = []
+        # for each cut-off time, accumulating the per-image results
+        clses_to_this_point_all_imgs = []
         for img_ind in range(0,self.dataset.num_images()):
           img_clses = clses.filter_on_column('img_ind',img_ind)
           clses_to_this_point = img_clses.filter_on_column('time',
             point,operator.le)
           if clses_to_this_point.shape()[0]>0:
             clses_to_this_point = clses_to_this_point.sort_by_column('time')
-            clses_at_this_point.append(clses_to_this_point.arr[-1,:])
-        clses_at_this_point = ut.Table(arr=np.array(clses_at_this_point),
-          cols=clses.cols)
-        cls_arr[i,:] = [point, self.compute_cls_map(clses_at_this_point, cls_gt)]
+            clses_to_this_point_all_imgs.append(clses_to_this_point.arr[-1,:])
+        
+        # turn into a Table, compute the mAP, and store it
+        clses_to_this_point_all_imgs = ut.Table(
+          arr=np.array(clses_to_this_point_all_imgs), cols=clses.cols)
+        cls_arr[i,:] = \
+          [point, self.compute_cls_map(clses_to_this_point_all_imgs, cls_gt)]
 
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
           det_arr[i,1],dets_to_this_point.shape()[0],point,tt.qtoc()))
@@ -529,7 +532,7 @@ class Evaluation:
     if not clses.shape()[0]>0:
       return 0
     if 'img_ind' in clses.cols:
-      img_inds = clses.subset_arr('img_ind').flatten().tolist()[0]
+      img_inds = clses.subset_arr('img_ind').flatten().tolist()
       assert(len(img_inds)==len(np.unique(np.array(img_inds))))
       gt = gt.row_subset(img_inds)
     aps = []
