@@ -64,7 +64,7 @@ makedirs(temp_data_dir)
 script_dir = join(repo_dir, 'synthetic')
 
 # Input data
-test_support_dir = join(script_dir, 'test_support')
+test_support_dir = join(data_dir, 'test_support')
 data1 = join(test_support_dir,'data1.json')
 VOC_dir = join(data_dir, 'VOC%(year)s/')%{'year':VOCyear}
 pascal_paths = {

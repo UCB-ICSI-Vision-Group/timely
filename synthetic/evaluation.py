@@ -528,15 +528,17 @@ class Evaluation:
     """
     if not clses.shape()[0]>0:
       return 0
-    img_inds = clses.subset_arr('img_ind')
-    assert(len(img_inds)==len(np.unique(img_inds)))
-    gt = gt.row_subset(img_inds)
+    if 'img_ind' in clses.cols:
+      img_inds = clses.subset_arr('img_ind').flatten().tolist()[0]
+      assert(len(img_inds)==len(np.unique(np.array(img_inds))))
+      gt = gt.row_subset(img_inds)
     aps = []
     for col in clses.cols:
       if col=='img_ind' or col=='time':
         continue
       ap,rec,prec=cls.compute_cls_pr(clses.subset_arr(col),gt.subset_arr(col))
       aps.append(ap)
+      print '%s\t%f'%(col, ap)
     return np.mean(aps)
 
   @classmethod
@@ -545,7 +547,7 @@ class Evaluation:
     Take vector of classification confidences and vector of ground truth.
     Return ap,recall,and precision vectors as tuple.
     """
-    ind = np.argsort(-confidences)
+    ind = np.argsort(-confidences, axis=0)
     tp = gt[ind]==True
     fp = gt[ind]==False
     fp=np.cumsum(fp)
@@ -571,3 +573,12 @@ class Evaluation:
     i = np.add(np.nonzero(mrec[1:] != mrec[0:-1]),1)
     ap = np.sum((mrec[i]-mrec[np.subtract(i,1)])*mprec[i])
     return ap
+
+
+if __name__=='__main__':
+  csc_table = cPickle.load(open(os.path.join(config.test_support_dir, 'csc_table'), 'r'))
+  table_gt = cPickle.load(open(os.path.join(config.test_support_dir, 'table_gt'), 'r'))
+    
+  res = Evaluation.compute_cls_map(csc_table, table_gt)
+  print res
+  

@@ -105,7 +105,7 @@ class Table:
     "Return self.arr with only the specified rows."
     if isinstance(row_inds,np.ndarray):
       row_inds = row_inds.tolist()
-    return np.take(self.arr,row_inds,axis=0)
+    return self.arr[row_inds,:]
 
   def subset(self,col_names):
     "Return Table with only the specified col_names, in order."
