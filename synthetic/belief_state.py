@@ -15,13 +15,13 @@ class BeliefState(object):
   ngram_modes = ['no_smooth','backoff']
   accepted_modes = ngram_modes+['fixed_order','fastinf']
 
-  def __init__(self,dataset,actions,mode='fixed_order',bounds=None,model=None):
+  def __init__(self,dataset,actions,mode='fixed_order',bounds=None,model=None,fastinf_suffix='perfect'):
     assert(mode in self.accepted_modes)
     self.mode = mode
     self.dataset = dataset
     self.actions = actions
-    self.t = 0
     self.bounds = bounds
+    self.fastinf_suffix = fastinf_suffix
 
     if mode=='no_smooth' or mode=='backoff':
       if model:
@@ -36,19 +36,17 @@ class BeliefState(object):
       else:
         self.model = FixedOrderModel(dataset)
     elif mode=='fastinf':
-      # TODO: work out the suffix situation
-      suffix = 'perfect'
       if model:
         assert(isinstance(model,FastinfModel))
         self.model = model
         self.model.reinit_marginals()
       else:
         num_actions = len(self.actions)
-        self.model = FastinfModel(dataset,suffix,num_actions)
+        self.model = FastinfModel(dataset,self.fastinf_suffix,num_actions)
     else:
       raise RuntimeError("Unknown mode")
 
-    # zero stuff out
+    self.t = 0
     self.reset_actions()
 
   def __repr__(self):

@@ -114,7 +114,9 @@ class DatasetPolicy:
     if self.policy_mode in ['no_smooth','backoff']:
       self.inference_mode = self.policy_mode
 
-    b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds)
+    # TODO: hack
+    self.fastinf_suffix='CSC'
+    b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,fastinf_suffix=self.fastinf_suffix)
     self.inf_model = b.model
     
     # TODO: figure this stuff out
@@ -333,9 +335,9 @@ class DatasetPolicy:
    
     img_ind = self.dataset.get_img_ind(image) if image else -1
     if self.inf_model:
-      b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,self.inf_model)
+      b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,self.inf_model,self.fastinf_suffix)
     else:
-      b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds)
+      b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,fastinf_suffix=self.fastinf_suffix)
     self.update_actions(b)
     action_ind = self.select_action(b)
     while True:
