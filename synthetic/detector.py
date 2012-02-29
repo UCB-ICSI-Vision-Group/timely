@@ -11,10 +11,6 @@ class Detector:
   """
   Detector takes an image and outputs list of bounding boxes and
   confidences for its class.
-  NOTE: This class basically assumes a sliding window architecture. If we
-  implement something different, it may be worth pulling some
-  sliding-window-specific methods into something like
-  SlidingWindowDetector(Detector).
   """
   
   # for use when computing the expected time
@@ -28,11 +24,10 @@ class Detector:
   def get_cols(cls):
     return ['x','y','w','h','score']
 
-  def __init__(self, dataset, cls, sw_generator, detector_config=None):
+  def __init__(self, dataset, cls, detector_config=None):
     self.dataset = dataset
     self.cls = cls
     self.cls_ind = dataset.get_ind(cls)
-    self.sw = sw_generator
 
     if not detector_config:
       detector_config = Detector.DEFAULT_CONFIG
@@ -138,6 +133,12 @@ class Detector:
     #print("Took %.3f s"%(time.time()-t))
     return dets[pick,:]
 
+class SWDetector(Detector):
+  """A detector that must be initialized with a sliding window generator."""
+  def __init__(self, dataset, cls, sw_generator, detector_config=None):
+    Detector.__init__(self,dataset,cls,detector_config)
+    self.sw = sw_generator
+
 class PerfectDetector(Detector):
   """
   An idealized detector modeled by its classification accuracy given
@@ -152,7 +153,7 @@ class PerfectDetector(Detector):
         dets.append(np.hstack((obj.bbox.get_arr(), 1.)))
     return (np.array(dets), self.expected_time(image))
 
-class PerfectDetectorWithNoise(Detector):
+class PerfectDetectorWithNoise(SWDetector):
   """
   Basically PerfectDetector with additional false positives and false
   negatives, generated randomly according to a couple of parameters.
@@ -162,6 +163,7 @@ class PerfectDetectorWithNoise(Detector):
     """
     Return all of the ground truth of the image with some high probability,
     but also throw in some random false positives.
+    Because of the randomness, needs to generate sliding windows.
     """
     dets = []
     # First, go through all true objects:

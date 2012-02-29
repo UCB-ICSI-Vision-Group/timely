@@ -4,10 +4,6 @@ from common_imports import *
 
 from synthetic.bounding_box import BoundingBox
 
-# TODO: find library method
-def randi(max=2):
-  return int(np.random.rand(1)[0]*max)
-
 class Image:
   """An image has a size and a list of objects."""
   
@@ -82,7 +78,7 @@ class Image:
     # array ground truth representation was stored 
     return (len([obj for obj in self.objects if obj.cls_ind == cls_ind]) > 0)
 
-  def get_cls_counts(self):
+  def get_cls_counts(self, include_diff=False, include_trun=True):
     """
     Return a vector of size num_classes, with the counts of each class in
     the image.

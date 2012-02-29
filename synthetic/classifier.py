@@ -84,7 +84,7 @@ class Classifier():
     return ret
   
   def load_svm(self, cls):
-    model = load_svm(config.get_classifier_svm_filename(self,cls))
+    model = load_svm(config.get_classifier_filename(self,cls))
     return model
   
   def test_svm(self, test_dataset, feats, intervals, kernel, lower, upper, \
@@ -110,7 +110,7 @@ class Classifier():
     numneg = neg.shape[0]
     
     if local:
-      filename = config.get_classifier_svm_filename(self,cls)
+      filename = config.get_classifier_svm_name(self,cls)
     else:
       filename = config.get_classifier_svm_learning_filename(
         self,cls,kernel,intervals,lower,upper,C)

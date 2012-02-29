@@ -64,7 +64,7 @@ makedirs(temp_data_dir)
 script_dir = join(repo_dir, 'synthetic')
 
 # Input data
-test_support_dir = join(data_dir, 'test_support')
+test_support_dir = join(script_dir, 'test_support')
 data1 = join(test_support_dir,'data1.json')
 VOC_dir = join(data_dir, 'VOC%(year)s/')%{'year':VOCyear}
 pascal_paths = {
@@ -77,6 +77,8 @@ pascal_paths = {
     'full_pascal_trainval': join(VOC_dir,'ImageSets/Main/trainval.txt'),
     'full_pascal_test':     join(VOC_dir,'ImageSets/Main/test.txt')}
 config_dir = join(script_dir,'configs')
+eval_support_dir = join(script_dir, 'eval_support')
+eval_template_filename = join(eval_support_dir, 'dashboard_template.html')
 
 # Result data
 res_dir = makedirs(join(data_dir, 'results'))
@@ -133,8 +135,12 @@ def get_evals_dp_dir(dataset_policy):
   return makedirs(join(dirname, dataset_policy.get_config_name()))
 
 # ./results/evaluations/{dataset_name}/{dp_config_name}/cached_dets.npy
-def get_dp_detections_filename(dataset_policy):
+def get_dp_dets_filename(dataset_policy):
   return join(get_evals_dp_dir(dataset_policy), 'cached_dets.npy')
+
+# ./results/evaluations/{dataset_name}/{dp_config_name}/cached_clses.npy
+def get_dp_clses_filename(dataset_policy):
+  return join(get_evals_dp_dir(dataset_policy), 'cached_clses.npy')
 
 # results/evaluations/{dataset_name}/{dp_config_name}/weights/
 def get_dp_weights_dirname(dataset_policy):
@@ -152,7 +158,9 @@ def get_ext_dets_filename(dataset, suffix):
   dataset_name = dataset.name # NOTE does not depend on # images
   return join(dirname, '%s_%s.npy'%(dataset_name,suffix))
 
-# directory for gist features
+#####
+# GIST
+#####
 # results/gist_features/
 
 #####
@@ -174,23 +182,18 @@ def get_gist_svm_filename(for_cls):
 #####
 # learning
 def get_classifier_learning_dirname(classifier):
-  return makedirs(join(temp_res_dir, classifier.name+'_svm_'+classifier.suffix))
+  name = classifier.name+'_svm'
+  if len(classifier.suffix) >= 1:
+    name += '_'+classifier.suffix
+  return makedirs(join(temp_res_dir,name))
 
 def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C):
-  dirname = join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
-  makedirs(dirname)
+  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))
   return join(dirname, "%s_%d_%d_%d"%(cls,lower,upper,C))
     
 def get_classifier_learning_eval_filename(classifier,cls,kernel,intervals,lower,upper,C):
-  dirname = join(get_classifier_learning_dirname(classifier), kernel, str(intervals))
-  makedirs(dirname)
+  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))
   return join(dirname, "eval_%d_%d_%d"%(lower,upper,C))
-
-# final
-def get_classifier_dirname(classifier):
-  dirname = join(res_dir, classifier.name+'_svm_'+classifier.suffix)
-  makedirs(dirname)
-  return dirname
 
 def get_classifier_svm_name(cls, C, gamma, current_fold):
   dirname = join(res_dir, 'classify_svm')
@@ -198,9 +201,18 @@ def get_classifier_svm_name(cls, C, gamma, current_fold):
   if current_fold == -1: 
     filename = join(dirname, '%s_%f_%f'%(cls, C, gamma))
   else:
-    filename = join(dirname, '%s_%f_%f_%d'%(cls, C, gamma, current_fold))
-      
+    filename = join(dirname, '%s_%f_%f_%d'%(cls, C, gamma, current_fold)) 
   return filename
+
+# final
+def get_classifier_dirname(classifier):
+  name = classifier.name+'_svm'
+  if len(classifier.suffix) >= 1:
+    name += '_'+classifier.suffix
+  return makedirs(join(res_dir,name))
+
+def get_classifier_filename(classifier,cls):
+  return join(get_classifier_dirname(classifier), cls)
 
 def get_classifier_featvect_name(img):
   dirname = join(res_dir, 'classify_featvects')
@@ -216,6 +228,7 @@ def get_classifier_crossval():
   dirname = join(res_dir, 'classify_scores')
   makedirs(dirname) 
   return join(dirname, 'crossval.txt')
+
 #####
 # Feature Extraction
 #####
@@ -232,7 +245,9 @@ def get_codebook_path(feature):
   makedirs(dirname)
   return join(dirname, 'codebook')
 
-# external classifier
+#####
+# External detections
+#####
 def get_dets_test_wholeset_dir():
   return join(res_dir, 'dets_test_original_wholeset')
 
