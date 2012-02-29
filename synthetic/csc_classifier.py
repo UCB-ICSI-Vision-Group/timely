@@ -25,13 +25,10 @@ class CSCClassifier(Classifier):
     self.upper = settings[setting_table.cols.index('upper')]
     
   def classify_image(self, img):
-    model = self.svm
-    #, dets, cls, img, intervals, lower, upper 
-    vector = self.get_vector(img)
-    result = svm_predict(vector, model)
+    result = self.get_score(img)
     return result
   
-  def get_score(self, img, probab=False):
+  def get_score(self, img, probab=True):
     if probab:
       return self.get_probab(img)[0][1]
     return self.get_predict(img)[0,0]
