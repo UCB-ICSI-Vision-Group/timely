@@ -30,6 +30,7 @@ def determine_bin(col, bounds, num_bins, asInt=True):
   """ 
   Determine in which bin the values fall
   """
+
   ret_tab = np.zeros((col.shape[0],1))
   col_bin = np.zeros((col.shape[0],1))
   bin_values = np.zeros(bounds.shape)
@@ -37,20 +38,26 @@ def determine_bin(col, bounds, num_bins, asInt=True):
   
   for bidx, b in enumerate(bounds):
     bin_values[bidx] = (last_val + b)/2.
+    if bidx == 0:
+      continue
     last_val = b
     col_bin += np.matrix(col < b, dtype=int).T
+  
   bin_values = bin_values[1:]    
   col_bin[col_bin == 0] = 1  
   
   if asInt:
     a = num_bins - col_bin
     ret_tab = a[:,0] 
+    if a.any() < 0:
+      ut.keyboard()
+    
   else:    
     for rowdex in range(col.shape[0]):
       ret_tab[rowdex, 0] = bin_values[int(col_bin[rowdex]-1)]
   return ret_tab
 
-def discretize_table(table, num_bins, asInt=True):
+def discretize_table(table, num_bins, asInt=True, linsp=False):
   """
   discretize the given table and also return the bounds for the column 
   discretization. as num_bins x num_cols
@@ -64,8 +71,10 @@ def discretize_table(table, num_bins, asInt=True):
     if np.where(col==col[0])[0].shape[0] == col.shape[0]:
       bounds = (np.arange(num_bins+1)/num_bins)
     else:
-      print col
-      bounds = ut.importance_sample(col, num_bins+1)
+      if not linsp:
+        bounds = ut.importance_sample(col, num_bins+1)
+      else:
+        bounds = np.linspace(np.min(col), np.max(col), num_bins+1)
       
     all_bounds[:, coldex] = bounds
       

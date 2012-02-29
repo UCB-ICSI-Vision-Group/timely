@@ -329,6 +329,28 @@ def cartesian(arrays, out=None):
         for j in xrange(1, arrays[0].size):
             out[j*m:(j+1)*m,1:] = out[0:m,1:]
     return out
+  
+
+from collections import Counter
+def histogram(x, num_bins, normalize=False):
+  """
+  compute a histogram for x = np.array and num_bins bins
+  assumpt: x is already binned up 
+  """
+  if hasattr(x, 'shape'):
+    # This is a np object
+    if x.shape[1] > 0:
+      x = np.hstack(x)
+      print x
+     
+  counts = Counter(x)
+  print counts
+  histogram = [counts.get(x,0) for x in range(num_bins)]
+  histogram = np.matrix(histogram, dtype = 'float64')
+  if normalize:
+    histogram = histogram/np.sum(histogram)
+  return histogram
+
 
 """From http://vjethava.blogspot.com/2010/11/matlabs-keyboard-command-in-python.html"""
 import code

@@ -41,18 +41,18 @@ class CSCClassifier(Classifier):
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)[0,0]
   
-  def create_vector_from_dets(self, feats, img):
-    if 'cls_ind' in feats.cols:
-      feats = feats.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
+  def create_vector_from_dets(self, dets, img):
+    if 'cls_ind' in dets.cols:
+      dets = dets.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
 
-    feats = feats.subset(['score', 'img_ind'])
-    feats.arr = self.normalize_dpm_scores(feats.arr)
+    dets = dets.subset(['score', 'img_ind'])
+    dets.arr = self.normalize_dpm_scores(dets.arr)
     
     # TODO from sergeyk: what is .size? Be specific and use .shape[0] or .shape[1]
-    if feats.arr.size == 0:
+    if dets.arr.size == 0:
       return np.zeros((1,self.intervals+1))
 
-    img_dpm = feats.filter_on_column('img_ind', img, omit=True)
+    img_dpm = dets.filter_on_column('img_ind', img, omit=True)
 
     if img_dpm.arr.size == 0:
       print 'empty vector'
