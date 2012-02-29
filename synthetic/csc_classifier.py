@@ -29,6 +29,10 @@ class CSCClassifier(Classifier):
     return result
   
   def get_score(self, img, probab=True):
+    """
+    with probab=True returns score as a probability [0,1] for this class
+    without it, returns result of older svm
+    """
     if probab:
       return self.get_probab(img)[0][1]
     return self.get_predict(img)[0,0]
