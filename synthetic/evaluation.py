@@ -529,7 +529,7 @@ class Evaluation:
     if not clses.shape()[0]>0:
       return 0
     if 'img_ind' in clses.cols:
-      img_inds = clses.subset_arr('img_ind').flatten().tolist()[0]
+      img_inds = clses.subset_arr('img_ind').flatten().tolist()
       assert(len(img_inds)==len(np.unique(np.array(img_inds))))
       gt = gt.row_subset(img_inds)
     aps = []
@@ -571,13 +571,4 @@ class Evaluation:
     # find piecewise area under the curve
     i = np.add(np.nonzero(mrec[1:] != mrec[0:-1]),1)
     ap = np.sum((mrec[i]-mrec[np.subtract(i,1)])*mprec[i])
-    return ap
-
-
-if __name__=='__main__':
-  csc_table = cPickle.load(open(os.path.join(config.test_support_dir, 'csc_table'), 'r'))
-  table_gt = cPickle.load(open(os.path.join(config.test_support_dir, 'table_gt'), 'r'))
-    
-  res = Evaluation.compute_cls_map(csc_table, table_gt)
-  print res
-  
+    return ap  
