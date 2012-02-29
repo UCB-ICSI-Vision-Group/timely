@@ -516,7 +516,8 @@ class Evaluation:
     ap = self.compute_ap(rec,prec)
     return (ap,rec,prec,hard_neg)
 
-  def compute_cls_map(self,clses,gt):
+  @classmethod
+  def compute_cls_map(cls,clses,gt):
     """
     Compute classification mean AP.
     Take Table of classifications and Table of ground truth.
@@ -534,11 +535,12 @@ class Evaluation:
     for col in clses.cols:
       if col=='img_ind' or col=='time':
         continue
-      ap,rec,prec=self.compute_cls_pr(clses.subset_arr(col),gt.subset_arr(col))
+      ap,rec,prec=cls.compute_cls_pr(clses.subset_arr(col),gt.subset_arr(col))
       aps.append(ap)
     return np.mean(aps)
 
-  def compute_cls_pr(self,confidences,gt):
+  @classmethod
+  def compute_cls_pr(cls,confidences,gt):
     """
     Take vector of classification confidences and vector of ground truth.
     Return ap,recall,and precision vectors as tuple.
@@ -551,10 +553,11 @@ class Evaluation:
     npos = np.sum(gt==True)
     rec=1.*tp/(npos+0.000000001) # to avoid dividing by 0
     prec=1.*tp/(fp+tp)
-    ap = self.compute_ap(rec,prec)
+    ap = cls.compute_ap(rec,prec)
     return (ap,rec,prec)
 
-  def compute_ap(self,rec,prec):
+  @classmethod
+  def compute_ap(cls,rec,prec):
     """
     Takes recall and precision vectors and computes piecewise area under the
     curve.

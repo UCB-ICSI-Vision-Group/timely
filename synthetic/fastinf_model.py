@@ -14,12 +14,14 @@ class FastinfModel(InferenceModel):
     self.fd = FastinfDiscretizer(self.dataset, self.suffix)
     self.res_fname = config.get_fastinf_res_file(dataset,suffix,m,r2)
 
+    # TODO: principled way of setting amount of smoothing
     # amount of smoothing is correlated with fastinf slowness, values [0,1)
     self.smoothing = 0
     self.cache_fname = config.get_fastinf_cache_file(dataset,suffix,m,r2,self.smoothing)
 
     if opexists(self.cache_fname):
       with open(self.cache_fname) as f:
+        print("Loading fastinf cache from file")
         self.cache = cPickle.load(f)
     else:
       self.cache = {}
@@ -34,6 +36,7 @@ class FastinfModel(InferenceModel):
 
   def save_cache(self):
     "Write cache out to file with cPickle."
+    print("Writing cache out to file with cPickle")
     with open(self.cache_fname,'w') as f:
       cPickle.dump(self.cache,f)
 
