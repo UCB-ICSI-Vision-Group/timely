@@ -103,13 +103,12 @@ def cross_valid_training(cc, Cs, gammas, numfolds=4, train=True):
   if train:
     train_all_svms(cc, Cs, gammas, numfolds=numfolds)
   
-  all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
+  all_settings = list(itertools.product(Cs, gammas))
 
-  for set_idx in range(comm_rank, len(Cs)*len(gammas), comm_size): # Parallel
+  for set_idx in range(comm_rank, len(all_settings), comm_size): # Parallel
     curr_set = all_settings[set_idx]
     C = curr_set[0]
     gamma = curr_set[1]
-    cls = curr_set[2]
     class_corr = 0
     overall = 0
         
@@ -123,7 +122,7 @@ def cross_valid_training(cc, Cs, gammas, numfolds=4, train=True):
       print 'correct:', class_corr
       #break
     accuracy = float(class_corr)/float(overall)
-    filename = config.get_classifier_crossval(cls)
+    filename = config.get_classifier_crossval()
     writef = open(filename, 'a')
     writef.write('%f %f - %f\n'%(C, gamma, accuracy))
     cc.d.create_folds(numfolds)
