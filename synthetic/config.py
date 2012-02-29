@@ -122,31 +122,30 @@ def get_windows_params_grid(dataset_name):
 def get_window_params_json(dataset_name):
   return join(get_sliding_windows_params_dir(dataset_name), '%s.txt')
 
-# ./results/evaluations
+# ./results/evals
 evals_dir = makedirs(join(res_dir, 'evals'))
 
-# ./results/evaluations/{dataset_name}
+# ./{evals_dir}/{dataset_name}
 def get_evals_dir(dataset_name):
   return makedirs(join(evals_dir,dataset_name))
 
-# ./results/evaluations/{dataset_name}/{dp_config_name}
 def get_evals_dp_dir(dataset_policy):
   dirname = get_evals_dir(dataset_policy.dataset.get_name())
   return makedirs(join(dirname, dataset_policy.get_config_name()))
 
-# ./results/evaluations/{dataset_name}/{dp_config_name}/cached_dets.npy
+# ./{evals_dir}/{dataset_name}/{dp_config_name}/cached_dets.npy
 def get_dp_dets_filename(dataset_policy):
   return join(get_evals_dp_dir(dataset_policy), 'cached_dets.npy')
 
-# ./results/evaluations/{dataset_name}/{dp_config_name}/cached_clses.npy
+# ./{evals_dir}/{dataset_name}/{dp_config_name}/cached_clses.npy
 def get_dp_clses_filename(dataset_policy):
   return join(get_evals_dp_dir(dataset_policy), 'cached_clses.npy')
 
-# ./results/evaluations/{dataset_name}/{dp_config_name}/cached_samples.npy
+# ./{evals_dir}/{dataset_name}/{dp_config_name}/cached_samples.npy
 def get_dp_samples_filename(dataset_policy):
   return join(get_evals_dp_dir(dataset_policy), 'cached_samples.pickle')
 
-# results/evaluations/{dataset_name}/{dp_config_name}/weights/
+# {evals_dir}/{dataset_name}/{dp_config_name}/weights/
 def get_dp_weights_dirname(dataset_policy):
   dirname = get_evals_dp_dir(dataset_policy)
   return makedirs(join(dirname,'weights'))

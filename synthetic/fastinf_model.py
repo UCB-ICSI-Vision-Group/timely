@@ -49,8 +49,13 @@ class FastinfModel(InferenceModel):
     marginals = self.get_marginals(evidence)
     print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
 
-  def reinit_marginals(self):
-    "Sends totally uninformative evidence to get back to the priors."
+  def reset(self):
+    """
+    Get back to the initial state, erasing the effects of any evidence
+    that has been applied.
+    Sends totally uninformative evidence to get back to the priors.
+    Is actually instantaneous due to caching.
+    """
     observations = taken = np.zeros(self.num_actions)
     self.update_with_observations(taken,observations)
 

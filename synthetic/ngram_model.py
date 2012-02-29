@@ -11,19 +11,35 @@ class InferenceModel(object):
   def update_with_observations(self,taken,observations):
     "Update all the probabilities with the given observations."
 
+  @abstractmethod
+  def reset(self):
+    """
+    Get back to the initial state, erasing the effects of any evidence
+    that has been applied.
+    """
+
 class FixedOrderModel(InferenceModel):
-  "Model does not update anything, and p_c is determined by the counts."
+  "Model updates p_c with observations, but does not propagate that info."
 
   def __init__(self,dataset):
     self.data = dataset.get_cls_ground_truth().arr
-    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0]
+    self.reset()
 
   def update_with_observations(self, taken, observations):
-    "Simply set p_c to the observations."
+    "Simply set relevant values of p_c to the observations."
     inds = np.flatnonzero(taken)
     self.p_c[inds] = observations[inds]
 
+  def reset(self):
+    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0]
+
 class NGramModel(InferenceModel):
+  """
+  Model updates p_c with observations, and propagates that info with an
+  empirical count model.
+  Several modes are supported, depending on the smoothing method.
+  """
+
   accepted_modes = ['no_smooth','smooth','backoff']
 
   def __init__(self,dataset,mode='no_smooth'):
@@ -31,10 +47,13 @@ class NGramModel(InferenceModel):
     assert(mode in self.accepted_modes)
     self.mode = mode
     self.cls_inds = range(self.data.shape[1])
-    # initialize p_c to the prior probabilities
-    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0]
+    self.reset()
     print("NGramModel initialized with %s mode"%self.mode)
     self.cache = {}
+
+  def reset(self):
+    "Reset p_c to prior probabilities."
+    self.p_c = 1.*np.sum(self.data,0)/self.data.shape[0]
 
   def shape(self): return self.data.shape
 
