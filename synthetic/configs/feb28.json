@@ -1,0 +1,7 @@
+{
+  "suffix": "feb28",
+  "detector": "ext",
+  "dets_suffixes": ["csc_default"],
+  "policy_mode": ["random","oracle","fixed_order","no_smooth","fastinf_manual"],
+  "gist": 0
+}

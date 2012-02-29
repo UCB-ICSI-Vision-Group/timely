@@ -16,7 +16,6 @@ def plausible_assignments(assignments):
 class FastinfDiscretizer(object):
   def __init__(self,d,suffix):
     # For a given setting return bounds as num_bins x num_cols
-    self.d = d
     self.bounds = np.loadtxt(config.get_mrf_bound_filename(d, suffix))
 
   def discretize_value(self, val, clf_idx):
@@ -24,7 +23,7 @@ class FastinfDiscretizer(object):
     For d, suffix discretize val for all 20 classes. 
     Returns discretized value for clf_idx
     """
-    discr_val = determine_bin(np.tile(val, (1,len(self.bounds.shape[1])))[0,:], self.bounds, self.bounds.shape[0]-1, asInt=True)
+    discr_val = determine_bin(np.tile(val, (1,self.bounds.shape[1]))[0,:], self.bounds, self.bounds.shape[0]-1, asInt=True)
     return discr_val.astype(int)[clf_idx]
   
 def determine_bin(col, bounds, num_bins, asInt=True):

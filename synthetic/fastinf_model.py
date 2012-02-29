@@ -8,19 +8,23 @@ from synthetic.ngram_model import InferenceModel
 from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,suffix,num_actions,m='0',r2=''):
+  def __init__(self,dataset,suffix,num_actions,m='2',r2='0.5'):
     self.dataset = dataset
     self.suffix = suffix
     self.fd = FastinfDiscretizer(self.dataset, self.suffix)
-    self.num_actions = num_actions
     self.res_fname = config.get_fastinf_res_file(dataset,suffix,m,r2)
-    self.cache_fname = config.get_fastinf_cache_file(dataset,suffix)
+
+    # amount of smoothing is correlated with fastinf slowness, values [0,1)
+    self.smoothing = 0
+    self.cache_fname = config.get_fastinf_cache_file(dataset,suffix,m,r2,self.smoothing)
+
     if opexists(self.cache_fname):
       with open(self.cache_fname) as f:
         self.cache = cPickle.load(f)
     else:
       self.cache = {}
-    self.cmd = config.fastinf_bin+" -i %s -m 0 -Is 0"%self.res_fname
+    self.cmd = config.fastinf_bin+" -i %s -m 0 -Is %f"%(self.res_fname, self.smoothing)
+    self.num_actions = num_actions
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
     print "FastinfModel: Process started"
@@ -37,7 +41,7 @@ class FastinfModel(InferenceModel):
     self.tt.tic()
     evidence = self.dataset.num_classes()*['?']
     for i in np.flatnonzero(taken):
-      evidence[i] = str(self.fd.discretize_value(observations[i]))
+      evidence[i] = str(self.fd.discretize_value(observations[i],i))
     evidence = "(%s %s )"%(self.dataset.num_classes()*' ?', ' '.join(evidence))
     marginals = self.get_marginals(evidence)
     print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
