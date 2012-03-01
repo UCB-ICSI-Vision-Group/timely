@@ -14,6 +14,7 @@ from synthetic.ext_detector import ExternalDetector
 from synthetic.bounding_box import BoundingBox
 from synthetic.belief_state import BeliefState
 from synthetic.fastinf_model import FastinfModel
+import matplotlib.pyplot as plt
 
 class ImageAction:
   def __init__(self, name, obj):
@@ -27,13 +28,11 @@ class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
     'suffix': 'feb27', # use this to re-run on same params after changing code
-    'detector': 'perfect', # perfect,perfect_with_noise,ext
+    'detectors': ['perfect'], # perfect,perfect_with_noise,dpm,csc_default,csc_half
     'policy_mode': 'random',
       # policy mode can be one of random, oracle, fixed_order, no_smooth,
       # backoff, fastinf_manual, fastinf_greedy, fastinf_rl
-    'dets_suffixes': ['dpm'], # further specifies which detectors to use (use 'dpm' so tests pass)
     'bounds': None, # start and deadline times for the policy
-    'gist': 0, # include the GIST actions? 0/1
   }
 
   def get_name(self):
@@ -44,12 +43,10 @@ class DatasetPolicy:
     middle = ""
     if self.bounds:
       middle += '-'.join((str(x) for x in self.bounds))
-    if self.gist:
-      middle += "with_gist"
-    dets_suffixes = '-'.join(self.dets_suffixes)
+    detectors = '-'.join(self.detectors)
     name = '_'.join(
         (self.policy_mode,
-        dets_suffixes,
+        detectors,
         middle,
         self.suffix))
     return name
@@ -76,36 +73,41 @@ class DatasetPolicy:
 
     # Construct the actions list
     self.actions = []
-    
-    # GIST, if it is to be added, is the first action
-    # TODO: sort this stuff out
-    if self.gist:
-      gist_obj = GistClassifier(self.dataset.name)
-      self.actions.append(ImageAction('gist', gist_obj))
 
-    # synthetic perfect detector
-    if self.detector=='perfect':
-      for cls in self.dataset.classes:
-        det = PerfectDetector(self.dataset, cls)
-        self.actions.append(ImageAction('perfect_%s'%cls,det))
-    # synthetic perfect detector with noise in the detections
-    elif self.detector=='perfect_with_noise':
-      for cls in self.dataset.classes:
-        sw = SlidingWindows(self.train_dataset,self.dataset)
-        det = PerfectDetectorWithNoise(self.dataset, cls, sw)
-        self.actions.append(ImageAction('perfect_noise_%s'%cls,det))
-    # real detectors, with pre-cached detections
-    elif self.detector=='ext':
-      # load the dets from cache file and parcel out to classes
-      for suffix in self.dets_suffixes:
-        all_dets = self.load_ext_detections(self.dataset, suffix)
+    # Create actions for all the detectors we have
+    for detector in self.detectors:
+      # synthetic perfect detector
+      if detector=='perfect':
+        for cls in self.dataset.classes:
+          det = PerfectDetector(self.dataset, cls)
+          self.actions.append(ImageAction('perfect_%s'%cls,det))
+
+      # synthetic perfect detector with noise in the detections
+      elif detector=='perfect_with_noise':
+        for cls in self.dataset.classes:
+          sw = SlidingWindows(self.train_dataset,self.dataset)
+          det = PerfectDetectorWithNoise(self.dataset, cls, sw)
+          self.actions.append(ImageAction('perfect_noise_%s'%cls,det))
+
+      # GIST classifier
+      elif detector=='gist':
+        # TODO: this should be per-class
+        gist_obj = GistClassifier(self.dataset.name)
+        self.actions.append(ImageAction('gist', gist_obj))
+
+      # real detectors, with pre-cached detections
+      elif detector in ['dpm','csc_default','csc_half']:
+        # load the dets from cache file and parcel out to classes
+        all_dets = self.load_ext_detections(self.dataset, detector)
         for cls in self.dataset.classes:
           cls_ind = self.dataset.get_ind(cls)
           all_dets_for_cls = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
           det = ExternalDetector(self.dataset, cls, all_dets_for_cls, suffix)
           self.actions.append(ImageAction('%s_%s'%(suffix,cls), det))
-    else:
-      raise RuntimeError("Unknown mode for detectors")
+
+      # unknown
+      else:
+        raise RuntimeError("Unknown mode in detectors: %s"%self.detectors)
 
     # fixed_order, random, oracle policy modes get fixed_order inference mode
     self.inference_mode = 'fixed_order'
@@ -114,24 +116,35 @@ class DatasetPolicy:
     if self.policy_mode in ['no_smooth','backoff']:
       self.inference_mode = self.policy_mode
 
-    # TODO: hack
-    self.fastinf_suffix='CSC'
+    # determine fastinf suffix
+    self.fastinf_suffix='this_is_empty'
+    if self.inference_mode=='fastinf':
+      if self.detectors == ['csc_default']:
+        self.fastinf_suffix='CSC'
+      elif self.detectors == ['perfect']:
+        self.fastinf_suffix='perfect'
+      elif self.detectors == ['gist']:
+        self.fastinf_suffix='GIST'
+      elif self.detectors == ['gist','csc']:
+        self.fastinf_suffix='GIST_CSC'
+      else:
+        raise RuntimeError("""
+          We don't have Fastinf models for the detector combination you
+          are running with: %s"""%self.detectors)
+
+    # make the initial belief state to get its model and be able to know the feature dimension
     b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,fastinf_suffix=self.fastinf_suffix)
     self.inf_model = b.model
     
     # TODO: figure this stuff out
     if self.policy_mode in ['no_smooth','backoff','fastinf_manual']:
       self.weights = np.zeros((len(self.actions),len(b.featurize())))
-      # The gist action is first, so offset the weights
-      if self.gist:
-        np.fill_diagonal(self.weights[1:,:],1)
+      if 'naive_ap|present' in self.actions[0].obj.config:
+        naive_aps = [action.obj.config['naive_ap|present'] for action in self.actions]
       else:
-        if 'naive_ap|present' in self.actions[0].obj.config:
-          naive_aps = [action.obj.config['naive_ap|present'] for action in self.actions]
-        else:
-          # TODO: this isn't right, but just to get the test to pass with perfectdetector
-          naive_aps = [1 for action in self.actions]
-        np.fill_diagonal(self.weights,naive_aps)
+        # TODO: this isn't right, but just to get the test to pass with perfectdetector
+        naive_aps = [1 for action in self.actions]
+      np.fill_diagonal(self.weights,naive_aps)
       self.write_out_weights()
     elif self.policy_mode == 'fastinf_greedy':
       # TODO
@@ -283,8 +296,8 @@ class DatasetPolicy:
             det_configs[self.actions[ind].name]['naive_ap|absent'] = means[0]
             det_configs[self.actions[ind].name]['actual_ap|absent'] = means[1]
       # NOTE: probably only makes sense when running with one detector
-      det_suffix = '-'.join(self.dets_suffixes)
-      filename = os.path.join(config.dets_configs_dir,det_suffix+'.txt')
+      detectors_suffix = '-'.join(self.detectors)
+      filename = os.path.join(config.dets_configs_dir,detectors_suffix+'.txt')
       json.dumps(det_configs)
       with open(filename,'w') as f:
         json.dump(det_configs,f)
@@ -410,12 +423,13 @@ class DatasetPolicy:
     # in case of 'oracle' mode, re-sort the detections and times in order of AP
     # contributions
     times = [s['dt'] for s in samples]
+    all_clses = np.array(all_clses)
     if self.policy_mode=='oracle':
       naive_aps = np.array([s['det_naive_ap'] for s in samples])
       sorted_inds = np.argsort(-naive_aps)
       all_detections = np.take(all_detections, sorted_inds)
       times = np.take(times, sorted_inds)
-      all_clses = np.array(all_clses)[sorted_inds]
+      all_clses = all_clses[sorted_inds]
       time_ind = self.get_cls_cols().index('time')
       all_clses[:,time_ind] = times
 
@@ -443,7 +457,19 @@ class DatasetPolicy:
     else:
       all_detections = np.array([])
 
-    print("DatasetPolicy on image took %.3f s"%tt.qtoc())
+    print("DatasetPolicy on image with ind %d took %.3f s"%(img_ind,tt.qtoc()))
+
+    if False:
+      print("Action sequence was: %s"%[s['action_ind'] for s in samples])
+      print("Classification results were:")
+      print all_clses
+      print("And ground truth for the image is:")
+      print image.get_cls_ground_truth()
+      print("here's an image:")
+      X = np.vstack((all_clses[:,:-2],image.get_cls_ground_truth()))
+      plt.pcolor(np.flipud(X))
+      plt.show()
+
     return (all_detections,all_clses,samples)
 
   ###############
