@@ -3,9 +3,7 @@ from common_mpi import *
 import synthetic.config as config
 
 class InferenceModel(object):
-  def get_probabilities(self):
-    "Return the posterior probabilities over C."
-    return self.p_c
+  "Must have p_c field that is accessible."
 
   @abstractmethod 
   def update_with_observations(self,taken,observations):

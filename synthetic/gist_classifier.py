@@ -140,7 +140,7 @@ class GistClassifier(Classifier):
         data[ind] = images[idx].get_cls_counts()
         ind += 1        
       model = NGramModel(data)
-      priors = model.get_probabilities()
+      priors = model.p_c
       error = 0
       indices = np.arange(len(images))[val]
        

@@ -54,7 +54,7 @@ class BeliefState(object):
       self.get_p_c(), zip(self.taken,self.observations))
 
   def get_p_c(self):
-    return self.model.get_probabilities()
+    return self.model.p_c
 
   def reset_actions(self):
     "Zero the 'taken' info of the actions and the observations."

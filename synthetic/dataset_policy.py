@@ -134,6 +134,8 @@ class DatasetPolicy:
 
     # make the initial belief state to get its model and be able to know the feature dimension
     b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,fastinf_suffix=self.fastinf_suffix)
+    # store reference to the inference model because we will be initializing
+    # per-episode belief states with it, to keep it alive
     self.inf_model = b.model
     
     # TODO: figure this stuff out
@@ -161,7 +163,7 @@ class DatasetPolicy:
     If sample_size != -1, does not check for cached files, as the objective
     is to collect samples, not the actual dets and clses.
     Otherwise, check for cached files first, unless force is True.
-    Only returns results if comm_rank==0
+    Return dets,clses,samples.
     """
     dets_table = None
     clses_table = None
@@ -196,6 +198,7 @@ class DatasetPolicy:
     all_clses = []
     all_samples = []
     for i in range(comm_rank,len(images),comm_size):
+      # ONLY IMPORTANT LINE BELOW
       dets,clses,samples = self.run_on_image(images[i])
       all_dets.append(dets)
       all_clses.append(clses)
@@ -348,20 +351,19 @@ class DatasetPolicy:
     prev_ap = 0
    
     img_ind = self.dataset.get_img_ind(image) if image else -1
-    if self.inf_model:
-      b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,self.inf_model,self.fastinf_suffix)
-    else:
-      b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,fastinf_suffix=self.fastinf_suffix)
+    # Initialize belief state with the inference model that we already have from __init__
+    b = BeliefState(self.train_dataset,self.actions,self.inference_mode,self.bounds,self.inf_model,self.fastinf_suffix)
     self.update_actions(b)
     action_ind = self.select_action(b)
     while True:
+      # Populate the sample with stuff we know
       sample = {}
       sample['img_ind'] = img_ind
       sample['state'] = b.featurize()
       sample['action_ind'] = action_ind
+      
+      # Take the action and get the observations as a dict
       action = self.actions[action_ind]
-      b.taken[action_ind] = 1
-
       obs = action.obj.get_observations(image)
 
       # If observations include detections, compute the relevant
@@ -380,7 +382,7 @@ class DatasetPolicy:
           detections = np.array([])
         dets_table = ut.Table(detections,det.get_cols()+['cls_ind','img_ind'])
 
-        # compute the naive det AP increase
+        # compute the 'naive' det AP increase: adding dets to empty set
         ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)
         sample['det_naive_ap'] = ap
 
@@ -391,28 +393,30 @@ class DatasetPolicy:
         if len(nonempty_dets)>0:
           all_dets_table = ut.Table(np.concatenate(nonempty_dets,0),dets_table.cols)
 
-        # compute the actual AP increase
+        # compute the actual AP increase: addings dets to dets so far
         ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
         ap_diff = ap-prev_ap
         sample['det_actual_ap'] = ap_diff
         prev_ap = ap
 
       # Observations always include the following stuff, which can be used
-      # to update the belief state
-      score = obs['score']
+      # to update the belief state, and mark it as taken
       sample['dt'] = obs['dt']
       b.t += obs['dt']
-      b.update_with_score(action_ind, score)
+      b.taken[action_ind] = 1
+      b.update_with_score(action_ind, obs['score'])
+
+      # b is already updated to the next state; store in sample
+      sample['next_state'] = b.featurize()
+      samples.append(sample)
 
       # The updated belief state posterior over C is our classification result
       clses = b.get_p_c().tolist() + [img_ind,b.t]
       all_clses.append(clses)
 
-      # Update action values and pick the next action; store sample
+      # Update action values and pick the next action
       self.update_actions(b)
       action_ind = self.select_action(b)
-      sample['next_state'] = b.featurize()
-      samples.append(sample)
 
       # check for stopping conditions
       if action_ind < 0:
