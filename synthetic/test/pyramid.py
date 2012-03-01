@@ -69,10 +69,3 @@ def test_extract_horiz_slices():
   corr_stack = np.matrix([[.7, .3, 0, 0], [.4, 0, .6, 0], [.7, 0, 0, .3]])
   slice_stack = np.vstack(slices)
   np.testing.assert_array_equal(corr_stack, slice_stack)
-  
-  
-if __name__=='__main__':  
-#  test_get_indices()
-#  test_get_indices_empty_result()
-#  test_compare_to_original_pyramid()
-  test_extract_horiz_slices()

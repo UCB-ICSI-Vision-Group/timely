@@ -22,17 +22,7 @@ class TestFastInf:
     bounds_gt = np.array([0,4,6,7,9,13])
     comp = np.absolute(bounds-bounds_gt).astype(int)
     np.testing.assert_equal(comp, np.zeros(comp.shape))  
-       
-        
-  def test_determine_bin(self):
-    values = np.array([0, 0.05,0.073,0.0234,0.1,0.13423,0.123534,0.1253,0.212,0.2252,0.43,0.3]).astype(float)
-    bounds = np.array([0,0.1,0.2,0.3,np.max(values)])
-      
-    bins = determine_bin(values, bounds, 4)
-    bins_gt = np.array([0,0,0,0,1,1,1,1,2,2,3,3])
-    
-    np.testing.assert_equal(bins, bins_gt)
-    
+          
   def test_discretize_value_perfect(self):
     val = 0.3
     d = Dataset('full_pascal_trainval')
@@ -44,12 +34,14 @@ class TestFastInf:
     val = 1
     discr = fastdiscr.discretize_value(val, clf_idx=0)
     assert(discr == 1)
+    
+  def test_discretize_value_gist_csc(self):
+    None
 
     
                           
 if __name__=='__main__':
-  tester = TestFastInf()
-  
-  tester.test_discretize_value_perfect()
+  tester = TestFastInf()  
+  tester.test_discretize_value_gist_csc()
                           
   

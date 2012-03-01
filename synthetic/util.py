@@ -332,25 +332,56 @@ def cartesian(arrays, out=None):
   
 
 from collections import Counter
+def determine_bin(data, bounds, asInt=True):
+  """ 
+  For data and given bounds, determine in which bin each point falls.
+  asInt=True: return number of bin each val falls in
+  asInt=False: return representative value for each val (center between bounds)
+  """
+  num_bins = bounds.shape[0]-1
+  ret_tab = np.zeros((data.shape[0],1))
+  col_bin = np.zeros((data.shape[0],1))
+  bin_values = np.zeros(bounds.shape)
+  last_val = 0.
+  
+  for bidx, b in enumerate(bounds):
+    bin_values[bidx] = (last_val + b)/2.
+    if bidx == 0:
+      continue
+    last_val = b
+    col_bin += np.matrix(data < b, dtype=int).T
+  
+  bin_values = bin_values[1:]    
+  col_bin[col_bin == 0] = 1  
+  
+  if asInt:
+    a = num_bins - col_bin
+    ret_tab = a[:,0]     
+  else:    
+    for rowdex in range(data.shape[0]):
+      ret_tab[rowdex, 0] = bin_values[int(col_bin[rowdex]-1)]
+  return ret_tab
+
 def histogram(x, num_bins, normalize=False):
   """
   compute a histogram for x = np.array and num_bins bins
   assumpt: x is already binned up 
   """
+  bounds = np.linspace(np.min(x), np.max(x), num_bins+1)
+  x = determine_bin(x, bounds)
+  return histogram_just_count(x, num_bins, normalize)
+
+def histogram_just_count(x, num_bins, normalize=False):
   if hasattr(x, 'shape'):
     # This is a np object
     if x.ndim > 1:
       x = np.hstack(x)
-      print x
-     
   counts = Counter(x)
-  print counts
   histogram = [counts.get(x,0) for x in range(num_bins)]
   histogram = np.matrix(histogram, dtype = 'float64')
   if normalize:
     histogram = histogram/np.sum(histogram)
   return histogram
-
 
 """From http://vjethava.blogspot.com/2010/11/matlabs-keyboard-command-in-python.html"""
 import code

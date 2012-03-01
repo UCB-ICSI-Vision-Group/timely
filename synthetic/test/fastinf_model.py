@@ -40,6 +40,3 @@ def test():
   np.testing.assert_equal(fm.p_c, prior_correct)
 
   print(fm.cache)
-  
-if __name__=='__main__':
-  test()

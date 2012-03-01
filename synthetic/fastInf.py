@@ -23,40 +23,9 @@ class FastinfDiscretizer(object):
     For d, suffix discretize val for all 20 classes. 
     Returns discretized value for clf_idx
     """
-    discr_val = determine_bin(np.tile(val, (1,self.bounds.shape[1]))[0,:], self.bounds, self.bounds.shape[0]-1, asInt=True)
+    discr_val = ut.determine_bin(np.tile(val, (1,self.bounds.shape[1]))[0,:], self.bounds, asInt=True)
     return discr_val.astype(int)[clf_idx]
   
-def determine_bin(col, bounds, num_bins, asInt=True):
-  """ 
-  Determine in which bin the values fall
-  """
-
-  ret_tab = np.zeros((col.shape[0],1))
-  col_bin = np.zeros((col.shape[0],1))
-  bin_values = np.zeros(bounds.shape)
-  last_val = 0.
-  
-  for bidx, b in enumerate(bounds):
-    bin_values[bidx] = (last_val + b)/2.
-    if bidx == 0:
-      continue
-    last_val = b
-    col_bin += np.matrix(col < b, dtype=int).T
-  
-  bin_values = bin_values[1:]    
-  col_bin[col_bin == 0] = 1  
-  
-  if asInt:
-    a = num_bins - col_bin
-    ret_tab = a[:,0] 
-    if a.any() < 0:
-      ut.keyboard()
-    
-  else:    
-    for rowdex in range(col.shape[0]):
-      ret_tab[rowdex, 0] = bin_values[int(col_bin[rowdex]-1)]
-  return ret_tab
-
 def discretize_table(table, num_bins, asInt=True, linsp=False):
   """
   discretize the given table and also return the bounds for the column 
@@ -78,7 +47,7 @@ def discretize_table(table, num_bins, asInt=True, linsp=False):
       
     all_bounds[:, coldex] = bounds
       
-    new_table[:, coldex] = determine_bin(col, bounds, num_bins, asInt)
+    new_table[:, coldex] = ut.determine_bin(col, bounds, asInt)
   if asInt:    
     return (all_bounds, new_table.astype(int))
   else:
