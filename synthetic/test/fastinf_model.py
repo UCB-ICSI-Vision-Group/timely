@@ -9,33 +9,37 @@ def test():
   dataset = Dataset('full_pascal_trainval')
   fm = FastinfModel(dataset,'perfect',20)
   # NOTE: just took values from a run of the thing
-  prior_correct = [float(x) for x in "0.050273  0.050599  0.070062  0.038771  0.050848  0.040276  0.1553\
-  0.071435  0.11141   0.030083  0.050744  0.087569  0.058135  0.049606\
-  0.40039   0.054032  0.020131  0.073353  0.054743  0.055462".split()]
-  assert(np.all(fm.p_c == prior_correct))
+  prior_correct = [float(x) for x in "0.050543  0.053053  0.073697  0.038331  0.050954  0.041879  0.16149\
+    0.068721  0.10296   0.026837  0.043779  0.087683  0.063447  0.052205\
+    0.41049   0.051664  0.014211  0.068361  0.056969  0.05046".split()]
+  np.testing.assert_equal(fm.p_c, prior_correct)
   observations = np.zeros(20)
   taken = np.zeros(20)
   fm.update_with_observations(taken,observations)
-  assert(np.all(fm.p_c == prior_correct))
+  np.testing.assert_equal(fm.p_c, prior_correct)
   observations[5] = 1
   taken[5] = 1
   fm.update_with_observations(taken,observations)
-  correct = [float(x) for x in  "0.035533   0.090826   0.037577   0.033263   0.01753    0.97085    0.53843\
-    0.028521   0.016417   0.022835   0.0077634  0.034858   0.040242   0.078955\
-    0.45147    0.014064   0.016861   0.015754   0.042481   0.014201".split()]
-  assert(np.all(fm.p_c == correct))
+  print fm.p_c
+  correct = [float(x) for x in  "0.027355   0.11855    0.027593   0.026851   0.012569   0.98999    0.52232\
+    0.017783   0.010806   0.015199   0.0044641  0.02389    0.033602   0.089089\
+    0.50297    0.0083272  0.0088274  0.0098522  0.034259   0.0086298".split()]
+  np.testing.assert_equal(fm.p_c, correct)
   observations[15] = 0
   taken[15] = 1
   fm.update_with_observations(taken,observations)
-  correct = [float(x) for x in "3.56180000e-02   9.13280000e-02   3.75970000e-02   3.33390000e-02\
-   1.72460000e-02   9.71430000e-01   5.42560000e-01   2.82360000e-02\
-   1.55320000e-02   2.28960000e-02   7.32410000e-03   3.47720000e-02\
-   4.04000000e-02   7.95920000e-02   4.52520000e-01   4.49710000e-04\
-   1.68850000e-02   1.50560000e-02   4.26550000e-02   1.38560000e-02".split()]
-  assert(np.all(fm.p_c == correct))
+  correct = [float(x) for x in "2.73590000e-02   1.19030000e-01   2.75500000e-02   2.68760000e-02 \
+   1.23920000e-02   9.90200000e-01   5.25320000e-01   1.76120000e-02 \
+   1.05030000e-02   1.52130000e-02   4.26410000e-03   2.38250000e-02 \
+   3.36870000e-02   8.96450000e-02   5.04300000e-01   8.71880000e-05 \
+   8.82630000e-03   9.55290000e-03   3.43240000e-02   8.44510000e-03".split()]
+  np.testing.assert_equal(fm.p_c, correct)
 
   # reinit_marginals
-  fm.reinit_marginals()
-  assert(np.all(fm.p_c == prior_correct))
+  fm.reset()
+  np.testing.assert_equal(fm.p_c, prior_correct)
 
   print(fm.cache)
+  
+if __name__=='__main__':
+  test()

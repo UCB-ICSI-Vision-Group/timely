@@ -339,7 +339,7 @@ def histogram(x, num_bins, normalize=False):
   """
   if hasattr(x, 'shape'):
     # This is a np object
-    if x.shape[1] > 0:
+    if x.ndim > 1:
       x = np.hstack(x)
       print x
      

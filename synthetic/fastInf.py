@@ -356,9 +356,9 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       
     write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
-    add_settings = ['-m',m]
+    add_sets = ['-m',m]
     if not r2 == '':
-      add_settings += ['-r2', r2]
+      add_sets += ['-r2', r2]
           
     if not second_table == None:
       sec_bound_file = '%s_secbounds'%filename
@@ -408,14 +408,12 @@ def run_all_in_3_parts():
   print '\trs:', rs
      
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
-  
-def write_out_perfect_bounds():
-  None
 
 if __name__=='__main__':
   #run_all_in_3_parts()
   dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
   suffix = 'GIST'
-  print discretize_value(.2242, d, suffix)
+  fastdiscr = FastinfDiscretizer(d, suffix)
+  fastdiscr.discretize_value(.2242, clf_idx=0)
   
