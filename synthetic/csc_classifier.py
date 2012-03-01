@@ -193,45 +193,37 @@ def classify_all_images(d, force_new=False):
   tt = ut.TicToc()
   tt.tic()
   print 'start classifying all images on %d...'%comm_rank
-  
-  for cls in d.classes:
+  table = np.zeros((len(d.images), len(d.classes)))
+  i = 0
+  for cls_idx, cls in enumerate(d.classes):
     csc = CSCClassifier(suffix, cls, d)
-    ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
-    for img_idx in range(comm_rank, len(d.images), comm_size):
-      img = d.images[img_idx]      
-      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
-      if not force_new and os.path.exists(filename):
-        continue
-      print '%s image %s on %d'%(cls, img.name, comm_rank)
-    
-      score = csc.get_score(img_idx, probab=True)        
-      w = open(filename, 'w')
-      w.write('%f'%score)
-      w.close()
+    for img_idx in range(comm_rank, len(d.images), comm_size):    
+      if i == 5:
+        print 'image %d on %d/%d'%(comm_rank, 20*i, 20*len(d.images)/comm_size)  
+        i = 0
+      i += 1  
+      
+      score = csc.get_score(img_idx, probab=True)
+      table[img_idx, cls_idx] = score
+              
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d), 'agent_wise'))
+  filename = os.path.join(dirname,'table_%d'%comm_rank)
+  np.savetxt(filename, table)
             
   print 'Classified all images in %f secs on %d'%(tt.toc(quiet=True), comm_rank)
   
 def compile_table_from_classifications(d):  
   errors = 0
   table = np.zeros((len(d.images), len(d.classes)))
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d), 'agent_wise'))
   
-  for cls_idx in range(comm_rank, len(d.classes), comm_size):
-    cls = d.classes[cls_idx]
-    ut.makedirs(os.path.join(config.get_ext_dets_foldname(d),cls))
-    for img_idx in range(len(d.images)):
-      img = d.images[img_idx] 
-      print '%s image %s on %d'%(cls, img.name, comm_rank)
-      filename = os.path.join(config.get_ext_dets_foldname(d),cls, img.name[:-4])
-      try:
-        w = open(filename, 'r')
-        score = float(w.read())
-        w.close()         
-      except:
-        print '\terror on %s'%img.name
-        score = 0
-        errors += 1
-      table[img_idx, cls_idx] = score
-  table = comm.reduce(table)
+  for i in range(comm_size):
+    filename = os.path.join(dirname,'table_%d'%i)
+    table += np.loadtxt(filename)
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
+  filename = os.path.join(dirname,'table')
+  np.savetxt(filename, table)
+    
   print 'errors: %d'%errors
   return table
 
@@ -256,7 +248,7 @@ def retrain_best_svms():
   csc_classifier_train(get_best_parameters(), 'default', probab=False, test=False)
   
 if __name__=='__main__':
-  d = Dataset('full_pascal_trainval')
+  d = Dataset('full_pascal_test')
   #retrain_best_svms()
-  create_csc_stuff(d, classify_images=False, force_new=True)
+  create_csc_stuff(d, classify_images=True, force_new=False)
                     

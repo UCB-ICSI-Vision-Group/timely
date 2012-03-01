@@ -96,6 +96,7 @@ class DatasetPolicy:
         self.actions.append(ImageAction('gist', gist_obj))
 
       # real detectors, with pre-cached detections
+        
       elif detector in ['dpm','csc_default','csc_half']:
         # load the dets from cache file and parcel out to classes
         all_dets = self.load_ext_detections(self.dataset, detector)
@@ -628,3 +629,28 @@ class DatasetPolicy:
     print("On image %s, took %.3f s"%(image.name, time_elapsed))
     return dets_mc
 
+if __name__=='__main__':
+  train_d = Dataset('full_pascal_trainval')
+  eval_d = Dataset('full_pascal_test')
+  dp = DatasetPolicy(eval_d, train_d, detectors=['csc_default'])
+  test_table = np.zeros((len(eval_d.images), len(dp.actions)))
+  
+  for img_idx in range(comm_rank, len(eval_d.images), comm_size):
+    img = eval_d.images[img_idx]
+    for act_idx, act in enumerate(dp.actions):    
+      score = act.obj.get_observations(img)['score']
+      test_table[img_idx, act_idx] = score
+  
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp','agent_wise'))
+  filename = os.path.join(dirname,'table_%d'%comm_rank)
+  np.savetxt(filename, test_table) 
+
+  safebarrier(comm)
+  
+  if comm_rank == 0:
+    for i in range(comm_size-1):
+      filename = os.path.join(dirname,'table_%d'%(i+1))
+      test_table += np.loadtxt(filename)
+    dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp'))
+    filename = os.path.join(dirname,'table')
+    np.savetxt(filename, test_table)
