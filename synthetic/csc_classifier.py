@@ -251,9 +251,12 @@ def create_csc_stuff(d, classify_images=True, force_new=False):
     if comm_rank == 0:      
       print 'save table as %s'%filename
       cPickle.dump(table, open(filename, 'w'))
+      
+def retrain_best_scms():
+  csc_classifier_train(get_best_parameters(), 'default_false', probab=False, test=False)
   
 if __name__=='__main__':
   d = Dataset('full_pascal_train')
-  
-  create_csc_stuff(d, classify_images=True, force_new=False)
+  retrain_best_scms()
+  #create_csc_stuff(d, classify_images=True, force_new=False)
                     

@@ -364,6 +364,9 @@ class DatasetPolicy:
       
       # Take the action and get the observations as a dict
       action = self.actions[action_ind]
+      print 'ind', action_ind
+      print 'act', action      
+      print 'obj', action.obj
       obs = action.obj.get_observations(image)
 
       # If observations include detections, compute the relevant
