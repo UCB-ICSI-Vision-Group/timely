@@ -34,7 +34,7 @@ class CSCClassifier(Classifier):
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
     """
-    if dets == None:
+    if not dets:
       vector = self.get_vector(img)
     else:
       vector = self.create_vector_from_dets(dets,img)
