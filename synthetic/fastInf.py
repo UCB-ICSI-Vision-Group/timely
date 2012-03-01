@@ -378,10 +378,17 @@ def run_all_in_3_parts():
      
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
 
-if __name__=='__main__':
-  d = Dataset('full_pascal_trainval')
-  create_csc_stuff(d, classify_images=True, force_new=False)
+def run_fastinf_for_dataset(dataset):
   
+  suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
+  ms = ['0', '2', '5']
+  rs = ['', '0.5', '1']
+  
+  run_fastinf_different_settings(dataset, ms, rs, suffixs)
+
+if __name__=='__main__':
+ 
+  run_fastinf_for_dataset('full_pascal_trainval')
   #run_all_in_3_parts()
   
 #  dataset = 'full_pascal_trainval'

@@ -259,5 +259,5 @@ def retrain_best_svms():
 if __name__=='__main__':
   d = Dataset('full_pascal_trainval')
   #retrain_best_svms()
-  create_csc_stuff(d, classify_images=True, force_new=True)
+  create_csc_stuff(d, classify_images=False, force_new=True)
                     
