@@ -23,40 +23,9 @@ class FastinfDiscretizer(object):
     For d, suffix discretize val for all 20 classes. 
     Returns discretized value for clf_idx
     """
-    discr_val = determine_bin(np.tile(val, (1,self.bounds.shape[1]))[0,:], self.bounds, self.bounds.shape[0]-1, asInt=True)
+    discr_val = ut.determine_bin(np.tile(val, (1,self.bounds.shape[1]))[0,:], self.bounds, asInt=True)
     return discr_val.astype(int)[clf_idx]
   
-def determine_bin(col, bounds, num_bins, asInt=True):
-  """ 
-  Determine in which bin the values fall
-  """
-
-  ret_tab = np.zeros((col.shape[0],1))
-  col_bin = np.zeros((col.shape[0],1))
-  bin_values = np.zeros(bounds.shape)
-  last_val = 0.
-  
-  for bidx, b in enumerate(bounds):
-    bin_values[bidx] = (last_val + b)/2.
-    if bidx == 0:
-      continue
-    last_val = b
-    col_bin += np.matrix(col < b, dtype=int).T
-  
-  bin_values = bin_values[1:]    
-  col_bin[col_bin == 0] = 1  
-  
-  if asInt:
-    a = num_bins - col_bin
-    ret_tab = a[:,0] 
-    if a.any() < 0:
-      ut.keyboard()
-    
-  else:    
-    for rowdex in range(col.shape[0]):
-      ret_tab[rowdex, 0] = bin_values[int(col_bin[rowdex]-1)]
-  return ret_tab
-
 def discretize_table(table, num_bins, asInt=True, linsp=False):
   """
   discretize the given table and also return the bounds for the column 
@@ -78,7 +47,7 @@ def discretize_table(table, num_bins, asInt=True, linsp=False):
       
     all_bounds[:, coldex] = bounds
       
-    new_table[:, coldex] = determine_bin(col, bounds, num_bins, asInt)
+    new_table[:, coldex] = ut.determine_bin(col, bounds, asInt)
   if asInt:    
     return (all_bounds, new_table.astype(int))
   else:
@@ -356,9 +325,9 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       
     write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
-    add_settings = ['-m',m]
+    add_sets = ['-m',m]
     if not r2 == '':
-      add_settings += ['-r2', r2]
+      add_sets += ['-r2', r2]
           
     if not second_table == None:
       sec_bound_file = '%s_secbounds'%filename
@@ -408,14 +377,12 @@ def run_all_in_3_parts():
   print '\trs:', rs
      
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
-  
-def write_out_perfect_bounds():
-  None
 
 if __name__=='__main__':
   #run_all_in_3_parts()
   dataset = 'full_pascal_trainval'
   d = Dataset(dataset)
   suffix = 'GIST'
-  print discretize_value(.2242, d, suffix)
+  fastdiscr = FastinfDiscretizer(d, suffix)
+  fastdiscr.discretize_value(.2242, clf_idx=0)
   
