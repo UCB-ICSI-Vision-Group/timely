@@ -223,16 +223,16 @@ def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0, force_new=False):
   
   print 'training all classifier SVMs took:', cc.tictocer.toc('overall', quiet=True), 'seconds on', comm_rank
   
-def classify_image(cc, img, C=1.0, gamma=0.0, cls=None):
+def classify_image(cc, img_idx, C=1.0, gamma=0.0, cls=None):
   """
-  Input: ClassifierConfig, img
+  Input: ClassifierConfig, img_idx
   Output: Score for given class; 20list of scores if cls=None
   """
-  feat_vect = get_feature_vector(cc, img)
+  feat_vect = get_feature_vector(cc, img_idx)
   if cls == None:
     score = {}
     for cls_idx, cls in enumerate(cc.d.classes):
-      print '\tclassify %s for %s on %d'%(cc.d.images[img].name, cls, comm_rank)
+      print '\tclassify %s for %s on %d'%(cc.d.images[img_idx].name, cls, comm_rank)
       path = config.get_classifier_svm_name(cls, C, gamma)
       if os.path.exists(path):
         clf = load_svm(path)

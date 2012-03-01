@@ -7,6 +7,7 @@ from synthetic.dataset import Dataset
 from synthetic.training import svm_predict, svm_proba
 #import synthetic.config as config
 from synthetic.config import get_ext_dets_filename
+from synthetic.image import Image
 #from synthetic.dpm_classifier import create_vector
 
 
@@ -24,8 +25,8 @@ class CSCClassifier(Classifier):
     self.lower = settings[setting_table.cols.index('lower')]
     self.upper = settings[setting_table.cols.index('upper')]
     
-  def classify_image(self, img, dets=None):
-    result = self.get_score(img, dets=dets)    
+  def classify_image(self, img_idx, dets=None):
+    result = self.get_score(img_idx, dets=dets)    
     return result
   
   def get_score(self, img, dets=None, probab=True):
@@ -33,7 +34,7 @@ class CSCClassifier(Classifier):
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
     """
-    if not dets:
+    if dets == None:
       vector = self.get_vector(img)
     else:
       vector = self.create_vector_from_dets(dets,img)
@@ -65,7 +66,10 @@ class CSCClassifier(Classifier):
     return vector
      
   def get_vector(self, img):
-    image = self.dataset.images[img]
+    if not isinstance(img, Image):
+      image = self.dataset.images[img]
+    else:
+      image = img
     filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
     if os.path.exists(filename):
       return np.load(filename)[()]
@@ -77,8 +81,7 @@ class CSCClassifier(Classifier):
   def create_vector(self, img):
     filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
     csc_test = np.load(filename)
-
-    feats = csc_test
+    feats = csc_test[()]
     return self.create_vector_from_dets(feats, img)    
   
   def get_all_vectors(self):
