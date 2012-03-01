@@ -26,7 +26,7 @@ class CSCClassifier(Classifier):
     self.upper = settings[setting_table.cols.index('upper')]
     
   def classify_image(self, img, dets=None):
-    result = self.get_score(img, dets=dets)    
+    result = self.get_score(img, dets=dets, probab=False)    
     return result
   
   def get_score(self, img, dets=None, probab=True):
@@ -239,6 +239,7 @@ def compile_table_from_classifications(d):
 def create_csc_stuff(d, classify_images=True, force_new=False):
         
   dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
+  print dirname
   filename = os.path.join(dirname,'table')
   
   if not os.path.exists(filename):
@@ -252,11 +253,11 @@ def create_csc_stuff(d, classify_images=True, force_new=False):
       print 'save table as %s'%filename
       cPickle.dump(table, open(filename, 'w'))
       
-def retrain_best_scms():
-  csc_classifier_train(get_best_parameters(), 'default_false', probab=False, test=False)
+def retrain_best_svms():
+  csc_classifier_train(get_best_parameters(), 'default', probab=False, test=False)
   
 if __name__=='__main__':
-  d = Dataset('full_pascal_train')
-  retrain_best_scms()
-  #create_csc_stuff(d, classify_images=True, force_new=False)
+  d = Dataset('full_pascal_trainval')
+  #retrain_best_svms()
+  create_csc_stuff(d, classify_images=True, force_new=True)
                     

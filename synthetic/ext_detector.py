@@ -67,7 +67,6 @@ class ExternalDetector(Detector):
     img_ind = self.dataset.get_img_ind(image)
     dets = self.dets.filter_on_column('img_ind',img_ind)
     score = self.classif.classify_image(img_ind,dets)
-    print 'score in ext_det:', score
     dt = 0
     # TODO: figure out the dt situation above
     return (score,dt)

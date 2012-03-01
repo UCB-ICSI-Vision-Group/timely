@@ -379,10 +379,14 @@ def run_all_in_3_parts():
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
 
 if __name__=='__main__':
+  d = Dataset('full_pascal_trainval')
+  create_csc_stuff(d, classify_images=True, force_new=False)
+  
   #run_all_in_3_parts()
-  dataset = 'full_pascal_trainval'
-  d = Dataset(dataset)
-  suffix = 'GIST'
-  fastdiscr = FastinfDiscretizer(d, suffix)
-  fastdiscr.discretize_value(.2242, clf_idx=0)
+  
+#  dataset = 'full_pascal_trainval'
+#  d = Dataset(dataset)
+#  suffix = 'GIST'
+#  fastdiscr = FastinfDiscretizer(d, suffix)
+#  fastdiscr.discretize_value(.2242, clf_idx=0)
   
