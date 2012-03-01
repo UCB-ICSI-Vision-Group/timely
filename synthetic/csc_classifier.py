@@ -25,8 +25,8 @@ class CSCClassifier(Classifier):
     self.lower = settings[setting_table.cols.index('lower')]
     self.upper = settings[setting_table.cols.index('upper')]
     
-  def classify_image(self, img_idx, dets=None):
-    result = self.get_score(img_idx, dets=dets)    
+  def classify_image(self, img, dets=None):
+    result = self.get_score(img, dets=dets)    
     return result
   
   def get_score(self, img, dets=None, probab=True):
@@ -34,6 +34,11 @@ class CSCClassifier(Classifier):
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
     """
+    if not isinstance(img, Image):
+      image = self.dataset.images[img]
+    else:
+      image = img
+      img = self.dataset.images.index(img)
     if not dets:
       vector = self.get_vector(img)
     else:
@@ -66,10 +71,7 @@ class CSCClassifier(Classifier):
     return vector
      
   def get_vector(self, img):
-    if not isinstance(img, Image):
-      image = self.dataset.images[img]
-    else:
-      image = img
+    image = self.dataset.images[img]  
     filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
     if os.path.exists(filename):
       return np.load(filename)[()]

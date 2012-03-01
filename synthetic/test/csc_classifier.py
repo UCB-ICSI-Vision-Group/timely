@@ -11,8 +11,11 @@ class TestCscClassifier:
     
     
   def test_classify_image(self):
-    print self.csc.classify_image(0)
-    print self.csc.classify_image(self.d.images[0])
+    res = self.csc.classify_image(0)
+    res2 = self.csc.classify_image(self.d.images[0])
+    
+    assert(round(res,12) == 0.259956677441)
+    assert(round(res2,12) == 0.259956677441)
 
 if __name__=='__main__':
   tester = TestCscClassifier()
