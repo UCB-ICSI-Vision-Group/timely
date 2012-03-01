@@ -227,7 +227,8 @@ class DatasetPolicy:
           cPickle.dump(final_samples,f)
 
       # Save the fastinf cache
-      if self.inference_mode=='fastinf':
+      # TODO: turning this off for now
+      if False and self.inference_mode=='fastinf':
         self.inf_model.cache = dict(all_fm_cache_items)
         self.inf_model.save_cache()
 

@@ -97,12 +97,6 @@ def main():
     default=False, help='output detector statistics to det_configs')
 
   args = parser.parse_args()
-
-  # TODO temp profiling
-  #args.config = 'feb27'
-  #args.first_n = 2
-  #args.test_dataset = 'test'
-
   print(args)
 
   # If config file is not given, just run one experiment using default config
