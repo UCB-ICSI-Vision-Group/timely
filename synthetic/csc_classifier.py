@@ -10,7 +10,6 @@ from synthetic.config import get_ext_dets_filename
 from synthetic.image import Image
 #from synthetic.dpm_classifier import create_vector
 
-
 class CSCClassifier(Classifier):
   def __init__(self, suffix, cls, dataset):
     self.name = 'csc'
@@ -26,7 +25,7 @@ class CSCClassifier(Classifier):
     self.upper = settings[setting_table.cols.index('upper')]
     
   def classify_image(self, img, dets=None):
-    result = self.get_score(img, dets=dets, probab=False)    
+    result = self.get_score(img, dets=dets, probab=True)    
     return result
   
   def get_score(self, img, dets=None, probab=True):

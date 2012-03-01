@@ -466,12 +466,10 @@ class DatasetPolicy:
 
     if False:
       print("Action sequence was: %s"%[s['action_ind'] for s in samples])
-      print("Classification results were:")
-      print all_clses
-      print("And ground truth for the image is:")
-      print image.get_cls_ground_truth()
       print("here's an image:")
       X = np.vstack((all_clses[:,:-2],image.get_cls_ground_truth()))
+      np.set_printoptions(precision=2, suppress=True)
+      print X
       plt.pcolor(np.flipud(X))
       plt.show()
 
