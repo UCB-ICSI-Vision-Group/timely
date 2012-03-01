@@ -80,14 +80,14 @@ class DatasetPolicy:
       if detector=='perfect':
         for cls in self.dataset.classes:
           det = PerfectDetector(self.dataset, cls)
-          self.actions.append(ImageAction('perfect_%s'%cls,det))
+          self.actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
       # synthetic perfect detector with noise in the detections
       elif detector=='perfect_with_noise':
+        sw = SlidingWindows(self.train_dataset,self.dataset)
         for cls in self.dataset.classes:
-          sw = SlidingWindows(self.train_dataset,self.dataset)
           det = PerfectDetectorWithNoise(self.dataset, cls, sw)
-          self.actions.append(ImageAction('perfect_noise_%s'%cls,det))
+          self.actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
       # GIST classifier
       elif detector=='gist':
@@ -102,8 +102,8 @@ class DatasetPolicy:
         for cls in self.dataset.classes:
           cls_ind = self.dataset.get_ind(cls)
           all_dets_for_cls = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
-          det = ExternalDetector(self.dataset, cls, all_dets_for_cls, suffix)
-          self.actions.append(ImageAction('%s_%s'%(suffix,cls), det))
+          det = ExternalDetector(self.dataset, cls, all_dets_for_cls, detector)
+          self.actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
       # unknown
       else:
