@@ -1,7 +1,6 @@
 {
   "suffix": "feb28",
-  "detector": "ext",
-  "dets_suffixes": ["csc_default"],
+  "detectors": ["csc_default"],
   "policy_mode": ["fastinf_manual"],
   "gist": 0
 }

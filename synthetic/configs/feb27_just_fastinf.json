@@ -1,6 +1,6 @@
 {
   "suffix": "feb27",
-  "detector": "perfect",
+  "detectors": ["perfect"],
   "policy_mode": ["fastinf_manual"],
   "gist": 0
 }
