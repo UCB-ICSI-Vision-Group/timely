@@ -14,6 +14,19 @@ class Classifier(object):
     self.suffix = ''
     self.cls = ''
     self.tt = ut.TicToc()
+    self.bounds = self.load_bounds()
+    
+  def load_bounds(self):
+    filename = config.get_classifier_bounds(self, self.cls)
+    if not os.path.exists(filename):
+      print 'bounds for %s and class %s dont exist yet'%(self.name, self.cls)
+      return None
+    bounds = np.loadtxt(filename)
+    return bounds
+  
+  def store_bounds(self, bounds):
+    filename = config.get_classifier_bounds(self, self.cls)
+    np.savetxt(filename, bounds)
   
   def compute_histogram(self, arr, intervals, lower, upper):
     band = upper - lower
@@ -54,17 +67,20 @@ class Classifier(object):
     arr[:, 0:1] = np.power(np.exp(-2.*arr[:,0:1])+1,-1)
     return arr
       
-  def train_for_all_cls(self, train_dataset, feats, intervals, kernel, lower, upper, cls_idx, C, probab=True):
+  def train_for_all_cls(self, train_dataset, dets, kernel, cls_idx, C, probab=True):
     cls = train_dataset.classes[cls_idx]
-    filename = config.get_classifier_svm_learning_filename(
-      self,cls,kernel,intervals,lower,upper,C)
+    filename = config.get_classifier_svm_learning_filename(self,cls,kernel,C)
 
     pos_images = train_dataset.get_pos_samples_for_class(cls)
     pos = []
-    neg = []
-    print comm_rank, 'trains', cls, intervals, kernel, lower, upper, C
+    neg = []    
+    
+    bounds = ut.importance_sample(dets.subset(['score']).arr, self.num_bins+1)
+    self.store_bounds(bounds)
+    
+    print comm_rank, 'trains', cls
     for img_idx, img in enumerate(range(len(train_dataset.images))):
-      vector = self.get_vector(img)
+      vector = self.create_vector_from_dets(dets, img, bounds)
       print 'load image %d/%d on %d'%(img_idx, len(train_dataset.images), comm_rank)
       if img in pos_images:
         pos.append(vector)
@@ -75,7 +91,7 @@ class Classifier(object):
     neg = np.concatenate(neg)
     # take as many negatives as there are positives
     neg = np.random.permutation(neg)[:pos.shape[0]]
-    print '%d trains the model for'%comm_rank, cls, intervals, kernel, lower, upper, C
+    print '%d trains the model for'%comm_rank, cls
     model = self.train(pos, neg, kernel, C, probab=probab)
    
     save_svm(model, filename)

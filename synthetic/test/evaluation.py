@@ -13,8 +13,14 @@ import math
 
 class TestEvaluationPerfect:
   def __init__(self):
-    self.csc_table = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'csc_table'), 'r'))
-    self.table_gt = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'table_gt'), 'r'))
+    self.csc_trainval = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'csc_trainval'), 'r'))
+    self.csc_test = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'csc_test'), 'r'))
+    self.ext_csc_test = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'ext_csc_test'), 'r'))
+    self.ext_csc_trainval = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'ext_csc_trainval'), 'r'))
+    d = Dataset('full_pascal_trainval')
+    self.trainval_gt = d.get_cls_ground_truth()
+    d = Dataset('full_pascal_test')
+    self.test_gt = d.get_cls_ground_truth()
   
   def setup(self):
     train_dataset = Dataset('test_pascal_train',force=True)
@@ -102,29 +108,29 @@ class TestEvaluationPerfect:
     assert(np.all(correct_prec==prec))
   
   def test_compute_cls_map(self):
-    res = Evaluation.compute_cls_map(self.csc_table, self.table_gt)
+    res = Evaluation.compute_cls_map(self.csc_trainval, self.trainval_gt)
     assert(round(res,11) == 0.47206391958)
     
   def test_compute_cls_map_half(self):
     table_csc_half = ut.Table()
-    table_csc_half.cols = list(self.csc_table.cols)
+    table_csc_half.cols = list(self.csc_trainval.cols)
     for _ in range(10):
       rand_inds = np.random.permutation(range(5011))[:2500]
-      table_csc_half.arr = self.csc_table.arr[rand_inds,:]      
-      res = Evaluation.compute_cls_map(table_csc_half, self.table_gt)
+      table_csc_half.arr = self.csc_trainval.arr[rand_inds,:]      
+      res = Evaluation.compute_cls_map(table_csc_half, self.trainval_gt)
       assert(round(res,6) > .45)
   
   def test_compute_cls_map_gt(self):
-    res = Evaluation.compute_cls_map(self.table_gt, self.table_gt)
+    res = Evaluation.compute_cls_map(self.trainval_gt, self.trainval_gt)
     assert(round(res,6) == 1)
     
   def test_compute_cls_map_gt_half(self):
     rand_inds = np.random.permutation(range(5011))[:2500]
     table_gt_half = ut.Table()
-    table_gt_half.arr = np.hstack((self.table_gt.arr,np.array(np.arange(5011), ndmin=2).T))
+    table_gt_half.arr = np.hstack((self.trainval_gt.arr,np.array(np.arange(5011), ndmin=2).T))
     table_gt_half.arr = table_gt_half.arr[rand_inds,:]
-    table_gt_half.cols = list(self.table_gt.cols) + ['img_ind']
-    res = Evaluation.compute_cls_map(table_gt_half, self.table_gt)
+    table_gt_half.cols = list(self.trainval_gt.cols) + ['img_ind']
+    res = Evaluation.compute_cls_map(table_gt_half, self.trainval_gt)
     assert(round(res,6) == 1)
   
   def test_compute_cls_map_random_clf(self):
@@ -133,7 +139,21 @@ class TestEvaluationPerfect:
     ress = np.zeros((num_test,))
     for idx in range(num_test):
       clf_table.arr = np.hstack((np.random.rand(5011, 20),np.array(np.arange(5011), ndmin=2).T))
-      clf_table.cols = list(self.table_gt.cols) + ['img_ind']
-      res = Evaluation.compute_cls_map(clf_table, self.table_gt)
+      clf_table.cols = list(self.trainval_gt.cols) + ['img_ind']
+      res = Evaluation.compute_cls_map(clf_table, self.trainval_gt)
       ress[idx] = res
     assert(np.mean(ress) < 0.09)
+  
+  def test_other_scores(self):
+    print 'csc_test', Evaluation.compute_cls_map(self.csc_test, self.test_gt)
+    print 'csc_trainval', Evaluation.compute_cls_map(self.csc_trainval, self.trainval_gt)
+    
+    print 'ext_test', Evaluation.compute_cls_map(self.ext_csc_test, self.test_gt)
+    print 'ext_trainval', Evaluation.compute_cls_map(self.ext_csc_trainval, self.trainval_gt)
+    
+    np.testing.assert_equal(np.sort(self.csc_test.arr), np.sort(self.ext_csc_test.arr))
+    
+    
+if __name__=='__main__':
+  tester = TestEvaluationPerfect()
+  tester.test_other_scores()

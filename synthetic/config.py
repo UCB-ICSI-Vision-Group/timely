@@ -219,18 +219,10 @@ def get_classifier_learning_dirname(classifier):
     name += '_'+classifier.suffix
   return makedirs(join(res_dir,name))
 
-def get_classifier_svm_learning_filename(classifier, cls,kernel,intervals,lower,upper,C):
+def get_classifier_svm_learning_filename(classifier, cls, kernel, C):
   direct = get_classifier_dirname(classifier)
-  name = '%s_%s_%f_%f_%f_%f'%(cls,kernel,intervals,lower,upper,C)
+  name = '%s_%s_%f'%(cls,kernel,C)
   return join(direct,name)
-
-def get_classifier_learning_filename(classifier,cls,kernel,intervals,lower,upper,C):
-  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))
-  return join(dirname, "%s_%d_%d_%d"%(cls,lower,upper,C))
-    
-def get_classifier_learning_eval_filename(classifier,cls,kernel,intervals,lower,upper,C):
-  dirname = makedirs(join(get_classifier_learning_dirname(classifier), kernel, str(intervals)))
-  return join(dirname, "eval_%d_%d_%d"%(lower,upper,C))
 
 def get_classifier_svm_name(cls, C, gamma, current_fold):
   dirname = join(res_dir, 'classify_svm')
@@ -268,6 +260,9 @@ def get_classifier_crossval(cls=None):
     return join(dirname, 'crossval.txt')
   else:
     return join(dirname, 'crossval_%s.txt'%cls)
+
+def get_classifier_bounds(classifier, cls):
+  return get_classifier_filename(classifier, cls) + '_bounds'
 
 #####
 # Feature Extraction

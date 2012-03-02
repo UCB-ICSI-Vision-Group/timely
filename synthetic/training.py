@@ -41,8 +41,9 @@ def chi_square_kernel(x, y):
   """
   chi_sum = 0  
   for i in range(x.size):
-    if not (x[i] + y[i]) == 0 and not x[i] == y[i]: 
-      chi_sum += 2*(x[i] - y[i])**2/(x[i] + y[i])
+    if not (x[0, i] + y[0, i]) == 0 and not x[0, i] == y[0, i]: 
+      chi_sum += 2*(x[0, i] - y[0, i])**2/(x[0, i] + y[0, i])
+  
   return chi_sum
 
 def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=False):

@@ -14,8 +14,8 @@ class TestClassifier:
     for img in range(50):
       #img = 1
       image = d.images[img]
-      if image.get_cls_counts()[cls_idx] == 0:
-        continue
+#      if image.get_cls_counts()[cls_idx] == 0:
+#        continue
       filename = config.get_ext_dets_filename(d, 'csc_default')
       csc_test = np.load(filename)
       dets = csc_test[()]
