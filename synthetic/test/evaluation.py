@@ -1,8 +1,5 @@
-import numpy as np
-import cPickle
-import os
+from synthetic.common_imports import *
 
-import synthetic.util as ut
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.evaluation import Evaluation
