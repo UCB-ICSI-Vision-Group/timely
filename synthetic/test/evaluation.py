@@ -175,9 +175,10 @@ class TestEvaluationPerfect:
     ext_table_linear_20 = cPickle.load(open(filename, 'r'))
     print 'ext_linear_20_trainval', Evaluation.compute_cls_map(ext_table_linear_20, self.trainval_gt)    
         
+    filename = 'tab_linear_5'
+    ext_tab_lin_5 = cPickle.load(open(filename, 'r'))
+    print 'ext_tab_lin_5_trainval', Evaluation.compute_cls_map(ext_tab_lin_5, self.trainval_gt)    
         
-    
-    
 if __name__=='__main__':
   tester = TestEvaluationPerfect()
   tester.test_other_scores()

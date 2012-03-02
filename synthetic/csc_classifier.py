@@ -24,7 +24,6 @@ class CSCClassifier(Classifier):
     self.bounds = self.load_bounds()
     
   def classify_image(self, img, dets=None):
-    print 'classify in csc'
     result = self.get_score(img, dets=dets, probab=True)    
     return result
     
@@ -43,7 +42,6 @@ class CSCClassifier(Classifier):
     else:
       vector = self.create_vector_from_dets(dets,img)
     
-    print vector
     if probab:
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)[0,0]
@@ -54,7 +52,6 @@ class CSCClassifier(Classifier):
     
     if bounds == None:
       bounds = self.bounds
-    print 'vect from dets'
     dets = dets.subset(['score', 'img_ind'])
     #dets.arr = self.normalize_dpm_scores(dets.arr)
     
@@ -65,7 +62,7 @@ class CSCClassifier(Classifier):
     img_dpm = dets.filter_on_column('img_ind', img, omit=True)
 
     if img_dpm.arr.size == 0:
-      print 'empty vector'
+      #print 'empty vector'
       return np.zeros((1,self.num_bins))
     bins = ut.determine_bin(img_dpm.arr.T[0], bounds)
     hist = ut.histogram_just_count(bins, self.num_bins, normalize=True)

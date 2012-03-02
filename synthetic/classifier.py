@@ -69,8 +69,8 @@ class Classifier(object):
     arr[:, 0:1] = np.power(np.exp(-2.*arr[:,0:1])+1,-1)
     return arr
       
-  def train_for_cls(self, train_dataset, dets, kernel, cls_idx, C, probab=True):
-    cls = train_dataset.classes[cls_idx]
+  def train_for_cls(self, train_dataset, dets, kernel, C, probab=True):
+    cls = self.cls
     filename = config.get_classifier_svm_learning_filename(self,cls,kernel,C, self.num_bins)
 
     pos_imgs = train_dataset.get_pos_samples_for_class(cls)
@@ -79,6 +79,7 @@ class Classifier(object):
     neg = []    
     #dets.filter_on_column('')
     bounds = ut.importance_sample(dets.subset(['score']).arr, self.num_bins+1)
+    self.bounds = bounds
     self.store_bounds(bounds)
     
     print comm_rank, 'trains', cls
@@ -104,18 +105,34 @@ class Classifier(object):
     x = np.concatenate((pos, neg))
     prob_t = svm_proba(x, model)
     prob2 =  []
-    prob3 = [] 
-    for idx in range(x.shape[0]):
+    prob3 = []
+    prob4 = []
+    self.svm = self.load_svm(filename) 
+        
+    for idx in [0]:#range(x.shape[0]):
       prob2.append(svm_proba(x[idx,:], model))
       if idx >= len(pos_imgs):
         img = neg_imgs[idx-len(pos_imgs)]
       else:
         img = pos_imgs[idx]        
       print 'comp prob3'
+      
       prob3.append(self.classify_image(img, dets))
     prob2 = np.concatenate(prob2)
     
-    embed()
+    self.svm = model 
+        
+    for idx in [0]:#range(x.shape[0]):
+      if idx >= len(pos_imgs):
+        img = neg_imgs[idx-len(pos_imgs)]
+      else:
+        img = pos_imgs[idx]        
+      print 'comp prob4'
+      
+      prob4.append(self.classify_image(img, dets))
+    prob2 = np.concatenate(prob2)
+    
+    #embed()
     for img_idx, img in enumerate(train_dataset.images):
       score = self.classify_image(img, dets)
       table_cls[img_idx, 0] = score
@@ -139,8 +156,11 @@ class Classifier(object):
     Get the score for the given image.
     """
   
-  def load_svm(self):
-    svm_file = config.get_classifier_filename(self,self.cls) + '_linear_1.000000_20'
+  def load_svm(self, filename=None):
+    if not filename:
+      svm_file = config.get_classifier_filename(self,self.cls)
+    else:
+      svm_file = filename
     print svm_file
     if not os.path.exists(svm_file):
       #raise RuntimeWarning("Svm %s is not trained"%svm_file)
