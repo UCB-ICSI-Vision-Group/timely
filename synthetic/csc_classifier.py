@@ -87,7 +87,7 @@ class CSCClassifier(Classifier):
   
   def get_all_vectors(self):
     for img_idx in range(comm_rank, len(self.dataset.images), comm_size):
-      print 'on %d get vect %d/%d'%(comm_rank, img_idx, len(self.dataset.images))
+      print 'on %d_train get vect %d_train/%d_train'%(comm_rank, img_idx, len(self.dataset.images))
       self.get_vector(img_idx)
       
   def csc_classifier_train(self, parameters, suffix, dets, train_dataset, probab=True, test=True, force_new=False):      
@@ -159,10 +159,10 @@ def old_training_stuff():
 
 def get_best_parameters():
   parameters = []
-  d = Dataset('full_pascal_trainval')
+  d_train = Dataset('full_pascal_trainval')
   
   # this is just a dummy, we don't really need it, just to read best vals
-  csc = CSCClassifier('default', 'dog', d)
+  csc = CSCClassifier('default', 'dog', d_train)
   best_table = csc.get_best_table()
   for row_idx in range(best_table.shape()[0]):
     row = best_table.arr[row_idx, :]
@@ -172,63 +172,63 @@ def get_best_parameters():
     parameters.append(params)
   return parameters
 
-def classify_all_images(d, force_new=False):
+def classify_all_images(d_train, force_new=False):
   suffix = 'default'
   tt = ut.TicToc()
   tt.tic()
-  print 'start classifying all images on %d...'%comm_rank
-  table = np.zeros((len(d.images), len(d.classes)))
+  print 'start classifying all images on %d_train...'%comm_rank
+  table = np.zeros((len(d_train.images), len(d_train.classes)))
   i = 0
-  for cls_idx, cls in enumerate(d.classes):
-    csc = CSCClassifier(suffix, cls, d)
-    for img_idx in range(comm_rank, len(d.images), comm_size):    
+  for cls_idx, cls in enumerate(d_train.classes):
+    csc = CSCClassifier(suffix, cls, d_train)
+    for img_idx in range(comm_rank, len(d_train.images), comm_size):    
       if i == 5:
-        print 'image %d on %d/%d'%(comm_rank, 20*i, 20*len(d.images)/comm_size)  
+        print 'image %d_train on %d_train/%d_train'%(comm_rank, 20*i, 20*len(d_train.images)/comm_size)  
         i = 0
       i += 1  
       
       score = csc.get_score(img_idx, probab=True)
       table[img_idx, cls_idx] = score
               
-  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d), 'agent_wise'))
-  filename = os.path.join(dirname,'table_%d'%comm_rank)
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d_train), 'agent_wise'))
+  filename = os.path.join(dirname,'table_%d_train'%comm_rank)
   np.savetxt(filename, table)
             
-  print 'Classified all images in %f secs on %d'%(tt.toc(quiet=True), comm_rank)
+  print 'Classified all images in %f secs on %d_train'%(tt.toc(quiet=True), comm_rank)
   
-def compile_table_from_classifications(d):  
+def compile_table_from_classifications(d_train):  
   errors = 0
-  table = np.zeros((len(d.images), len(d.classes)))
-  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d), 'agent_wise'))
+  table = np.zeros((len(d_train.images), len(d_train.classes)))
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d_train), 'agent_wise'))
   
   for i in range(comm_size):
-    filename = os.path.join(dirname,'table_%d'%i)
+    filename = os.path.join(dirname,'table_%d_train'%i)
     table += np.loadtxt(filename)
-  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d_train)))
   filename = os.path.join(dirname,'table')
   np.savetxt(filename, table)
     
-  print 'errors: %d'%errors
+  print 'errors: %d_train'%errors
   return table
 
-def create_csc_stuff(d, classify_images=True, force_new=False):
+def create_csc_stuff(d_train, classify_images=True, force_new=False):
         
-  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d)))
+  dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(d_train)))
   print dirname
   filename = os.path.join(dirname,'table')
   
   if not os.path.exists(filename):
     if classify_images:
-      classify_all_images(d, force_new=force_new)
+      classify_all_images(d_train, force_new=force_new)
 
     safebarrier(comm)    
-    table = compile_table_from_classifications(d)
+    table = compile_table_from_classifications(d_train)
     
     if comm_rank == 0:      
       print 'save table as %s'%filename
       
       csc_table = Table()
-      csc_table.cols = d.classes + ['img_ind']
+      csc_table.cols = d_train.classes + ['img_ind']
       csc_table.arr = np.hstack((table, np.array(np.arange(table.shape[0]),ndmin=2).T))      
       print csc_table
       cPickle.dump(csc_table, filename)                 

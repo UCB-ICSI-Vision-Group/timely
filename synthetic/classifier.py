@@ -9,6 +9,7 @@ import synthetic.config as config
 from synthetic.training import train_svm, svm_predict, save_svm, load_svm,\
   svm_proba
 from IPython import embed
+from synthetic.evaluation import Evaluation
 
 class Classifier(object):
   def __init__(self):
@@ -103,40 +104,31 @@ class Classifier(object):
     
     table_cls = np.zeros((len(train_dataset.images), 1))
     x = np.concatenate((pos, neg))
-    prob_t = svm_proba(x, model)
-#    prob2 =  []
-#    prob3 = []
-#    prob4 = []
-#    self.svm = self.load_svm(filename) 
-#        
-#    for idx in [0]:#range(x.shape[0]):
-#      prob2.append(svm_proba(x[idx,:], model))
-#      if idx >= len(pos_imgs):
-#        img = neg_imgs[idx-len(pos_imgs)]
-#      else:
-#        img = pos_imgs[idx]        
-#      print 'comp prob3'
-#      
-#      prob3.append(self.classify_image(img, dets))
-#    prob2 = np.concatenate(prob2)
-#    
-#    self.svm = model 
-#        
-#    for idx in range(x.shape[0]):
-#      if idx >= len(pos_imgs):
-#        img = neg_imgs[idx-len(pos_imgs)]
-#      else:
-#        img = pos_imgs[idx]        
-#      print 'comp prob4'
-#      
-#      prob4.append(self.classify_image(img, dets))
-#    prob2 = np.concatenate(prob2)
+  
+    prob2 = []
+    prob3 = []
+    #self.svm = self.load_svm(filename)
+    self.svm = model 
+        
+    for idx in range(x.shape[0]):
+      prob2.append(svm_proba(x[idx,:], model)[0][1])
+      if idx >= len(pos_imgs):
+        img = neg_imgs[idx-len(pos_imgs)]
+      else:
+        img = pos_imgs[idx]        
+      #print 'comp prob3'
+      prob3.append(self.classify_image(img, dets))
     
+    prob2 = np.vstack(prob2)
+    prob3 = np.vstack(prob3)
+    
+    np.testing.assert_equal(prob2, prob3)
     #embed()
-#    for img_idx, img in enumerate(train_dataset.images):
-#      score = self.classify_image(img, dets)
-#      table_cls[img_idx, 0] = score
-    return prob_t[:,1]
+    for img_idx, img in enumerate(train_dataset.images):
+      score = self.classify_image(img, dets)
+      table_cls[img_idx, 0] = score
+    
+    return table_cls
     
   def get_observation(self, image):
     """
