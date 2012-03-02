@@ -41,6 +41,8 @@ class CSCClassifier(Classifier):
       vector = self.get_vector(img)
     else:
       vector = self.create_vector_from_dets(dets,img)
+    
+    print vector
     if probab:
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)[0,0]

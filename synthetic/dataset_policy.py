@@ -634,7 +634,7 @@ if __name__=='__main__':
   
   just_combine=False
     
-  for ds in ['full_pascal_test','full_pascal_trainval']:
+  for ds in ['full_pascal_trainval']: # 'full_pascal_test'
     eval_d = Dataset(ds) 
     dp = DatasetPolicy(eval_d, train_d, detectors=['csc_default'])
     test_table = np.zeros((len(eval_d.images), len(dp.actions)))
@@ -645,6 +645,7 @@ if __name__=='__main__':
         for act_idx, act in enumerate(dp.actions):
           print '%s on %d for act %d'%(img.name, comm_rank, act_idx)    
           score = act.obj.get_observations(img)['score']
+          print '%s, score: %f'%(img.name, score)
           test_table[img_idx, act_idx] = score
       
       dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp','agent_wise'))

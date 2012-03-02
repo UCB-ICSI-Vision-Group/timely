@@ -12,7 +12,7 @@ def retrain_best_svms():
   dp = DatasetPolicy(d, d, detectors=['csc_default'])  
   
   kernels = ['linear', 'rbf']  
-  num_binss = [20]#,10,20,50]
+  num_binss = [5]#,10,20,50]
   Cs = [1.]#, 2, 5, 10]
   settings = list(itertools.product(Cs, range(len(d.classes)), num_binss, kernels))
   
