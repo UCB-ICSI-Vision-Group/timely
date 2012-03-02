@@ -7,6 +7,7 @@ from common_imports import *
 import synthetic.config as config
 
 from synthetic.dataset import Dataset
+from synthetic.sample import Sample
 from synthetic.evaluation import Evaluation
 from synthetic.gist_classifier import GistClassifier
 from synthetic.detector import *
@@ -23,28 +24,6 @@ class ImageAction:
 
   def __repr__(self):
     return self.name
-
-class Sample:
-  "Class to allow equality testing to remove duplicate samples during training."
-
-  def __init__(self):
-    "Initialize all the fields with None."
-    fields = [
-      'img_ind','state','action_ind','dt','next_state','next_action_ind',
-      'det_naive_ap', 'det_actual_ap']
-    for field in fields:
-      self.__dict__[field] = None
-
-  def __eq__(self,other):
-    return \
-      self.img_ind == other.img_ind and \
-      self.action_ind == other.action_ind and \
-      self.dt == other.dt and \
-      self.next_action_ind == other.next_action_ind and \
-      self.det_naive_ap == other.det_naive_ap and \
-      self.det_actual_ap == other.det_actual_ap and \
-      np.all(self.state == other.state) and \
-      np.all(self.next_state == other.next_state)
 
 class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
@@ -476,9 +455,11 @@ class DatasetPolicy:
 
     self.update_actions(b)
     action_ind = self.select_action(b)
+    step_ind = 0
     while True:
       # Populate the sample with stuff we know
       sample = Sample()
+      sample.step_ind = step_ind
       sample.img_ind = img_ind
       sample.state = b.compute_full_feature()
       sample.action_ind = action_ind
@@ -522,8 +503,9 @@ class DatasetPolicy:
 
       # Observations always include the following stuff, which can be used
       # to update the belief state, and mark it as taken
-      sample.dt = obs['dt']
       b.t += obs['dt']
+      sample.dt = obs['dt']
+      sample.t = b.t
       b.taken[action_ind] = 1
       b.update_with_score(action_ind, obs['score'])
 
@@ -539,6 +521,7 @@ class DatasetPolicy:
       sample.next_state = b.compute_full_feature()
       sample.next_action_ind = action_ind
       samples.append(sample)
+      step_ind += 1
 
       # check for stopping conditions
       if action_ind < 0:

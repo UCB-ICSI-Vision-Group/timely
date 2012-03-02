@@ -21,11 +21,3 @@ class TestBeliefState(object):
     print self.bs.block_out_action(ff,0)
     print self.bs.block_out_action(ff,3)
     # TODO: make asserts here
-
-  def test_dp_weights(self):
-    print "manual 1 weights:"
-    print self.dp.load_weights('manual_1')
-    print "manual 2 weights:"
-    print self.dp.load_weights('manual_2')
-    print "manual 3 weights:"
-    print self.dp.load_weights('manual_3')
