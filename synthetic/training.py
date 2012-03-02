@@ -57,12 +57,17 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
     clf = SVC(kernel='precomputed',C=C, probability=probab)
     gram = np.zeros((x.shape[0],x.shape[0]))
     t_gram = time.time()
+    inner_total = x.shape[0]**2/2
+    inner_act = 0
     for i in range(x.shape[0]):
       for j in range(x.shape[0]-i-1):
         j += i + 1
         kern = chi_square_kernel(x[i,:], x[j,:])
         gram[i,j] = kern
         gram[j,i] = kern
+        inner_act += 1
+        if inner_act%50 == 0:
+          print '%d is in gram on: %d / %d'%(comm_rank, inner_act, inner_total)
     t_gram = time.time() - t_gram
     print 'computed gram-matrix in',t_gram,'seconds'
     clf.fit(gram, y)
