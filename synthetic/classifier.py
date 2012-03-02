@@ -69,7 +69,7 @@ class Classifier(object):
       
   def train_for_all_cls(self, train_dataset, dets, kernel, cls_idx, C, probab=True):
     cls = train_dataset.classes[cls_idx]
-    filename = config.get_classifier_svm_learning_filename(self,cls,kernel,C)
+    filename = config.get_classifier_svm_learning_filename(self,cls,kernel,C, self.num_bins)
 
     pos_images = train_dataset.get_pos_samples_for_class(cls)
     pos = []
@@ -115,7 +115,8 @@ class Classifier(object):
     """
   
   def load_svm(self):
-    svm_file = config.get_classifier_filename(self,self.cls)
+    # TODO: CHANGE BACK!!
+    svm_file = config.get_classifier_filename(self,self.cls) + '_chi2_1.000000'
     print svm_file
     model = load_svm(svm_file)
     return model

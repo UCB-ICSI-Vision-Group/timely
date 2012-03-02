@@ -20,8 +20,6 @@ class CSCClassifier(Classifier):
     self.svm = self.load_svm()
     self.num_bins = num_bins
     
-    setting_table = ut.Table.load(opjoin(config.get_classifier_dirname(self),'best_table'))
-    settings = setting_table.arr[config.pascal_classes.index(cls),:]
     self.bounds = self.load_bounds()
     
   def classify_image(self, img, dets=None):

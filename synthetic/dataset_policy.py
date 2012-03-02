@@ -654,5 +654,11 @@ if __name__=='__main__':
         filename = os.path.join(dirname,'table_%d'%(i+1))
         test_table += np.loadtxt(filename)
       dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp'))
-      filename = os.path.join(dirname,'table')
-      np.savetxt(filename, test_table)
+      filename = os.path.join(dirname,'table_chi2')
+      tab_test_table = ut.Table()
+      tab_test_table.cols = list(train_d.classes) + ['img_ind']
+      tab_test_table.arr = np.hstack((test_table, np.array(np.arange(test_table.shape[0]),ndmin=2).T))
+      np.savetxt(filename, tab_test_table)
+      
+      
+      

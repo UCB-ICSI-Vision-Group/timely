@@ -219,9 +219,9 @@ def get_classifier_learning_dirname(classifier):
     name += '_'+classifier.suffix
   return makedirs(join(res_dir,name))
 
-def get_classifier_svm_learning_filename(classifier, cls, kernel, C):
+def get_classifier_svm_learning_filename(classifier, cls, kernel, C, num_bins):
   direct = get_classifier_dirname(classifier)
-  name = '%s_%s_%f'%(cls,kernel,C)
+  name = '%s_%s_%f_%d'%(cls, kernel, C, num_bins)
   return join(direct,name)
 
 def get_classifier_svm_name(cls, C, gamma, current_fold):
