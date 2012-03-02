@@ -556,7 +556,7 @@ class Evaluation:
     tp=np.cumsum(tp)
     npos = np.sum(gt==True)
     rec=1.*tp/(npos+0.000000001) # to avoid dividing by 0
-    prec=1.*tp/(fp+tp)
+    prec=1.*tp/(fp+tp+0.000000001)
     ap = cls.compute_ap(rec,prec)
     return (ap,rec,prec)
 

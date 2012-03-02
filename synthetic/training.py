@@ -85,8 +85,8 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
 
 def svm_predict(x, clf):
   x = np.array(x, dtype='float')
-  result = clf.decision_function(x)
-  return result
+  result = clf.predict(x)
+  return (result+1)/2
 
 def svm_proba(x, clf):
   return clf.predict_proba(x)

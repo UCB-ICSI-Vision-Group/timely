@@ -5,6 +5,7 @@ import synthetic.config as config
 from common_imports import *
 from common_mpi import *
 import synthetic.config as config
+from pylab import *
 
 from synthetic.training import train_svm, svm_predict, save_svm, load_svm,\
   svm_proba
@@ -79,8 +80,12 @@ class Classifier(object):
     pos = []
     neg = []    
     #dets.filter_on_column('')
-    bounds = ut.importance_sample(dets.subset(['score']).arr, self.num_bins+1)
+    
+    dets_arr = dets.subset(['score']).arr
+    #dets_arr = self.normalize_dpm_scores(dets_arr)
+    bounds = ut.importance_sample(dets_arr, self.num_bins+1)
     self.bounds = bounds
+    print bounds
     self.store_bounds(bounds)
     
     print comm_rank, 'trains', cls
@@ -104,6 +109,8 @@ class Classifier(object):
     
     table_cls = np.zeros((len(train_dataset.images), 1))
     x = np.concatenate((pos, neg))
+    y = [1]*pos.shape[0] + [0]*neg.shape[0]
+    y = np.vstack(y)
   
     prob2 = []
     prob3 = []
@@ -111,19 +118,32 @@ class Classifier(object):
     self.svm = model 
         
     for idx in range(x.shape[0]):
-      prob2.append(svm_proba(x[idx,:], model)[0][1])
+      prob2.append(svm_predict(x[idx,:], model))
       if idx >= len(pos_imgs):
         img = neg_imgs[idx-len(pos_imgs)]
       else:
         img = pos_imgs[idx]        
       #print 'comp prob3'
-      prob3.append(self.classify_image(img, dets))
+      prob3.append(self.classify_image(img, dets, probab=False))
     
     prob2 = np.vstack(prob2)
     prob3 = np.vstack(prob3)
-    
+#    prob3[prob3 < 0]=-1
+#    prob3[prob3 > 0]=1
     np.testing.assert_equal(prob2, prob3)
-    #embed()
+    acc = np.count_nonzero(prob3 == y)/float(y.shape[0])
+    
+    pcolor(np.array(np.vstack((pos,neg)))); show()
+    
+    print 'acc', acc
+    
+    
+#    pro2tab = ut.Table(prob2 , train_dataset.classes)
+#    ytab = ut.Table(y, train_dataset.classes)
+    
+    print Evaluation.compute_cls_pr(prob3, y)   
+    
+    embed()
     for img_idx, img in enumerate(train_dataset.images):
       score = self.classify_image(img, dets)
       table_cls[img_idx, 0] = score

@@ -23,8 +23,8 @@ class CSCClassifier(Classifier):
     
     self.bounds = self.load_bounds()
     
-  def classify_image(self, img, dets=None):
-    result = self.get_score(img, dets=dets, probab=True)    
+  def classify_image(self, img, dets=None, probab=True):
+    result = self.get_score(img, dets=dets, probab=probab)    
     return result
     
   def get_score(self, img, dets=None, probab=True):
@@ -44,7 +44,7 @@ class CSCClassifier(Classifier):
     
     if probab:
       return svm_proba(vector, self.svm)[0][1]
-    return svm_predict(vector, self.svm)[0,0]
+    return svm_predict(vector, self.svm)#[0,0]
   
   def create_vector_from_dets(self, dets, img, bounds=None):
     if 'cls_ind' in dets.cols:

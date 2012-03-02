@@ -9,8 +9,8 @@ from IPython import embed
 from synthetic.evaluation import Evaluation
 
 def retrain_best_svms(d_train, kernel, C, num_bins):
-  
-  dp = DatasetPolicy(d_train, d_train, detectors=['csc_default'])  
+  d = Dataset('full_pascal_trainval')
+  dp = DatasetPolicy(d, d_train, detectors=['csc_default'])  
   
   table = np.zeros((len(d_train.images), len(d_train.classes)))
   for cls_idx in range(comm_rank, len(d_train.classes), comm_size):
@@ -45,11 +45,20 @@ if __name__=='__main__':
   d_val = Dataset('full_pascal_val')
   train_gt = d_train.get_cls_ground_truth()
   val_gt = d_val.get_cls_ground_truth()
-  results_filename = 'results.txt'
-  w = open(results_filename, 'w')
-  kernels = ['linear', 'rbf']
-  Cs = [1, 5, 10]
-  num_binss = [5, 10, 20]
+
+  if comm_rank == 0:
+    results_filename = 'results.txt'
+    w = open(results_filename, 'w')
+#  kernels = ['linear', 'rbf']
+#  Cs = [1, 5, 10]
+#  num_binss = [5, 10, 20]
+#  kernels = ['linear', 'rbf']
+#  Cs = [1, 5, 10]
+#  num_binss = [20, 50, 100]
+  kernels = ['linear']
+  Cs = [1]
+  num_binss = [15]
+
   settings = list(itertools.product(kernels, Cs, num_binss))
   
   for sets in settings:
@@ -61,6 +70,9 @@ if __name__=='__main__':
     if comm_rank == 0:
       table = conv(d_train, table_arr)
       res = Evaluation.compute_cls_map(table, train_gt)
+      print res
       w.write('%s %f %d_train - %f\n'%(kernel, C, num_bins, res))
-    
+  
+  if comm_rank == 0:
+    w.close()
   #create_csc_stuff(d_train, classify_images=False, force_new=False)
