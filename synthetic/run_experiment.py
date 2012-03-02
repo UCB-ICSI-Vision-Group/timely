@@ -118,6 +118,9 @@ def main():
   else:
     None # impossible by argparse settings
 
+  # In both the above cases, we use the val dataset for weights
+  weights_dataset_name = 'full_pascal_val'
+
   dets_tables = []
   clses_tables = []
   dets_tables_whole = []
@@ -125,7 +128,7 @@ def main():
   all_bounds = []
 
   for config_f in configs:
-    dp = DatasetPolicy(dataset, train_dataset, **config_f)
+    dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)
 

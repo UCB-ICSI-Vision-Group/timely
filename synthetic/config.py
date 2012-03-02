@@ -134,28 +134,25 @@ evals_dir = makedirs(join(res_dir, 'evals'))
 def get_evals_dir(dataset_name):
   return makedirs(join(evals_dir,dataset_name))
 
-def get_evals_dp_dir(dataset_policy,train=False):
-  dirname = get_evals_dir(dataset_policy.dataset.get_name())
+def get_evals_dp_dir(dp,train=False):
+  dirname = get_evals_dir(dp.dataset.get_name())
   if train:
-    dirname = get_evals_dir(dataset_policy.train_dataset.get_name())
-  return makedirs(join(dirname, dataset_policy.get_config_name()))
+    dirname = get_evals_dir(dp.train_dataset.get_name())
+  return makedirs(join(dirname, dp.get_config_name()))
 
-# ./{evals_dir}/{dataset_name}/{dp_config_name}/cached_dets.npy
-def get_dp_dets_filename(dataset_policy,train=False):
-  return join(get_evals_dp_dir(dataset_policy,train), 'cached_dets.npy')
+def get_dp_dets_filename(dp,train=False):
+  return join(get_evals_dp_dir(dp,train), 'cached_dets.npy')
 
-# ./{evals_dir}/{dataset_name}/{dp_config_name}/cached_clses.npy
-def get_dp_clses_filename(dataset_policy):
-  return join(get_evals_dp_dir(dataset_policy,train), 'cached_clses.npy')
+def get_dp_clses_filename(dp,train=False):
+  return join(get_evals_dp_dir(dp,train), 'cached_clses.npy')
 
-# ./{evals_dir}/{dataset_name}/{dp_config_name}/cached_samples.npy
-def get_dp_samples_filename(dataset_policy):
-  return join(get_evals_dp_dir(dataset_policy,train), 'cached_samples.pickle')
+def get_dp_samples_filename(dp,train=False):
+  return join(get_evals_dp_dir(dp,train), 'cached_samples.pickle')
 
-# {evals_dir}/{dataset_name}/{dp_config_name}/weights/
-def get_dp_weights_dirname(dataset_policy):
-  dirname = get_evals_dp_dir(dataset_policy)
-  return makedirs(join(dirname,'weights'))
+def get_dp_weights_dirname(dp):
+  dirname = get_evals_dir(dp.weights_dataset_name)
+  dirname = makedirs(join(dirname, dp.get_config_name()))
+  return join(dirname,'weights.txt')
 
 def get_cached_dataset_filename(name):
   assert(name in pascal_paths)

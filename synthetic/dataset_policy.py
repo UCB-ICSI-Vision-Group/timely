@@ -24,6 +24,28 @@ class ImageAction:
   def __repr__(self):
     return self.name
 
+class Sample:
+  "Class to allow equality testing to remove duplicate samples during training."
+
+  def __init__(self):
+    "Initialize all the fields with None."
+    fields = [
+      'img_ind','state','action_ind','dt','next_state','next_action_ind',
+      'det_naive_ap', 'det_actual_ap']
+    for field in fields:
+      self.__dict__[field] = None
+
+  def __eq__(self,other):
+    return \
+      self.img_ind == other.img_ind and \
+      self.action_ind == other.action_ind and \
+      self.dt == other.dt and \
+      self.next_action_ind == other.next_action_ind and \
+      self.det_naive_ap == other.det_naive_ap and \
+      self.det_actual_ap == other.det_actual_ap and \
+      np.all(self.state == other.state) and \
+      np.all(self.next_state == other.next_state)
+
 class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
@@ -33,23 +55,21 @@ class DatasetPolicy:
       # policy mode can be one of random, oracle, fixed_order,
       # no_smooth, backoff, fastinf
     'bounds': None, # start and deadline times for the policy
-    'weights_mode': 'manual' # manual, greedy, rl
+    'weights_mode': 'manual_1' # manual_1, manual_2, manual_3, greedy, rl
   }
 
-  def get_name(self):
-    return "%s_%s"%(self.dataset.get_name(), self.get_config_name())
-
   def get_config_name(self):
-    """All params except for dataset."""
-    middle = ""
+    "All params except for dataset."
+    bounds = ''
     if self.bounds:
-      middle += '-'.join((str(x) for x in self.bounds))
+      bounds = '-'.join((str(x) for x in self.bounds))
     detectors = '-'.join(self.detectors)
     name = '_'.join(
-        (self.policy_mode,
+        [self.policy_mode,
         detectors,
-        middle,
-        self.suffix))
+        bounds,
+        self.weights_mode,
+        self.suffix])
     return name
 
   @classmethod
@@ -59,53 +79,65 @@ class DatasetPolicy:
   def get_cls_cols(self):
     return self.dataset.classes + ['img_ind','time']
 
-  def __init__(self, dataset, train_dataset, **kwargs):
-    "**kwargs update the default config"
+  def __init__(self, test_dataset, train_dataset, weights_dataset_name=None, **kwargs):
+    """
+    Initialize the DatasetPolicy, getting it ready to run on the whole dataset
+    or a single image.
+    - test,train,weights datasets should be:
+      - val,  train,    val:    for training the weights
+      - test, trainval, val:    for final run
+    - **kwargs update the default config
+    """
     config = copy.copy(DatasetPolicy.default_config)
     config.update(kwargs)
 
-    self.dataset = dataset
+    self.dataset = test_dataset
     self.train_dataset = train_dataset
+    if not weights_dataset_name:
+      weights_dataset_name = self.dataset.name
+    self.weights_dataset_name = weights_dataset_name
 
     self.__dict__.update(config)
-    print("DatasetPolicy running with config:")
+    print("DatasetPolicy running with:")
     pprint(self.__dict__)
     self.ev = Evaluation(self)
     self.tt = ut.TicToc()
 
-    # Create actions list
-    self.actions = self.init_actions()
-
+    # Determine inference mode:
     # fixed_order, random, oracle policy modes get fixed_order inference mode
-    self.inference_mode = 'fixed_order'
     if re.search('fastinf',self.policy_mode):
       self.inference_mode = 'fastinf'
-    if self.policy_mode in ['no_smooth','backoff']:
+    elif self.policy_mode in ['no_smooth','backoff']:
       self.inference_mode = self.policy_mode
+    else:
+      self.inference_mode = 'fixed_order'
 
-    # determine fastinf suffix
-    self.fastinf_suffix='this_is_empty'
+    # Determine fastinf model name
+    self.fastinf_model_name='this_is_empty'
     if self.inference_mode=='fastinf':
       if self.detectors == ['csc_default']:
-        self.fastinf_suffix='CSC'
+        self.fastinf_model_name='CSC'
       elif self.detectors == ['perfect']:
-        self.fastinf_suffix='perfect'
+        self.fastinf_model_name='perfect'
       elif self.detectors == ['gist']:
-        self.fastinf_suffix='GIST'
+        self.fastinf_model_name='GIST'
       elif self.detectors == ['gist','csc']:
-        self.fastinf_suffix='GIST_CSC'
+        self.fastinf_model_name='GIST_CSC'
       else:
         raise RuntimeError("""
           We don't have Fastinf models for the detector combination you
           are running with: %s"""%self.detectors)
 
-    # load the weights for action selection and we're ready to go
-    self.weights = self.load_weights(self.weights_mode)
+    # load the actions and the corresponding weights and we're ready to go
+    self.test_actions = self.init_actions()
+    self.actions = self.test_actions
+    self.weights = self.load_weights()
 
   def init_actions(self,train=False):
-    "Return list of actions for the given dataset."
-    # For collect_det_statistics(), we need to run on the train_dataset,
-    # which means we must load external detections for them.
+    """
+    Return list of actions, which involves initializing the detectors.
+    If train==True, the external detectors will load trainset detections.
+    """
     dataset = self.dataset
     if train:
       dataset = self.train_dataset
@@ -142,35 +174,39 @@ class DatasetPolicy:
             dataset, self.train_dataset, cls, all_dets_for_cls, detector)
           actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
-      # unknown
       else:
         raise RuntimeError("Unknown mode in detectors: %s"%self.detectors)
-
       return actions
 
-  def load_weights(self, weights_mode):
+  def load_weights(self,force=False):
     """
     Return weights from file or construct from scratch according
-    to self.weights_mode.
+    to self.weights_mode and self.weights_dataset_name.
     """
+    # TODO: load from file if exists
+    filename = config.get_dp_weights_dirname(self)
+    if not force and opexists(filename):
+      weights = np.loadtxt(filename)
+      return weights
+
     # Construct the weight vector by concatenating per-action vectors
     # The features are [P(C) P(not C) H(C) 1]
     weights = np.zeros((len(self.actions), BeliefState.num_features))
 
     # OPTION 1: the corresponding manual weights are [1 0 0 0]
-    if weights_mode == 'manual_1':
+    if self.weights_mode == 'manual_1':
       per_action = np.array([1,0,0,0])
       weights = np.tile(per_action,(len(self.actions),1)).flatten('C')
 
     # OPTION 2: the manual weights are [naive_ap|present naive_ap|absent 0 0]
-    elif weights_mode == 'manual_2':
+    elif self.weights_mode == 'manual_2':
       if 'naive_ap|present' not in self.actions[0].obj.config:
         self.output_det_statistics()
       weights[:,0] = [action.obj.config['naive_ap|present'] for action in self.actions]
       weights = weights.flatten('C') # row-major
 
     # OPTION 3: the manual weights are [actual_ap|present actual_ap|absent 0 0]
-    elif weights_mode == 'manual_3':
+    elif self.weights_mode == 'manual_3':
       if 'actual_ap|present' not in self.actions[0].obj.config or \
          'actual_ap|absent' not in self.actions[0].obj.config:
          self.output_det_statistics()
@@ -178,13 +214,15 @@ class DatasetPolicy:
       weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
       weights = weights.flatten('C') # row-major
 
-    elif weights_mode == 'greedy':
+    elif self.weights_mode == 'greedy':
+      weights = self.learn_greedy_weights()
+
+    elif self.weights_mode == 'rl':
       # TODO
       None
 
-    elif weights_mode == 'rl':
-      # TODO
-      None
+    else:
+      raise ValueError("unsupported weights_mode %s"%self.weights_mode)
 
     return weights
 
@@ -204,20 +242,21 @@ class DatasetPolicy:
     clses_table = None
 
     dataset = self.dataset
+    self.actions = self.test_actions
     if train:
       dataset = self.train_dataset
-      # We need to reload the actions as well
-      test_actions = self.actions
-      self.actions = self.init_actions(train)
+      if not hasattr(self,'train_actions'):
+        self.train_actions = self.init_actions(train)
+      self.actions = self.train_actions
 
     # If we are collecting samples, we don't care about caches
     if sample_size > 0:
       force = True
 
     # Check for cached results
-    det_filename = config.get_dp_dets_filename(self)
-    cls_filename = config.get_dp_clses_filename(self)
-    samples_filename = config.get_dp_samples_filename(self)
+    det_filename = config.get_dp_dets_filename(self,train)
+    cls_filename = config.get_dp_clses_filename(self,train)
+    samples_filename = config.get_dp_samples_filename(self,train)
     if not force \
         and opexists(det_filename) and opexists(cls_filename) \
         and opexists(samples_filename):
@@ -277,10 +316,6 @@ class DatasetPolicy:
         self.inf_model.save_cache()
     safebarrier(comm)
 
-    # Restore the test actions if need be
-    if train:
-      self.actions = test_actions
-
     # Broadcast results to all workers, because Evaluation splits its work as well.
     dets_table = comm.bcast(dets_table,root=0)
     clses_table = comm.bcast(clses_table,root=0)
@@ -290,23 +325,58 @@ class DatasetPolicy:
         self.policy_mode, len(images), self.tt.toc()))
     return dets_table,clses_table,final_samples
 
-  def learn_weights(self):
+  def learn_greedy_weights(self):
     """
     Runs iterations of generating samples with current weights and training
     new weight vectors based on the collected samples.
-    What it does depends on policy_mode.
     """
-    # check for file containing the relevant statistics. if it does not exist,
-    # collect samples and write it out.
-    # NOTE: the filename depends only on the detector type
-    if re.search('_greedy$', self.policy_mode):
-      # regression to next-step greedy rewards
-      None
-    elif re.search('_rl$', self.policy_mode):
-      # full reinforcement learning
-      None
-    else:
-      raise RuntimeError("Policy mode %s is not supported!"%self.policy_mode)
+    # Collect samples (parallelized)
+    num_samples = 200
+    all_samples = self.run_on_dataset(True,num_samples)
+    
+    # Loop until max_iterations or the error is below threshold
+    error = 100000
+    threshold = 0.01
+    max_iterations = 10
+    for i in range(0,max_iterations):
+      # do regression with cross-validated parameters (parallelized)
+      self.weights, error = self.regress(all_samples)
+      print("After iteration %d, weights and error are:")
+      np.set_printoptions(precision=2)
+      print self.weights
+      print error
+
+      # after the first iteration, check if the error is small
+      if i>0 and error<threshold:
+        break
+
+      # collect more samples with the updated weights, adding new ones
+      new_samples = self.run_on_dataset(True,num_samples)
+      for sample in new_samples:
+        if not (sample in all_samples):
+          all_samples.append(sample)
+
+    # Save the weights
+    filename = config.get_dp_weights_dirname(self)
+    np.savetxt(filename, self.weights, fmt='%.6f')
+
+  def regress(self,samples,warm_start=False):
+    """
+    Take list of samples and regress from the features to the rewards.
+    If warm_start, start with the current values of self.weights.
+    """
+    # Construct data and output arrays
+    feats = []
+    for sample in samples:
+      feats.append(self.bs.block_out_action(sample.state,sample.action_ind))
+
+    # TODO: reward function is implictly defined here: maybe move somewhere?
+    X = np.array(feats)
+    assert(X.shape[0]==len(feats))
+    y = np.array([sample.det_actual_ap])
+
+    # TODO: parallelized KFold cross-validation of stuff
+    return self.weights
 
   def output_det_statistics(self):
     """
@@ -351,11 +421,6 @@ class DatasetPolicy:
         json.dump(det_configs,f)
     safebarrier(comm)
 
-  def write_out_weights(self, name='default'):
-    """Write self.weights out to canonical filename given the name."""
-    filename = opjoin(config.get_dp_weights_dirname(self), name+'.txt')
-    np.savetxt(filename, self.weights, fmt='%.2f')
-
   ################
   # Image Policy stuff
   ################
@@ -366,7 +431,9 @@ class DatasetPolicy:
     elif self.policy_mode=='fixed_order':
       self.action_values = b.get_p_c()
     else:
-      self.action_values = np.dot(self.weights, b.featurize())
+      ff = b.compute_full_feature()
+      self.action_values = np.array([\
+        np.dot(self.weights, b.block_out_action(ff,0)) for action_ind in self.actions])
 
   def select_action(self, b):
     """
@@ -394,27 +461,27 @@ class DatasetPolicy:
     samples = []
     prev_ap = 0
    
-    print image
     img_ind = self.dataset.get_img_ind(image) if image else -1
 
     # If we have previously run_on_image(), then we already have a reference to an inf_model
     # Otherwise, we make a new one and store a reference to it, to keep it alive
     if hasattr(self,'inf_model'):
       b = BeliefState(self.train_dataset, self.actions, self.inference_mode,
-        self.bounds, self.inf_model, self.fastinf_suffix)
+        self.bounds, self.inf_model, self.fastinf_model_name)
     else:
       b = BeliefState(self.train_dataset, self.actions, self.inference_mode,
-        self.bounds, fastinf_suffix=self.fastinf_suffix)
+        self.bounds, fastinf_model_name=self.fastinf_model_name)
+      self.b = b
       self.inf_model = b.model
 
     self.update_actions(b)
     action_ind = self.select_action(b)
     while True:
       # Populate the sample with stuff we know
-      sample = {}
-      sample['img_ind'] = img_ind
-      sample['state'] = b.compute_full_feature()
-      sample['action_ind'] = action_ind
+      sample = Sample()
+      sample.img_ind = img_ind
+      sample.state = b.compute_full_feature()
+      sample.action_ind = action_ind
       
       # Take the action and get the observations as a dict
       action = self.actions[action_ind]
@@ -422,8 +489,8 @@ class DatasetPolicy:
 
       # If observations include detections, compute the relevant
       # stuff for the sample collection
-      sample['det_naive_ap'] = 0
-      sample['det_actual_ap'] = 0
+      sample.det_naive_ap = 0
+      sample.det_actual_ap = 0
       if 'dets' in obs:
         det = action.obj
         detections = obs['dets']
@@ -438,7 +505,7 @@ class DatasetPolicy:
 
         # compute the 'naive' det AP increase: adding dets to empty set
         ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)
-        sample['det_naive_ap'] = ap
+        sample.det_naive_ap = ap
 
         # TODO: am I needlessly recomputing this table?
         all_detections.append(detections)
@@ -450,12 +517,12 @@ class DatasetPolicy:
         # compute the actual AP increase: addings dets to dets so far
         ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
         ap_diff = ap-prev_ap
-        sample['det_actual_ap'] = ap_diff
+        sample.det_actual_ap = ap_diff
         prev_ap = ap
 
       # Observations always include the following stuff, which can be used
       # to update the belief state, and mark it as taken
-      sample['dt'] = obs['dt']
+      sample.dt = obs['dt']
       b.t += obs['dt']
       b.taken[action_ind] = 1
       b.update_with_score(action_ind, obs['score'])
@@ -469,8 +536,8 @@ class DatasetPolicy:
       action_ind = self.select_action(b)
 
       # store the next state in sample along with action
-      sample['next_state'] = b.compute_full_feature()
-      sample['next_action_ind'] = action_ind
+      sample.next_state = b.compute_full_feature()
+      sample.next_action_ind = action_ind
       samples.append(sample)
 
       # check for stopping conditions
@@ -482,10 +549,10 @@ class DatasetPolicy:
 
     # in case of 'oracle' mode, re-sort the detections and times in order of AP
     # contributions
-    times = [s['dt'] for s in samples]
+    times = [s.dt for s in samples]
     all_clses = np.array(all_clses)
     if self.policy_mode=='oracle':
-      naive_aps = np.array([s['det_naive_ap'] for s in samples])
+      naive_aps = np.array([s.det_naive_ap for s in samples])
       sorted_inds = np.argsort(-naive_aps)
       all_detections = np.take(all_detections, sorted_inds)
       times = np.take(times, sorted_inds)
@@ -517,10 +584,10 @@ class DatasetPolicy:
     else:
       all_detections = np.array([])
 
-    print("DatasetPolicy on image with ind %d took %.3f s"%(img_ind,tt.qtoc()))
+    print("DatasetPolicy on image with ind %d took %.3f s"%(img_ind,self.tt.qtoc()))
 
     if False:
-      print("Action sequence was: %s"%[s['action_ind'] for s in samples])
+      print("Action sequence was: %s"%[s.action_ind for s in samples])
       print("here's an image:")
       X = np.vstack((all_clses[:,:-2],image.get_cls_ground_truth()))
       np.set_printoptions(precision=2, suppress=True)
