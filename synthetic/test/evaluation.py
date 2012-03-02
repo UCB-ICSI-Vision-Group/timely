@@ -158,7 +158,15 @@ class TestEvaluationPerfect:
     filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_chi2_20')
     ext_table_chi2_20_tv = cPickle.load(open(filename, 'r'))
     print 'ext_chi2_20_trainval', Evaluation.compute_cls_map(ext_table_chi2_20_tv, self.trainval_gt)
-        
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_rbf_20')
+    ext_table_rbf_20 = cPickle.load(open(filename, 'r'))
+    print 'ext_rbf_20_test', Evaluation.compute_cls_map(ext_table_rbf_20, self.test_gt)    
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_rbf_20')
+    ext_table_rbf_20_tv = cPickle.load(open(filename, 'r'))
+    print 'ext_rbf_20_trainval', Evaluation.compute_cls_map(ext_table_rbf_20_tv, self.trainval_gt)
+       
     filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_chi2')
     ext_chi2_test = cPickle.load(open(filename, 'r'))
     print 'ext_chi2_test', Evaluation.compute_cls_map(ext_chi2_test, self.test_gt)
@@ -177,14 +185,7 @@ class TestEvaluationPerfect:
     ext_table_rbf_5_tv = cPickle.load(open(filename, 'r'))
     print 'ext_rbf_5_trainval', Evaluation.compute_cls_map(ext_table_rbf_5_tv, self.trainval_gt)
         
-    filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_rbf_20')
-    ext_table_rbf_20 = cPickle.load(open(filename, 'r'))
-    print 'ext_rbf_20_test', Evaluation.compute_cls_map(ext_table_rbf_20, self.test_gt)    
-    
-    filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_rbf_20')
-    ext_table_rbf_20_tv = cPickle.load(open(filename, 'r'))
-    print 'ext_rbf_20_trainval', Evaluation.compute_cls_map(ext_table_rbf_20_tv, self.trainval_gt)
-    
+        
     
     
 if __name__=='__main__':
