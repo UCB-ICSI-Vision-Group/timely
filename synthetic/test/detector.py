@@ -17,12 +17,12 @@ class TestDetector:
     None
 
   def test_subclass(self):
-    d = Detector(self.train_dataset,'dog')
+    d = Detector(self.train_dataset,self.train_dataset,'dog')
     assert(isinstance(d,Detector))
 
 class TestPerfectDetector(TestDetector):
   def test_expected_time(self):
-    d = PerfectDetector(self.train_dataset,'dog')
+    d = PerfectDetector(self.train_dataset,self.train_dataset,'dog')
     img = Image(size=(500,375))
     print d.expected_time(img)
     assert(d.expected_time(img) == 10)
@@ -30,6 +30,6 @@ class TestPerfectDetector(TestDetector):
     assert(d.expected_time(img) == 5)
 
   def test_subclass(self):
-    d = PerfectDetector(self.train_dataset,'dog')
+    d = PerfectDetector(self.train_dataset,self.train_dataset,'dog')
     assert(isinstance(d,Detector))
 

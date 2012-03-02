@@ -1,0 +1,6 @@
+{
+  "suffix": "mar1",
+  "detectors": ["perfect"],
+  "policy_mode": ["random","fixed_order","no_smooth"],
+  "weights_mode": ["manual_1"]
+}

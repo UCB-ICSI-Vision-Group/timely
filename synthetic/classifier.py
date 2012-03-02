@@ -100,7 +100,6 @@ class Classifier(object):
   
   def load_svm(self):
     svm_file = config.get_classifier_filename(self,self.cls)
-    print svm_file
     model = load_svm(svm_file)
     return model
   

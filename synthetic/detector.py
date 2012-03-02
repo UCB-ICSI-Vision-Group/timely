@@ -24,8 +24,9 @@ class Detector(object):
   def get_cols(cls):
     return ['x','y','w','h','score']
 
-  def __init__(self, dataset, cls, detector_config=None):
+  def __init__(self, dataset, train_dataset, cls, detector_config=None):
     self.dataset = dataset
+    self.train_dataset = train_dataset
     self.cls = cls
     self.cls_ind = dataset.get_ind(cls)
 
@@ -153,8 +154,8 @@ class SWDetector(Detector):
   Perfect classification performance.
   """
 
-  def __init__(self, dataset, cls, sw_generator, detector_config=None):
-    Detector.__init__(self,dataset,cls,detector_config)
+  def __init__(self, dataset, train_dataset, cls, sw_generator, detector_config=None):
+    Detector.__init__(self,dataset,train_dataset,cls,detector_config)
     self.sw = sw_generator
 
 class PerfectDetector(Detector):

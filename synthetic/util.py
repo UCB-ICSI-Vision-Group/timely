@@ -275,7 +275,7 @@ def fequal(a,b,tol=.0000001):
 
 def log2(x):
   "Base-2 log that returns 0 if x==0."
-  y = atleast_1d(np.copy(x))
+  y = np.atleast_1d(np.copy(x))
   y[y==0]=1
   return np.log2(y)
 

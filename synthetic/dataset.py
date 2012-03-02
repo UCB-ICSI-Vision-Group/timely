@@ -83,7 +83,7 @@ class Dataset:
     tt = ut.TicToc().tic()
     print("Dataset: %s"%name),
     filename = config.get_cached_dataset_filename(name)
-    if opexists(filename):
+    if opexists(filename) and not force:
       with open(filename) as f:
         cached = cPickle.load(f)
         self.classes = cached.classes
