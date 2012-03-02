@@ -104,39 +104,39 @@ class Classifier(object):
     table_cls = np.zeros((len(train_dataset.images), 1))
     x = np.concatenate((pos, neg))
     prob_t = svm_proba(x, model)
-    prob2 =  []
-    prob3 = []
-    prob4 = []
-    self.svm = self.load_svm(filename) 
-        
-    for idx in [0]:#range(x.shape[0]):
-      prob2.append(svm_proba(x[idx,:], model))
-      if idx >= len(pos_imgs):
-        img = neg_imgs[idx-len(pos_imgs)]
-      else:
-        img = pos_imgs[idx]        
-      print 'comp prob3'
-      
-      prob3.append(self.classify_image(img, dets))
-    prob2 = np.concatenate(prob2)
-    
-    self.svm = model 
-        
-    for idx in [0]:#range(x.shape[0]):
-      if idx >= len(pos_imgs):
-        img = neg_imgs[idx-len(pos_imgs)]
-      else:
-        img = pos_imgs[idx]        
-      print 'comp prob4'
-      
-      prob4.append(self.classify_image(img, dets))
-    prob2 = np.concatenate(prob2)
+#    prob2 =  []
+#    prob3 = []
+#    prob4 = []
+#    self.svm = self.load_svm(filename) 
+#        
+#    for idx in [0]:#range(x.shape[0]):
+#      prob2.append(svm_proba(x[idx,:], model))
+#      if idx >= len(pos_imgs):
+#        img = neg_imgs[idx-len(pos_imgs)]
+#      else:
+#        img = pos_imgs[idx]        
+#      print 'comp prob3'
+#      
+#      prob3.append(self.classify_image(img, dets))
+#    prob2 = np.concatenate(prob2)
+#    
+#    self.svm = model 
+#        
+#    for idx in range(x.shape[0]):
+#      if idx >= len(pos_imgs):
+#        img = neg_imgs[idx-len(pos_imgs)]
+#      else:
+#        img = pos_imgs[idx]        
+#      print 'comp prob4'
+#      
+#      prob4.append(self.classify_image(img, dets))
+#    prob2 = np.concatenate(prob2)
     
     #embed()
-    for img_idx, img in enumerate(train_dataset.images):
-      score = self.classify_image(img, dets)
-      table_cls[img_idx, 0] = score
-    return table_cls 
+#    for img_idx, img in enumerate(train_dataset.images):
+#      score = self.classify_image(img, dets)
+#      table_cls[img_idx, 0] = score
+    return prob_t[:,1]
     
   def get_observation(self, image):
     """
