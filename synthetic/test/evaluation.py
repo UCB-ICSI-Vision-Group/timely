@@ -17,10 +17,10 @@ class TestEvaluationPerfect:
     self.csc_test = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'csc_test'), 'r'))
     self.ext_csc_test = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'ext_csc_test'), 'r'))
     self.ext_csc_trainval = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'ext_csc_trainval'), 'r'))
-    d = Dataset('full_pascal_trainval')
-    self.trainval_gt = d.get_cls_ground_truth()
-    d = Dataset('full_pascal_test')
-    self.test_gt = d.get_cls_ground_truth()
+    self.d_train = Dataset('full_pascal_trainval')
+    self.trainval_gt = self.d_train.get_cls_ground_truth()
+    self.d_test = Dataset('full_pascal_test')
+    self.test_gt = self.d_test.get_cls_ground_truth()
   
   def setup(self):
     train_dataset = Dataset('test_pascal_train',force=True)
@@ -151,11 +151,30 @@ class TestEvaluationPerfect:
     print 'ext_test', Evaluation.compute_cls_map(self.ext_csc_test, self.test_gt)
     print 'ext_trainval', Evaluation.compute_cls_map(self.ext_csc_trainval, self.trainval_gt)
     
-    d = Dataset('full_pascal_test')
-    filename = os.path.join(config.get_ext_dets_foldname(d), 'dp', 'table_chi2')
-    print filename
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_chi2')
     ext_chi2_test = cPickle.load(open(filename, 'r'))
     print 'ext_chi2_test', Evaluation.compute_cls_map(ext_chi2_test, self.test_gt)
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_chi_2_tv')
+    ext_table_chi_2_tv = cPickle.load(open(filename, 'r'))
+    print 'ext_chi2_trainval', Evaluation.compute_cls_map(ext_table_chi_2_tv, self.trainval_gt)    
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_rbf_5')
+    ext_table_rbf_5 = cPickle.load(open(filename, 'r'))
+    print 'ext_rbf_5_test', Evaluation.compute_cls_map(ext_table_rbf_5, self.test_gt)    
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_rbf_5')
+    ext_table_rbf_5_tv = cPickle.load(open(filename, 'r'))
+    print 'ext_rbf_5_trainval', Evaluation.compute_cls_map(ext_table_rbf_5_tv, self.trainval_gt)
+        
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_chi2_20')
+    ext_table_chi2_20 = cPickle.load(open(filename, 'r'))
+    print 'ext_chi2_20_test', Evaluation.compute_cls_map(ext_table_chi2_20, self.test_gt)    
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_chi2_20')
+    ext_table_chi2_20_tv = cPickle.load(open(filename, 'r'))
+    print 'ext_chi2_20_trainval', Evaluation.compute_cls_map(ext_table_chi2_20_tv, self.trainval_gt)
     
     
 if __name__=='__main__':
