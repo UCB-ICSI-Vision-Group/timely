@@ -13,8 +13,8 @@ import math
 
 class TestEvaluationPerfect:
   def __init__(self):
-    self.csc_table = cPickle.load(open(os.path.join(config.test_support_dir, 'csc_table'), 'r'))
-    self.table_gt = cPickle.load(open(os.path.join(config.test_support_dir, 'table_gt'), 'r'))
+    self.csc_table = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'csc_table'), 'r'))
+    self.table_gt = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'table_gt'), 'r'))
   
   def setup(self):
     train_dataset = Dataset('test_pascal_train',force=True)
@@ -137,4 +137,3 @@ class TestEvaluationPerfect:
       res = Evaluation.compute_cls_map(clf_table, self.table_gt)
       ress[idx] = res
     assert(np.mean(ress) < 0.09)
-  
