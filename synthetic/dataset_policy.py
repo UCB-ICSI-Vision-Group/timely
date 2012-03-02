@@ -632,7 +632,7 @@ class DatasetPolicy:
 if __name__=='__main__':
   train_d = Dataset('full_pascal_trainval')
   
-  just_combine=True
+  just_combine=False
   
   for ds in ['full_pascal_test']:
     eval_d = Dataset(ds) 

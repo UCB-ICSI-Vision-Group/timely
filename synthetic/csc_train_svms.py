@@ -11,17 +11,21 @@ def retrain_best_svms():
   d = Dataset('full_pascal_trainval')
   dp = DatasetPolicy(d, d, detectors=['csc_default'])  
   
-  kernel = 'chi2'
-  
+  kernels = ['rbf']  
   num_binss = [5]#,10,20,50]
-  Cs = [1]#, 2, 5, 10]
-  settings = list(itertools.product(Cs, range(len(d.classes)), num_binss))  
+  Cs = [1.]#, 2, 5, 10]
+  settings = list(itertools.product(Cs, range(len(d.classes)), num_binss, kernels))
+  
+  kernels = ['chi2']
+  num_binss = [20]
+  settings += list(itertools.product(Cs, range(len(d.classes)), num_binss, kernels))
   
   for set_idx in range(comm_rank, len(settings), comm_size):
     settin = settings[set_idx]
     C = settin[0]
     cls_idx = settin[1]
     num_bins = settin[2]    
+    kernel = settin[3]
     cls = d.classes[cls_idx]    
     dets = dp.actions[cls_idx].obj.dets           
     csc = CSCClassifier('default', cls, d, num_bins)

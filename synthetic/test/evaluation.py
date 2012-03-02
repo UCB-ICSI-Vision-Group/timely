@@ -152,7 +152,8 @@ class TestEvaluationPerfect:
     print 'ext_trainval', Evaluation.compute_cls_map(self.ext_csc_trainval, self.trainval_gt)
     
     d = Dataset('full_pascal_test')
-    filename = os.path.join(config.get_ext_dets_foldname(d), 'dp', 'table')
+    filename = os.path.join(config.get_ext_dets_foldname(d), 'dp', 'table_chi2')
+    print filename
     ext_chi2_test = cPickle.load(open(filename, 'r'))
     print 'ext_chi2_test', Evaluation.compute_cls_map(ext_chi2_test, self.test_gt)
     
