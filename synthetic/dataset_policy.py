@@ -658,7 +658,7 @@ if __name__=='__main__':
         filename = os.path.join(dirname,'table_%d'%(i+1))
         test_table += np.loadtxt(filename)
       dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp'))
-      filename = os.path.join(dirname,'table_rbf_20')
+      filename = os.path.join(dirname,'table_linear_20')
       tab_test_table = ut.Table()
       tab_test_table.cols = list(eval_d.classes) + ['img_ind']
       

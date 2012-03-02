@@ -118,7 +118,7 @@ class Classifier(object):
     """
   
   def load_svm(self):
-    svm_file = config.get_classifier_filename(self,self.cls) + '_rbf_1.000000_20'
+    svm_file = config.get_classifier_filename(self,self.cls) + '_linear_1.000000_20'
     print svm_file
     if not os.path.exists(svm_file):
       #raise RuntimeWarning("Svm %s is not trained"%svm_file)
