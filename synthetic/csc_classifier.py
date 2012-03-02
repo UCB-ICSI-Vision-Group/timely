@@ -111,7 +111,7 @@ class CSCClassifier(Classifier):
         bounds = ut.importance_sample(dets.subset(['score']).arr, self.num_bins+1)
         self.store_bounds(bounds)
 
-        self.train_for_all_cls(train_dataset, dets, kernel, self.cls, C, probab=probab)
+        self.train_for_cls(train_dataset, dets, kernel, self.cls, C, probab=probab)
         if test:
           #self.test_svm(val_dataset, csc_test, kernel, cls_idx, C)
           None  

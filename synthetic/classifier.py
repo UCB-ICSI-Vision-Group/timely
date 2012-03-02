@@ -68,7 +68,7 @@ class Classifier(object):
     arr[:, 0:1] = np.power(np.exp(-2.*arr[:,0:1])+1,-1)
     return arr
       
-  def train_for_all_cls(self, train_dataset, dets, kernel, cls_idx, C, probab=True):
+  def train_for_cls(self, train_dataset, dets, kernel, cls_idx, C, probab=True):
     cls = train_dataset.classes[cls_idx]
     filename = config.get_classifier_svm_learning_filename(self,cls,kernel,C, self.num_bins)
 
@@ -98,6 +98,12 @@ class Classifier(object):
     model = self.train(pos, neg, kernel, C, probab=probab)
    
     save_svm(model, filename)
+    
+    table_cls = np.zeros((len(train_dataset.images), 1))
+    for img_idx, img in enumerate(train_dataset.images):
+      score = self.classify_image(img, dets)
+      table_cls[img_idx, 0] = score
+    return table_cls 
     
   def get_observation(self, image):
     """

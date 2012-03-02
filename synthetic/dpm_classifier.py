@@ -63,7 +63,7 @@ if __name__=='__main__':
     intervals = params[3]
     cls_idx = params[4]
     C = params[5]
-    dpm_classif.train_for_all_cls(train_dataset, dpm_train,intervals,kernel, lower, upper, cls_idx, C)
+    dpm_classif.train_for_cls(train_dataset, dpm_train,intervals,kernel, lower, upper, cls_idx, C)
     dpm_classif.test_svm(test_dataset, dpm_test, intervals,kernel, lower, upper, cls_idx, C)
   
   
