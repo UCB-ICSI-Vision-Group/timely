@@ -118,8 +118,12 @@ class Classifier(object):
     # TODO: CHANGE BACK!!
     svm_file = config.get_classifier_filename(self,self.cls) + '_chi2_1.000000'
     print svm_file
-    model = load_svm(svm_file)
-    return model
+    if not os.path.exists(svm_file):
+      #raise RuntimeWarning("Svm %s is not trained"%svm_file)
+      return None
+    else:  
+      model = load_svm(svm_file)
+      return model
   
   def test_svm(self, test_dataset, feats, intervals, kernel, lower, upper, \
                cls_idx, C, file_out=True,local=False):

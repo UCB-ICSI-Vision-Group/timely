@@ -46,7 +46,7 @@ def chi_square_kernel(x, y):
   
   return chi_sum
 
-def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=False):
+def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
   """
   Train a svm.
   x - n x features data
@@ -54,7 +54,7 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=False):
   kernel - kernel to be used in ['linear', 'rbf', 'chi2']
   """
   if kernel == 'chi2':
-    clf = SVC(kernel='precomputed',C=C)
+    clf = SVC(kernel='precomputed',C=C, probability=probab)
     gram = np.zeros((x.shape[0],x.shape[0]))
     t_gram = time.time()
     for i in range(x.shape[0]):

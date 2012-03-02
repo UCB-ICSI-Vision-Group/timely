@@ -9,14 +9,13 @@ from synthetic.csc_classifier import CSCClassifier
 
 def retrain_best_svms():
   d = Dataset('full_pascal_trainval')
-  dp = DatasetPolicy(d, d, detectors=['csc_default'])
-  
+  dp = DatasetPolicy(d, d, detectors=['csc_default'])  
   
   kernel = 'chi2'
   
-  num_binss = [5,10,20,50]
-  Cs = [1, 2, 5, 10]
-  settings = list(itertools.product(Cs, range(len(d.classes)), num_binss))
+  num_binss = [5]#,10,20,50]
+  Cs = [1]#, 2, 5, 10]
+  settings = list(itertools.product(Cs, range(len(d.classes)), num_binss))  
   
   for set_idx in range(comm_rank, len(settings), comm_size):
     settin = settings[set_idx]

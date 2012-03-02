@@ -151,7 +151,8 @@ class TestEvaluationPerfect:
     print 'ext_test', Evaluation.compute_cls_map(self.ext_csc_test, self.test_gt)
     print 'ext_trainval', Evaluation.compute_cls_map(self.ext_csc_trainval, self.trainval_gt)
     
-    np.testing.assert_equal(np.sort(self.csc_test.arr), np.sort(self.ext_csc_test.arr))
+    #filename = 
+    ext_chi2_test = 0
     
     
 if __name__=='__main__':
