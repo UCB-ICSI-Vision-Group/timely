@@ -24,6 +24,9 @@ Sample at img_ind: %(img_ind)s:
   det_naive_ap/det_actual_ap: %(det_naive_ap).3f/%(det_actual_ap).3f
 """%self.__dict__
 
+  def __ne__(self,other):
+    return not self.__eq__(other)
+    
   def __eq__(self,other):
     return \
       self.img_ind == other.img_ind and \

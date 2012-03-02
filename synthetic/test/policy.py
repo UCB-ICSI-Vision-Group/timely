@@ -28,9 +28,19 @@ class TestDatasetPolicy:
   def test_run_on_dataset(self):
     # run on test dataset
     dets,clses,samples = self.dp.run_on_dataset(force=True) 
-    print dets
-    print clses
-    print samples
+    assert(len(samples) == clses.shape()[0])
+    embed()
+    train_dets,train_clses,train_samples = self.dp.run_on_dataset(train=True,force=True)
+    assert(len(train_samples) == train_clses.shape()[0])
+
+  def test_unique_samples(self):
+    "Test the correctness of making a list of samples unique."
+    dets,clses,samples = self.dp.run_on_dataset()
+    new_sample = copy.deepcopy(samples[11])
+    new_sample2 = copy.deepcopy(samples[11])
+    new_sample2.dt = -40 # an unreasonable value
+    assert(new_sample in samples)
+    assert(new_sample2 not in samples)
 
   def test_output_det_statistics(self):
     self.dp.output_det_statistics()
@@ -84,4 +94,5 @@ class TestDatasetPolicy:
 if __name__ == '__main__':
   tdp = TestDatasetPolicy()
   tdp.test_run_on_dataset()
+  #tdp.test_unique_samples()
   #tdp.test_dp_weights()

@@ -258,7 +258,7 @@ class DatasetPolicy:
       dets,clses,samples = self.run_on_image(images[i])
       all_dets.append(dets)
       all_clses.append(clses)
-      all_samples.append(samples)
+      all_samples += samples
     safebarrier(comm)
 
     # Aggregate the results
