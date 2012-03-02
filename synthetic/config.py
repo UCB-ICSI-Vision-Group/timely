@@ -180,6 +180,8 @@ def get_ext_dets_filename(dataset, suffix):
   dirname = makedirs(join(res_dir,'ext_dets'))  
   return join(dirname, '%s_%s.npy'%(dataset_name,suffix))
 
+def get_ext_test_support_dir():
+  return makedirs(join(test_support_dir, 'ext_cls_test'))
 #####
 # GIST
 #####
@@ -331,3 +333,4 @@ def append_settings(filename,m,r2):
   for s in add_settings:
     filename += '_'+s
   return filename
+

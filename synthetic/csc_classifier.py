@@ -8,6 +8,7 @@ from synthetic.training import svm_predict, svm_proba
 #import synthetic.config as config
 from synthetic.config import get_ext_dets_filename
 from synthetic.image import Image
+from synthetic.util import Table
 #from synthetic.dpm_classifier import create_vector
 
 class CSCClassifier(Classifier):
@@ -242,13 +243,18 @@ def create_csc_stuff(d, classify_images=True, force_new=False):
     
     if comm_rank == 0:      
       print 'save table as %s'%filename
-      cPickle.dump(table, open(filename, 'w'))
+      
+      csc_table = Table()
+      csc_table.cols = d.classes + ['img_ind']
+      csc_table.arr = np.hstack((table, np.array(np.arange(table.shape[0]),ndmin=2).T))      
+      print csc_table
+      cPickle.dump(csc_table, filename)
       
 def retrain_best_svms():
   csc_classifier_train(get_best_parameters(), 'default', probab=False, test=False)
   
 if __name__=='__main__':
-  d = Dataset('full_pascal_test')
+  d = Dataset('full_pascal_trainval')
   #retrain_best_svms()
-  create_csc_stuff(d, classify_images=True, force_new=False)
+  create_csc_stuff(d, classify_images=False, force_new=False)
                     
