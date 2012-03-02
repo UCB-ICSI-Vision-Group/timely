@@ -66,7 +66,7 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
         gram[i,j] = kern
         gram[j,i] = kern
         inner_act += 1
-        if inner_act%50 == 0:
+        if inner_act%5000 == 0:
           print '%d is in gram on: %d / %d'%(comm_rank, inner_act, inner_total)
           print '\t%f seconds passed'%(time.time() - t_gram)
     t_gram = time.time() - t_gram

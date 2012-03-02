@@ -7,6 +7,7 @@ from common_mpi import *
 import synthetic.config as config
 
 from synthetic.training import train_svm, svm_predict, save_svm, load_svm
+from IPython import embed
 
 class Classifier(object):
   def __init__(self):
