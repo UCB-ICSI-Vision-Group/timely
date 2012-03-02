@@ -6,7 +6,8 @@ from common_imports import *
 from common_mpi import *
 import synthetic.config as config
 
-from synthetic.training import train_svm, svm_predict, save_svm, load_svm
+from synthetic.training import train_svm, svm_predict, save_svm, load_svm,\
+  svm_proba
 from IPython import embed
 
 class Classifier(object):
@@ -100,6 +101,21 @@ class Classifier(object):
     save_svm(model, filename)
     
     table_cls = np.zeros((len(train_dataset.images), 1))
+    x = np.concatenate((pos, neg))
+    prob_t = svm_proba(x, model)
+    prob2 =  []
+    prob3 = [] 
+    for idx in range(x.shape[0]):
+      prob2.append(svm_proba(x[idx,:], model))
+      if idx >= len(pos_imgs):
+        img = neg_imgs[idx-len(pos_imgs)]
+      else:
+        img = pos_imgs[idx]        
+      print 'comp prob3'
+      prob3.append(self.classify_image(img, dets))
+    prob2 = np.concatenate(prob2)
+    
+    embed()
     for img_idx, img in enumerate(train_dataset.images):
       score = self.classify_image(img, dets)
       table_cls[img_idx, 0] = score

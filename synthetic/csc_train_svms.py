@@ -5,7 +5,7 @@ from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.ext_detector import ExternalDetector
 from synthetic.csc_classifier import CSCClassifier
-
+from IPython import embed
 
 def retrain_best_svms():
   d = Dataset('full_pascal_trainval')
@@ -29,9 +29,13 @@ def retrain_best_svms():
     cls = d.classes[cls_idx]    
     dets = dp.actions[cls_idx].obj.dets           
     csc = CSCClassifier('default', cls, d, num_bins)
-    table[:, cls_idx] = csc.train_for_cls(d, dets, kernel, cls_idx, C, probab=True)     
-  cPickle.dump(table, 'table_linear_5')
+    col = csc.train_for_cls(d, dets, kernel, cls_idx, C, probab=True)
+    table[:, cls_idx] = col[:,0]
   
+  safebarrier(comm)
+  if comm_rank == 0:
+    table = comm.reduce(table) 
+    cPickle.dump(table, 'table_linear_5')  
   
 if __name__=='__main__':
   d = Dataset('full_pascal_trainval')

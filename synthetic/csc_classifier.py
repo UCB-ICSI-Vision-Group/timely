@@ -24,6 +24,7 @@ class CSCClassifier(Classifier):
     self.bounds = self.load_bounds()
     
   def classify_image(self, img, dets=None):
+    print 'classify in csc'
     result = self.get_score(img, dets=dets, probab=True)    
     return result
     
@@ -53,7 +54,7 @@ class CSCClassifier(Classifier):
     
     if bounds == None:
       bounds = self.bounds
-      
+    print 'vect from dets'
     dets = dets.subset(['score', 'img_ind'])
     #dets.arr = self.normalize_dpm_scores(dets.arr)
     
