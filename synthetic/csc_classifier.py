@@ -52,7 +52,7 @@ class CSCClassifier(Classifier):
       bounds = self.bounds
       
     dets = dets.subset(['score', 'img_ind'])
-    dets.arr = self.normalize_dpm_scores(dets.arr)
+    #dets.arr = self.normalize_dpm_scores(dets.arr)
     
     # TODO from sergeyk: what is .size? Be specific and use .shape[0] or .shape[1]
     if dets.arr.size == 0:
@@ -65,6 +65,7 @@ class CSCClassifier(Classifier):
       return np.zeros((1,self.num_bins))
     bins = ut.determine_bin(img_dpm.arr.T[0], bounds)
     hist = ut.histogram_just_count(bins, self.num_bins, normalize=True)
+    
     return hist
      
   def get_vector(self, img):

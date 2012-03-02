@@ -74,7 +74,8 @@ class Classifier(object):
     pos_images = train_dataset.get_pos_samples_for_class(cls)
     pos = []
     neg = []    
-    
+    print dets
+    #dets.filter_on_column('')
     bounds = ut.importance_sample(dets.subset(['score']).arr, self.num_bins+1)
     self.store_bounds(bounds)
     
@@ -90,7 +91,9 @@ class Classifier(object):
     pos = np.concatenate(pos)
     neg = np.concatenate(neg)
     # take as many negatives as there are positives
-    neg = np.random.permutation(neg)[:pos.shape[0]]
+    # TODO: That may be very wrong!
+    ut.keyboard()
+    neg = ut.random_subset(neg, pos.shape[0]) #np.random.permutation(neg)[:pos.shape[0]]
     print '%d trains the model for'%comm_rank, cls
     model = self.train(pos, neg, kernel, C, probab=probab)
    
@@ -115,8 +118,7 @@ class Classifier(object):
     """
   
   def load_svm(self):
-    # TODO: CHANGE BACK!!
-    svm_file = config.get_classifier_filename(self,self.cls) + '_rbf_1.000000_20'
+    svm_file = config.get_classifier_filename(self,self.cls)
     print svm_file
     if not os.path.exists(svm_file):
       #raise RuntimeWarning("Svm %s is not trained"%svm_file)
