@@ -82,12 +82,12 @@ class Classifier(object):
     print comm_rank, 'trains', cls
     for img_idx, img in enumerate(pos_imgs):
       vector = self.create_vector_from_dets(dets, img, bounds)
-      print 'load image %d/%d on %d'%(img_idx, len(train_dataset.images), comm_rank)
+      print 'load image %d/%d on %d'%(img_idx, len(pos_imgs), comm_rank)
       pos.append(vector)
       
     for img_idx, img in enumerate(neg_imgs):
       vector = self.create_vector_from_dets(dets, img, bounds)
-      print 'load image %d/%d on %d'%(img_idx, len(train_dataset.images), comm_rank)
+      print 'load image %d/%d on %d'%(img_idx, len(pos_imgs), comm_rank)
       neg.append(vector)
               
     pos = np.concatenate(pos)
@@ -117,7 +117,7 @@ class Classifier(object):
     """
   
   def load_svm(self):
-    svm_file = config.get_classifier_filename(self,self.cls)
+    svm_file = config.get_classifier_filename(self,self.cls) + '_chi2_1.000000_20'
     print svm_file
     if not os.path.exists(svm_file):
       #raise RuntimeWarning("Svm %s is not trained"%svm_file)
