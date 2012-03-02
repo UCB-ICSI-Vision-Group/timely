@@ -29,13 +29,7 @@ def retrain_best_svms():
     cls = d.classes[cls_idx]    
     dets = dp.actions[cls_idx].obj.dets           
     csc = CSCClassifier('default', cls, d, num_bins)
-    csc.train_for_all_cls(d, dets, kernel, cls_idx, C, probab=True)
-     
-  
-def train_some_svms():
-  None
-  
-
+    csc.train_for_all_cls(d, dets, kernel, cls_idx, C, probab=True)     
   
 if __name__=='__main__':
   d = Dataset('full_pascal_trainval')

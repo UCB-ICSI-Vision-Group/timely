@@ -71,29 +71,28 @@ class Classifier(object):
     cls = train_dataset.classes[cls_idx]
     filename = config.get_classifier_svm_learning_filename(self,cls,kernel,C, self.num_bins)
 
-    pos_images = train_dataset.get_pos_samples_for_class(cls)
+    pos_imgs = train_dataset.get_pos_samples_for_class(cls)
+    neg_imgs = train_dataset.get_neg_samples_for_class(cls, number=len(pos_imgs))
     pos = []
     neg = []    
-    print dets
     #dets.filter_on_column('')
     bounds = ut.importance_sample(dets.subset(['score']).arr, self.num_bins+1)
     self.store_bounds(bounds)
     
     print comm_rank, 'trains', cls
-    for img_idx, img in enumerate(range(len(train_dataset.images))):
+    for img_idx, img in enumerate(pos_imgs):
       vector = self.create_vector_from_dets(dets, img, bounds)
       print 'load image %d/%d on %d'%(img_idx, len(train_dataset.images), comm_rank)
-      if img in pos_images:
-        pos.append(vector)
-      else:
-        neg.append(vector)
-        
+      pos.append(vector)
+      
+    for img_idx, img in enumerate(neg_imgs):
+      vector = self.create_vector_from_dets(dets, img, bounds)
+      print 'load image %d/%d on %d'%(img_idx, len(train_dataset.images), comm_rank)
+      neg.append(vector)
+              
     pos = np.concatenate(pos)
     neg = np.concatenate(neg)
-    # take as many negatives as there are positives
-    # TODO: That may be very wrong!
-    ut.keyboard()
-    neg = ut.random_subset(neg, pos.shape[0]) #np.random.permutation(neg)[:pos.shape[0]]
+    
     print '%d trains the model for'%comm_rank, cls
     model = self.train(pos, neg, kernel, C, probab=probab)
    
