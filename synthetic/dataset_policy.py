@@ -632,20 +632,24 @@ class DatasetPolicy:
 if __name__=='__main__':
   train_d = Dataset('full_pascal_trainval')
   
-  for ds in ['full_pascal_test', 'full_pascal_trainval']:
+  just_combine=True
+  
+  for ds in ['full_pascal_test']:
     eval_d = Dataset(ds) 
     dp = DatasetPolicy(eval_d, train_d, detectors=['csc_default'])
     test_table = np.zeros((len(eval_d.images), len(dp.actions)))
     
-    for img_idx in range(comm_rank, len(eval_d.images), comm_size):
-      img = eval_d.images[img_idx]
-      for act_idx, act in enumerate(dp.actions):    
-        score = act.obj.get_observations(img)['score']
-        test_table[img_idx, act_idx] = score
-    
-    dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp','agent_wise'))
-    filename = os.path.join(dirname,'table_%d'%comm_rank)
-    np.savetxt(filename, test_table) 
+    if not just_combine:
+      for img_idx in range(comm_rank, len(eval_d.images), comm_size):
+        img = eval_d.images[img_idx]
+        for act_idx, act in enumerate(dp.actions):
+          print '%s on %d for act %d'%(img.name, comm_rank, act_idx)    
+          score = act.obj.get_observations(img)['score']
+          test_table[img_idx, act_idx] = score
+      
+      dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp','agent_wise'))
+      filename = os.path.join(dirname,'table_%d'%comm_rank)
+      np.savetxt(filename, test_table) 
   
     safebarrier(comm)
     
@@ -657,8 +661,6 @@ if __name__=='__main__':
       filename = os.path.join(dirname,'table_chi2')
       tab_test_table = ut.Table()
       tab_test_table.cols = list(train_d.classes) + ['img_ind']
+      
       tab_test_table.arr = np.hstack((test_table, np.array(np.arange(test_table.shape[0]),ndmin=2).T))
-      np.savetxt(filename, tab_test_table)
-      
-      
-      
+      cPickle.dump(tab_test_table, open(filename,'w'))

@@ -116,7 +116,7 @@ class Classifier(object):
   
   def load_svm(self):
     # TODO: CHANGE BACK!!
-    svm_file = config.get_classifier_filename(self,self.cls) + '_chi2_1.000000'
+    svm_file = config.get_classifier_filename(self,self.cls) + '_chi2_1.000000_5'
     print svm_file
     if not os.path.exists(svm_file):
       #raise RuntimeWarning("Svm %s is not trained"%svm_file)
