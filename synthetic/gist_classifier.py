@@ -96,7 +96,8 @@ class GistClassifier(Classifier):
     """
     Train classifiers to 
     """
-    for cls in config.pascal_classes:
+    for cls_idx in range(comm_rank, len(config.pascal_classes), comm_size):
+      cls = config.pascal_classes[cls_idx]
       print 'train class', cls
       t = time.time()
       pos = dataset.get_pos_samples_for_class(cls)
@@ -111,7 +112,7 @@ class GistClassifier(Classifier):
       y = [1]*num_pos + [-1]*num_pos
       print '\tcompute svm'
       svm = train_svm(x, y, kernel='linear',C=C,probab=True)
-      svm_filename = config.get_gist_svm_filename(cls)+'_'+str(C)
+      svm_filename = config.get_gist_svm_filename(cls)
       save_svm(svm, svm_filename)     
       print '\ttook', time.time()-t,'sec'
   
@@ -181,11 +182,22 @@ def gist_evaluate_best_svm():
   val_d = Dataset('full_pascal_val')
   cls = 'dog'
   
+  
+  
   gist_table = np.load(config.get_gist_dict_filename(train_d.name))
   clf = GistClassifier(cls, train_d, gist_table=gist_table, val_d=val_d)
+  #clf.train_all_svms(train_d)
   #clf.train_svm()
   
   val_gist_table = np.load(config.get_gist_dict_filename(val_d.name))
+  #clf.get_proba(val_gist_table)
+  
+  clf.load_svm()
+  #for 
+  gist_score = svm_predict(val_gist_table, clf.svm)
+  
+  embed() 
+  
   #emb
   #gt = 
   #Evaluation.compute_cls_pr(val_gist_table, gt) 

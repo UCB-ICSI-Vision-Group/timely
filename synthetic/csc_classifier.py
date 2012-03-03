@@ -47,8 +47,9 @@ class CSCClassifier(Classifier):
   def create_vector_from_dets(self, dets, vtype='max', bounds=None, w_count=False):
     "dets should be filtered for the index of the image"
 
-    if 'cls_ind' in dets.cols:
-      dets = dets.filter_on_column('cls_ind', d.classes.index(self.cls), omit=True)
+    if not dets.arr.size == 0:
+      if 'cls_ind' in dets.cols:
+        dets = dets.filter_on_column('cls_ind', config.pascal_classes.index(self.cls), omit=True)
       
     if bounds == None:
       bounds = self.bounds
