@@ -1,6 +1,6 @@
-import copy
 import datetime
 import scipy.io
+import sklearn
 
 from common_mpi import *
 from common_imports import *
@@ -182,12 +182,14 @@ class DatasetPolicy:
       if 'naive_ap|present' not in self.actions[0].obj.config or \
          'actual_ap|present' not in self.actions[0].obj.config or \
          'actual_ap|absent' not in self.actions[0].obj.config:
-        self.output_det_statistics()
+        det_configs = self.output_det_statistics()
         self.test_actions = self.init_actions()
         self.actions = self.test_actions
 
       # OPTION 2: the manual weights are [naive_ap|present naive_ap|absent 0 0]
       if self.weights_mode == 'manual_2':
+        for action in self.actions:
+          print action.obj.config
         weights[:,0] = [action.obj.config['naive_ap|present'] for action in self.actions]
         weights = weights.flatten('C') # row-major
 
@@ -316,17 +318,17 @@ class DatasetPolicy:
     new weight vectors based on the collected samples.
     """
     # Collect samples (parallelized)
-    num_samples = 200
-    all_samples = self.run_on_dataset(True,num_samples)
+    num_samples = 200 # actually this refers to images
+    dets,clses,all_samples = self.run_on_dataset(True,num_samples)
     
     # Loop until max_iterations or the error is below threshold
-    error = 100000
-    threshold = 0.01
+    error = threshold = 0.01
     max_iterations = 10
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
+      self.tt.tic()
       self.weights, error = self.regress(all_samples)
-      print("After iteration %d, weights and error are:")
+      print("After iteration %d which took %.3f s, we've trained on %d samples and the weights and error are:"%(i,self.tt.qtoc(),len(all_samples)))
       np.set_printoptions(precision=2)
       print self.weights
       print error
@@ -336,7 +338,7 @@ class DatasetPolicy:
         break
 
       # collect more samples with the updated weights, adding new ones
-      new_samples = self.run_on_dataset(True,num_samples)
+      new_dets,new_clses,new_samples = self.run_on_dataset(True,num_samples)
       for sample in new_samples:
         if not (sample in all_samples):
           all_samples.append(sample)
@@ -349,19 +351,43 @@ class DatasetPolicy:
     """
     Take list of samples and regress from the features to the rewards.
     If warm_start, start with the current values of self.weights.
+    Return tuple of weights and error.
     """
     # Construct data and output arrays
     feats = []
     for sample in samples:
-      feats.append(self.bs.block_out_action(sample.state,sample.action_ind))
+      b = self.get_b()
+      feats.append(b.block_out_action(sample.state,sample.action_ind))
 
     # TODO: reward function is implictly defined here: maybe move somewhere?
     X = np.array(feats)
-    assert(X.shape[0]==len(feats))
-    y = np.array([sample.det_actual_ap])
+    y = np.array([sample.det_actual_ap for sample in samples])
+    assert(X.shape[0]==len(feats)==y.shape[0])
 
-    # TODO: parallelized KFold cross-validation of stuff
-    return self.weights
+    from sklearn.cross_validation import KFold
+    folds = KFold(X.shape[0], 4)
+    alpha_errors = []
+    alphas = [0.1,1,10]
+    for alpha in alphas:
+      clf = sklearn.linear_model.Lasso(alpha=alpha)
+      errors = []
+      for train_ind,val_ind in folds:
+        clf.fit(X[train_ind,:],y[train_ind])
+        errors.append(sklearn.metrics.mean_square_error(clf.predict(X[val_ind,:]),y[val_ind]))
+      alpha_errors.append(np.mean(errors))
+    best_ind = np.argmin(alpha_errors)
+    best_alpha = alphas[best_ind]
+    clf = sklearn.linear_model.Lasso(alpha=best_alpha)
+    clf.fit(X,y)
+    weights = clf.coef_
+    error = sklearn.metrics.mean_square_error(clf.predict(X),y)
+    return (weights,error)
+
+  def get_b(self):
+    "Fetch a belief state, and if we don't have one, initialize one."
+    if not hasattr(self,'b'):
+      self.run_on_image(self.dataset.images[0],self.dataset)
+    return self.b
 
   def output_det_statistics(self):
     """
@@ -394,17 +420,25 @@ class DatasetPolicy:
             means = np.mean(st_present[:,2:],0)
             det_configs[self.actions[ind].name]['naive_ap|present'] = means[0]
             det_configs[self.actions[ind].name]['actual_ap|present'] = means[1]
+          else:
+            # this is just for testing, where there may not be enough dets
+            det_configs[self.actions[ind].name]['naive_ap|present'] = 0
+            det_configs[self.actions[ind].name]['actual_ap|present'] = 0
           st_absent = np.atleast_2d(st.arr[np.flatnonzero(presence_inds==False),:])
           if st_absent.shape[0]>0:
             means = np.mean(st_absent[:,2:],0)
             # naive_ap|absent is always 0
             det_configs[self.actions[ind].name]['actual_ap|absent'] = means[1]
+          else:
+            det_configs[self.actions[ind].name]['actual_ap|absent'] = 0
       detectors = '-'.join(self.detectors)
       filename = opjoin(
         config.get_dets_configs_dir(self.train_dataset), detectors+'.txt')
       with open(filename,'w') as f:
         json.dump(det_configs,f)
     safebarrier(comm)
+    comm.bcast(det_configs,root=0)
+    return det_configs
 
   ################
   # Image Policy stuff

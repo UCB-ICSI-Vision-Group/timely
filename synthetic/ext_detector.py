@@ -18,17 +18,6 @@ class ExternalDetector(Detector):
     The dets should not have the 'cls_ind' column, as they should all be of the
     same class.
     """
-    # Check if configs exist and look up the correct config for this detname and cls
-    # TODO: this is inefficient because this file is re-opened for every class
-    detector_config = None
-    filename = opjoin(config.get_dets_configs_dir(train_dataset),detname+'.txt')
-    if opexists(filename):
-      with open(filename) as f:
-        configs = json.load(f)
-      config_name = detname+'_'+cls
-      if config_name in configs:
-        detector_config = configs[config_name]
-
     Detector.__init__(self,dataset,train_dataset,cls,detector_config)
     self.detname = detname
     self.dets = dets
