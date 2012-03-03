@@ -280,6 +280,10 @@ def log2(x):
   y[y==0]=1
   return np.log2(y)
 
+def mean_squared_error(y_true,y_pred):
+  "Because sklearn.metrics is fucking wrong."
+  return np.mean((y_pred - y_true) ** 2)
+
 def cartesian(arrays, out=None):
     """
     from http://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
