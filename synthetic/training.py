@@ -77,14 +77,14 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
     clf = SVC(kernel=kernel, C=C, probability=probab, gamma=gamma)
     clf.fit(x, y)
   elif kernel == 'poly':
-    clf = SVC(kernel=kernel, C=C, probability=probab, gamma=2.0, degree=2)
+    clf = SVC(kernel=kernel, C=C, probability=probab, gamma=0, degree=2)
     clf.fit(x, y)
   elif kernel == 'linear':
     #clf = LinearSVC(C=C, class_weight='auto')
     clf = SVC(C=C,probability=probab)
     clf.fit(x, y, class_weight='auto')
   else:
-    raise RuntimeError("Unknown kernel passed to train_svm")  
+    raise RuntimeError("Unknown kernel passed to train_svm: %s"%kernel)  
   
   return clf
 
@@ -97,10 +97,7 @@ def svm_proba(x, clf):
   return clf.predict_proba(x)
 
 def save_svm(model, filename):
-  dump = cPickle.dumps(model)
-  f = open(filename, 'w')
-  f.write(dump)
-  f.close()
+  cPickle.dump(model, open(filename, 'w'))
 
 def load_svm(filename, probability=True):
   dump = open(filename).read()

@@ -12,7 +12,7 @@ def train_csc_svms(d_train, d_val, kernel, C):
   # d: trainval
   # d_train: train  |   trainval
   # d_val: val      |   test
-  dp = DatasetPolicy(d_train, d_val, detectors=['csc_default'])
+  dp = DatasetPolicy(d_train, d_train, detectors=['csc_default'])
       
   for cls_idx in range(comm_rank, len(d_train.classes), comm_size):
     cls = d_train.classes[cls_idx]
@@ -20,17 +20,16 @@ def train_csc_svms(d_train, d_val, kernel, C):
     csc = CSCClassifier('default', cls, d_train, d_val)
     csc.train_for_cls(ext_detector, kernel, C)
     
-def test_csc_svm(d_val, d_train):
+def test_csc_svm(d_train, d_val):
   
-  dp = DatasetPolicy(d_val, d_train, detectors=['csc_default'])
+  dp = DatasetPolicy(d_val, d_val, detectors=['csc_default'])
   
   table = np.zeros((len(d_val.images), len(d_val.classes)))
   for cls_idx in range(comm_rank, len(d_val.classes), comm_size):
     cls = d_val.classes[cls_idx]
     ext_detector = dp.actions[cls_idx].obj
-    csc = CSCClassifier('default', cls, d_train, d_val) 
-    table[:, cls_idx] = csc.eval_cls(ext_detector)
-      
+    csc = CSCClassifier('default', cls, d_train, d_val)    
+    table[:, cls_idx] = csc.eval_cls(ext_detector)[:,0]
   print '%d_train is at safebarrier'%comm_rank
   safebarrier(comm)
   print 'passed safebarrier'
@@ -38,7 +37,7 @@ def test_csc_svm(d_val, d_train):
   if comm_rank == 0:
     print 'save table'
     print table 
-    #cPickle.dump(table, open('table_poly','w'))
+    cPickle.dump(table, open('table','w'))
     print 'saved'
   return table
 
@@ -59,32 +58,16 @@ if __name__=='__main__':
 
   train_gt = d_train.get_cls_ground_truth()
   val_gt = d_val.get_cls_ground_truth()
-
-  if comm_rank == 0:
-    results_filename = 'results.txt'
-    w = open(results_filename, 'a')
-#  kernels = ['linear', 'rbf']
-#  Cs = [1, 5, 10]
-#  kernels = ['linear', 'rbf']
-#  Cs = [1, 5, 10]
-  kernels = ['linear']
-  Cs = [100]
-
-  settings = list(itertools.product(kernels, Cs))
   
-  for sets in settings:
-    kernel = sets[0]
-    C = sets[1]
-    
-    train_csc_svms(d_train, d_val, kernel, C)
-    table_arr = test_csc_svm(d_val, d_train)
-    
-    if comm_rank == 0:
-      table = conv(d_train, table_arr)
-      res = Evaluation.compute_cls_map(table, val_gt)
-      print res
-      w.write('%s %f train - %f\n'%(kernel, C, res))
+  kernel = 'linear'
+  C = 1
+
+  train_csc_svms(d_train, d_val, kernel, C)
+  table_arr = test_csc_svm(d_train, d_val)
+  
   
   if comm_rank == 0:
-    w.close()
-  #create_csc_stuff(d_train, classify_images=False, force_new=False)
+    #embed()
+    table = conv(d_train, table_arr)
+    res = Evaluation.compute_cls_map(table, val_gt)
+    print res

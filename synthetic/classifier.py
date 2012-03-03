@@ -30,6 +30,9 @@ class Classifier(object):
     y2 = (y2+1)/2    
     ap,_,_ = Evaluation.compute_cls_pr(table_t[:,1], y2)
     print 'ap on train set: %f'%ap
+    filename = config.get_classifier_filename(self, self.cls, self.train_dataset)
+    self.svm = model
+    self.save_svm(model, filename)
     return model
   
   def save_svm(self, model, filename):
@@ -54,7 +57,7 @@ class Classifier(object):
       svm_file = filename
     print svm_file
     if not os.path.exists(svm_file):
-      #raise RuntimeWarning("Svm %s is not trained"%svm_file)
+      print("Svm %s is not trained"%svm_file)
       return None
     else:  
       model = load_svm(svm_file)

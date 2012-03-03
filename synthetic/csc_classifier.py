@@ -50,8 +50,8 @@ class CSCClassifier(Classifier):
     return np.power(np.exp(-2.*arr)+1,-1)
     
   def train_for_cls(self, ext_detector, kernel, C):
-    dataset = ext_detector.train_dataset
-           
+    dataset = ext_detector.dataset
+
     print '%d trains %s'%(comm_rank, self.cls)
     # Positive samples
     pos_imgs = dataset.get_pos_samples_for_class(self.cls)
@@ -79,24 +79,21 @@ class CSCClassifier(Classifier):
     neg = np.concatenate(neg)
     
     print '%d trains the model for'%comm_rank, self.cls
-    model = self.train(pos, neg, kernel, C)
-    
-    filename = config.get_classifier_filename(self,self.cls, dataset)
-    self.save_svm(model, filename)
+    self.train(pos, neg, kernel, C)
     
   def eval_cls(self, ext_detector):
     print 'evaluate svm for %s'%self.cls
-    dataset = ext_detector.train_dataset    
+    dataset = ext_detector.train_dataset   
+     
     table_cls = np.zeros((len(dataset.images), 1))
     for img_idx, image in enumerate(dataset.images):
       print '%d eval on img %d/%d'%(comm_rank, img_idx, len(dataset.images))
       img_dets, _ = ext_detector.detect(image)
       img_scores = img_dets.subset_arr('score')
-      print img_scores
       score = self.classify_image(image, img_scores)
       table_cls[img_idx, 0] = score
         
-    ap2, _,_ = Evaluation.compute_cls_pr(table_cls, dataset.get_cls_ground_truth().subset_arr(cls))
+    ap2, _,_ = Evaluation.compute_cls_pr(table_cls, dataset.get_cls_ground_truth().subset_arr(self.cls))
     print 'ap on val for %s: %f'%(self.cls, ap2)
 
     return table_cls

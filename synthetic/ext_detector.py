@@ -26,7 +26,7 @@ class ExternalDetector(Detector):
     if self.detname=='dpm':
       self.classif = DPMClassifier()
     else:
-      self.classif = CSCClassifier(suffix,cls,train_dataset, dataset)
+      self.classif = CSCClassifier(suffix,cls, train_dataset, dataset)
 
   def detect(self, image):
     """
