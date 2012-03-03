@@ -46,14 +46,15 @@ class CSCClassifier(Classifier):
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)#[0,0]
   
-  def create_vector_from_dets(self, dets, img, vtype='hist',bounds=None, w_count=False):
+  def create_vector_from_dets(self, dets, img, vtype='hist',bounds=None, w_count=False,norm=False):
     if 'cls_ind' in dets.cols:
       dets = dets.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
     
     if bounds == None:
       bounds = self.bounds
     dets = dets.subset(['score', 'img_ind'])
-    dets.arr = self.normalize_dpm_scores(dets.arr)
+    if norm:
+      dets.arr = self.normalize_dpm_scores(dets.arr)
   
     if dets.arr.size == 0:
       img_dpm = np.array([])
@@ -70,12 +71,11 @@ class CSCClassifier(Classifier):
   def create_max2_vector_from_dets(self, dets):
     vect = np.ones((1,2))
     if dets.shape()[0] == 0:
-      vect[0,0:1] = 0
+      vect[0,:1] = 0
     elif dets.shape()[0] == 1:
-      vect[0,0:1] = np.matrix([max(dets.arr) ])
+      vect[0,:1] = np.matrix([np.max(dets.arr)])
     else:
-      vect[0,0:1] = np.sort(dets.arr)[:1].T
-    #vect = np.hstack((vect,np.array(1, ndmin=2)))
+      vect[0,:1] = np.sort(dets.arr)[:1].T
     return vect
       
   def create_hist_vector_from_dets(self, dets, bounds=None, w_count=False):
