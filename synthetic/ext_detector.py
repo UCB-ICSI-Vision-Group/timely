@@ -28,7 +28,7 @@ class ExternalDetector(Detector):
     else:
       self.classif = CSCClassifier(suffix, cls, train_dataset, dataset)
 
-  def detect(self, image):
+  def detect(self, image, astable=False):
     """
     Return the detections that match that image index in cached dets.
     Must return in the same format as the Detector superclass, so we have to
@@ -44,7 +44,10 @@ class ExternalDetector(Detector):
     if self.detname=='dpm_may25' or self.detname=='csc_half':
       time_passed /= 2
     dets = dets.with_column_omitted('time')
-    return (dets, time_passed)
+    if astable:
+      return (dets, time_passed)
+    else:
+      return (dets.arr, time_passed) 
 
   def compute_score(self, image, oracle=False):
     """
@@ -56,7 +59,8 @@ class ExternalDetector(Detector):
       return Detector.compute_score(self, image, oracle)
     img_ind = self.dataset.get_img_ind(image)
     dets = self.dets.filter_on_column('img_ind',img_ind)
-    score = self.classif.classify_image(image,dets)
+    scores = dets.subset_arr('score')
+    score = self.classif.classify_image(scores)
     dt = 0
     # TODO: figure out the dt situation above
     return (score,dt)

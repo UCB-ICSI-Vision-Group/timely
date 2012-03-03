@@ -23,12 +23,13 @@ class CSCClassifier(Classifier):
     self.svm = self.load_svm()
     self.num_bins = num_bins
         
-  def classify_image(self, image, scores):
+  def classify_image(self, scores):
     """
     Return score as a probability [0,1] for this class.
     Scores should be a vector of scores of the detections for this image.
     """
     # TODO: rename classify_scores(), does not use image at all!
+    
     vector = self.create_vector_from_scores(scores)
     return svm_proba(vector, self.svm)[0][1]
   
@@ -59,7 +60,7 @@ class CSCClassifier(Classifier):
     pos = []
     for idx, img_idx in enumerate(pos_imgs):
       image = dataset.images[img_idx]
-      img_dets, _ = ext_detector.detect(image)
+      img_dets, _ = ext_detector.detect(image, astable=True)
       img_scores = img_dets.subset_arr('score')
       vector = self.create_vector_from_scores(img_scores)
       print 'load image %d/%d on %d'%(idx, len(pos_imgs), comm_rank)
@@ -71,7 +72,7 @@ class CSCClassifier(Classifier):
     neg = []
     for idx, img_idx in enumerate(neg_imgs):
       image = dataset.images[img_idx]
-      img_dets, _ = ext_detector.detect(image)
+      img_dets, _ = ext_detector.detect(image, astable=True)
       img_scores = img_dets.subset_arr('score')
       vector = self.create_vector_from_scores(img_scores)
       print 'load image %d/%d on %d'%(idx, len(neg_imgs), comm_rank)
@@ -90,7 +91,7 @@ class CSCClassifier(Classifier):
     table_cls = np.zeros(len(dataset.images))
     for img_idx, image in enumerate(dataset.images):
       print '%d eval on img %d/%d'%(comm_rank, img_idx, len(dataset.images))
-      img_dets, _ = ext_detector.detect(image)
+      img_dets, _ = ext_detector.detect(image, astable=True)
       img_scores = img_dets.subset_arr('score')
       score = self.classify_image(image, img_scores)
       table_cls[img_idx] = score

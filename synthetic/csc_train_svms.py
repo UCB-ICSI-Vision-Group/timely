@@ -29,7 +29,6 @@ def test_csc_svm(d_train, d_val):
     ext_detector = dp.actions[cls_idx].obj
     # Load the classifier we trained in train_csc_svms
     csc = CSCClassifier('default', cls, d_train, d_val)
-    embed()    
     table[:, cls_idx] = csc.eval_cls(ext_detector)
   print '%d_train is at safebarrier'%comm_rank
   safebarrier(comm)
