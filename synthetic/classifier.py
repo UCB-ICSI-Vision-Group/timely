@@ -90,22 +90,24 @@ class Classifier(object):
     
     print comm_rank, 'trains', cls
     pos_det_scores = []
-    for img_idx, img in enumerate(pos_imgs):
-      vector = self.create_vector_from_dets(dets, img, vtype, bounds)
-      scores = dets.filter_on_column('img_ind',img).subset_arr('score')
+    for idx, img_idx in enumerate(pos_imgs):
+      image = train_dataset.images[img_idx]
+      vector = self.create_vector_from_dets(dets, image, vtype, bounds)
+      scores = dets.filter_on_column('img_ind',img_idx).subset_arr('score')
       #scores = np.power(np.exp(-2.*scores)+1,-1)
       pos_det_scores.append(scores)
-      print 'load image %d/%d on %d'%(img_idx, len(pos_imgs), comm_rank)
+      print 'load image %d/%d on %d'%(idx, len(pos_imgs), comm_rank)
       pos.append(vector)      
     pos_det_scores = np.concatenate(pos_det_scores)
 
     neg_det_scores = []
-    for img_idx, img in enumerate(neg_imgs):
-      vector = self.create_vector_from_dets(dets, img, vtype, bounds)
-      scores = dets.filter_on_column('img_ind',img).subset_arr('score')
+    for idx, img_idx in enumerate(neg_imgs):
+      image = train_dataset.images[img_idx]
+      vector = self.create_vector_from_dets(dets, image, vtype, bounds)
+      scores = dets.filter_on_column('img_ind',img_idx).subset_arr('score')
       #scores = np.power(np.exp(-2.*scores)+1,-1)
       neg_det_scores.append(scores)
-      print 'load image %d/%d on %d'%(img_idx, len(neg_imgs), comm_rank)
+      print 'load image %d/%d on %d'%(idx, len(neg_imgs), comm_rank)
       neg.append(vector)
     neg_det_scores = np.concatenate(neg_det_scores)
     
@@ -119,17 +121,17 @@ class Classifier(object):
 
     model = SVC(kernel='linear', C=1000, probability=True)
     model.fit(x, y)#, class_weight='auto')
-    print("model.score")
+    print("model.score(C=1000)")
     print model.score(x,y)
 
     model = SVC(kernel='linear', C=100, probability=True)
     model.fit(x, y)#, class_weight='auto')
-    print("model.score")
+    print("model.score(C=100)")
     print model.score(x,y)
 
     model = SVC(kernel='linear', C=1, probability=True)
     model.fit(x, y)#, class_weight='auto')
-    print("model.score")
+    print("model.score(C=1)")
     print model.score(x,y)
     
     table_t = svm_proba(x, model)
@@ -140,7 +142,7 @@ class Classifier(object):
     print ap
     #pcolor(vstack((model.predict_proba(x)[:,1],y2)));show()
     
-    embed()
+#    embed()
 
     save_svm(model, filename)
   
@@ -148,19 +150,20 @@ class Classifier(object):
     #prob3.append(self.classify_image(img, dets, probab=probab, vtype=vtype))
     #pcolor(np.array(np.vstack((pos,neg)))); show()
 
+    
     # Classify on val set
+    self.svm = model
     print 'evaluate svm'
     table_cls = np.zeros((len(val_dataset.images), 1))
-    for img_idx, img in enumerate(val_dataset.images):
-      print '%d eval on img %d/%d'%(comm_rank, img_idx, len(val_dataset.images))
-      score = self.classify_image(img, dets, probab=probab, vtype=vtype)
+    for idx, image in enumerate(val_dataset.images):
+      print '%d eval on img %d/%d'%(comm_rank, idx, len(val_dataset.images))
+      score = self.classify_image(image, dets, probab=probab, vtype=vtype)
       table_cls[img_idx, 0] = score
       
-    print Evaluation.compute_cls_pr(prob3, y)
-          
-    y = val_dataset.get_cls_ground_truth().subset(cls).arr
-    acc = np.count_nonzero(table_cls == np.array(y,ndmin=2).T)/float(y.shape[0])
-    embed()    
+    #print Evaluation.compute_cls_pr(prob3, y)          
+#    y = val_dataset.get_cls_ground_truth().subset(cls).arr
+#    acc = np.count_nonzero(table_cls == np.array(y,ndmin=2).T)/float(y.shape[0])
+#    embed()    
     return table_cls
     
   def get_observation(self, image):

@@ -23,30 +23,32 @@ class CSCClassifier(Classifier):
     
     self.bounds = self.load_bounds()
     
-  def classify_image(self, img, dets=None, probab=True, vtype='hist'):
-    result = self.get_score(img, dets=dets, probab=probab, vtype=vtype)    
+  def classify_image(self, image, dets=None, probab=True, vtype='hist'):
+    result = self.get_score(image, dets=dets, probab=probab, vtype=vtype)    
     return result
     
-  def get_score(self, img, dets=None, probab=True, vtype='hist'):
+  def get_score(self, image, dets=None, probab=True, vtype='hist'):
     """
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
     """
-    if not isinstance(img, Image):
-      image = self.dataset.images[img]
-    else:
-      image = img
-      img = self.dataset.get_image_by_filename(img.name)
     if not dets:
-      vector = self.get_vector(img)
+      vector = self.get_vector(image)
     else:
-      vector = self.create_vector_from_dets(dets, img, vtype=vtype)
+      vector = self.create_vector_from_dets(dets, image, vtype=vtype)
     
     if probab:
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)#[0,0]
   
-  def create_vector_from_dets(self, dets, img, vtype='hist',bounds=None, w_count=False,norm=False):
+  def create_vector_from_dets(self, dets, image, vtype='hist',bounds=None, w_count=False,norm=False):
+    if not isinstance(image, Image):
+      raise RuntimeWarning("Create feat vector should get an Image instance")
+    
+    # Find the correct img_idx for this image and dets
+    image_trainval = self.dataset.get_image_by_filename(image.name)
+    img_idx = self.dataset.images.index(image_trainval)
+    
     if 'cls_ind' in dets.cols:
       dets = dets.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
     
@@ -59,7 +61,7 @@ class CSCClassifier(Classifier):
     if dets.arr.size == 0:
       img_dpm = np.array([])
     else:
-      img_dpm = dets.filter_on_column('img_ind', img, omit=True)
+      img_dpm = dets.filter_on_column('img_ind', img_idx, omit=True)
         
     if vtype == 'hist':
       vect = self.create_hist_vector_from_dets(img_dpm, bounds=bounds, w_count=w_count)
@@ -91,21 +93,21 @@ class CSCClassifier(Classifier):
       hist = np.hstack((hist, np.array(img_dpm.shape()[0], ndmin=2)))
     return hist
      
-  def get_vector(self, img):
-    image = self.dataset.images[img]  
+  def get_vector(self, image):
+    #image = self.dataset.images[image]  
     filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
     if os.path.exists(filename):
       return np.load(filename)[()]
     else:
-      vector = self.create_vector(img)
+      vector = self.create_vector(image)
       np.save(filename, vector)
       return vector
     
-  def create_vector(self, img):
+  def create_vector(self, image):
     filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
     csc_test = np.load(filename)
-    feats = csc_test[()]
-    return self.create_vector_from_dets(feats, img)    
+    dets = csc_test[()]
+    return self.create_vector_from_dets(dets, image)    
   
   def get_all_vectors(self):
     for img_idx in range(comm_rank, len(self.dataset.images), comm_size):
