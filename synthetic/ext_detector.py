@@ -18,9 +18,9 @@ class ExternalDetector(Detector):
     The dets should not have the 'cls_ind' column, as they should all be of the
     same class.
     """
-    Detector.__init__(self,dataset,train_dataset,cls)
-    self.detname = detname
+    Detector.__init__(self,dataset,train_dataset,cls,detname)
     self.dets = dets
+    # TODO: hack for csc_X
     suffix = detname[4:]
 
     if self.detname=='dpm':

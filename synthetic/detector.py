@@ -18,32 +18,34 @@ class Detector(object):
 
   DEFAULT_CONFIG = {
     'avg_time': 10 # in seconds, specified w.r.t Detector.AVG_IMAGE_SIZE
-    }
+  }
 
   @classmethod
   def get_cols(cls):
     return ['x','y','w','h','score']
 
-  def __init__(self, dataset, train_dataset, cls, detector_config=None,detname='perfect'):
-    # Check if configs exist and look up the correct config for this detname and cls
-    # TODO: this is inefficient because this file is re-opened for every class
-    detector_config = None
-    filename = opjoin(config.get_dets_configs_dir(train_dataset),detname+'.txt')
-    if opexists(filename):
-      with open(filename) as f:
-        configs = json.load(f)
-      config_name = detname+'_'+cls
-      if config_name in configs:
-        detector_config = configs[config_name]
-
+  def __init__(self, dataset, train_dataset, cls, detname='perfect', detector_config=None):
     self.dataset = dataset
     self.train_dataset = train_dataset
     self.cls = cls
     self.cls_ind = dataset.get_ind(cls)
+    self.detname = detname
 
-    if not detector_config:
-      detector_config = Detector.DEFAULT_CONFIG
-    self.config = detector_config
+    # Check if configs exist and look up the correct config for this detname and cls
+    # TODO: this is inefficient because this file is re-opened for every class
+    loaded_detector_config = None 
+    fname = opjoin(config.get_dets_configs_dir(train_dataset),detname+'.txt')
+    if opexists(fname):
+      with open(fname) as f:
+        configs = json.load(f)
+      config_name = detname+'_'+cls
+      if config_name in configs:
+        loaded_detector_config = configs[config_name]
+    self.config = loaded_detector_config
+    if not self.config:
+      self.config = Detector.DEFAULT_CONFIG
+    if detector_config:
+      self.config.update(detector_config)
 
   def get_observations(self,image):
     """
