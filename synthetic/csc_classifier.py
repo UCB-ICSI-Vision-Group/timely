@@ -93,7 +93,7 @@ class CSCClassifier(Classifier):
       print '%d eval on img %d/%d'%(comm_rank, img_idx, len(dataset.images))
       img_dets, _ = ext_detector.detect(image, astable=True)
       img_scores = img_dets.subset_arr('score')
-      score = self.classify_image(image, img_scores)
+      score = self.classify_image(img_scores)
       table_cls[img_idx] = score
       
     ap, _,_ = Evaluation.compute_cls_pr(table_cls, dataset.get_cls_ground_truth().subset_arr(self.cls))
