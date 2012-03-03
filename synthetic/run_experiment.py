@@ -58,8 +58,10 @@ def load_configs(name):
       configs.append(dict(cf))
       if 'bounds' in cf:
         configs[i]['bounds'] = bounds_list[i%len(bounds_list)]
-      configs[i]['policy_mode'] = cp_modes_list[i%len(cp_modes_list)]
-      configs[i]['weights_mode'] = w_modes_list[i%len(w_modes_list)]
+      if 'policy_mode' in cf:
+        configs[i]['policy_mode'] = cp_modes_list[i%len(cp_modes_list)]
+      if 'weights_mode' in cf:
+        configs[i]['weights_mode'] = w_modes_list[i%len(w_modes_list)]
     return configs
 
   dirname = opjoin(config.config_dir,name)

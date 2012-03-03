@@ -18,7 +18,7 @@ class ExternalDetector(Detector):
     The dets should not have the 'cls_ind' column, as they should all be of the
     same class.
     """
-    Detector.__init__(self,dataset,train_dataset,cls,detector_config)
+    Detector.__init__(self,dataset,train_dataset,cls)
     self.detname = detname
     self.dets = dets
     suffix = detname[4:]
@@ -56,7 +56,7 @@ class ExternalDetector(Detector):
       return Detector.compute_score(self, image, oracle)
     img_ind = self.dataset.get_img_ind(image)
     dets = self.dets.filter_on_column('img_ind',img_ind)
-    score = self.classif.classify_image(img_ind,dets)
+    score = self.classif.classify_image(image,dets)
     dt = 0
     # TODO: figure out the dt situation above
     return (score,dt)

@@ -513,8 +513,8 @@ class Evaluation:
         gt.arr[inds,:] = gt_for_image
     fp=np.cumsum(fp)
     tp=np.cumsum(tp)
-    rec=1.*tp/npos
-    prec=1.*tp/(fp+tp)
+    rec=1.*tp/(npos+0.0000001)
+    prec=1.*tp/(fp+tp+0.000001)
     
     ap = self.compute_ap(rec,prec)
     return (ap,rec,prec,hard_neg)
@@ -541,7 +541,6 @@ class Evaluation:
         continue
       ap,rec,prec=cls.compute_cls_pr(clses.subset_arr(col),gt.subset_arr(col))
       aps.append(ap)
-      print col, ap
     return np.mean(aps)
 
   @classmethod
