@@ -49,10 +49,13 @@ class Classifier(object):
   def normalize_dpm_scores(self, arr):     
     # TODO from sergeyk: this is silly, this method should take a 1-d array and return the transformed array
     # why are you relying on scores being in a specific column?
-    arr[:, 0:1] = np.power(np.exp(-2.*arr[:,0:1])+1,-1)
+    if arr.ndim > 1:
+      arr[:,:1] = np.power(np.exp(-2.*arr[:,:1])+1,-1)
+    else:
+      arr = np.power(np.exp(-2.*arr)+1,-1)
     return arr
       
-  def train_for_cls(self, train_dataset, val_dataset, dets, test_det_cls, kernel, C, probab=True, vtype='hist'):
+  def train_for_cls(self, train_dataset, val_dataset, dets, test_det_cls, kernel, C, probab=True, vtype='max'):
     cls = self.cls
     filename = config.get_classifier_filename(self,cls)
 
@@ -71,8 +74,8 @@ class Classifier(object):
     print comm_rank, 'trains', cls
     pos_det_scores = []
     for idx, img_idx in enumerate(pos_imgs):
-      image = train_dataset.images[img_idx]
-      vector = self.create_vector_from_dets(train_dataset, dets, image, vtype, bounds,norm=True)
+      img_dets = dets.filter_on_column('img_ind', img_idx, omit=True)
+      vector = self.create_vector_from_dets(img_dets, vtype, bounds)
       scores = dets.filter_on_column('img_ind',img_idx).subset_arr('score')
       #scores = np.power(np.exp(-2.*scores)+1,-1)
       pos_det_scores.append(scores)
@@ -82,8 +85,8 @@ class Classifier(object):
 
     neg_det_scores = []
     for idx, img_idx in enumerate(neg_imgs):
-      image = train_dataset.images[img_idx]
-      vector = self.create_vector_from_dets(train_dataset, dets, image, vtype, bounds,norm=True)
+      img_dets = dets.filter_on_column('img_ind', img_idx, omit=True)
+      vector = self.create_vector_from_dets(img_dets, vtype, bounds)
       scores = dets.filter_on_column('img_ind',img_idx).subset_arr('score')
       #scores = np.power(np.exp(-2.*scores)+1,-1)
       neg_det_scores.append(scores)
@@ -116,10 +119,11 @@ class Classifier(object):
     self.svm = model
     print 'evaluate svm'
     table_cls = np.zeros((len(val_dataset.images), 1))
-    for idx, image in enumerate(val_dataset.images):
-      print '%d eval on img %d/%d'%(comm_rank, idx, len(val_dataset.images))
-      score = self.classify_image(val_dataset, image, test_det_cls, probab=probab, vtype=vtype,norm=True)
-      table_cls[idx, 0] = score
+    for img_idx, image in enumerate(val_dataset.images):
+      print '%d eval on img %d/%d'%(comm_rank, img_idx, len(val_dataset.images))
+      test_det_cls_img = test_det_cls.filter_on_column('img_ind', img_idx, omit=True)
+      score = self.classify_image(image, test_det_cls_img, probab=probab, vtype=vtype)
+      table_cls[img_idx, 0] = score
         
     ap2, _,_ = Evaluation.compute_cls_pr(table_cls, val_dataset.get_cls_ground_truth().subset_arr(cls))
     print 'ap on val for %s: %f'%(self.cls, ap2)

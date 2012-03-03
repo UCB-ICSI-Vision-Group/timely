@@ -23,51 +23,47 @@ class CSCClassifier(Classifier):
     
     self.bounds = self.load_bounds()
     
-  def classify_image(self, d, image, dets=None, probab=True, vtype='hist',norm=False):
-    result = self.get_score(d, image, dets=dets, probab=probab, vtype=vtype, norm=norm)    
+  def classify_image(self, image, dets=None, probab=True, vtype='max'):
+    # TODO: why have both this and get_score when they just do this??
+    result = self.get_score(image, dets, probab, vtype)    
     return result
     
-  def get_score(self, d, image, dets=None, probab=True, vtype='hist', norm=False):
+  def get_score(self, image, dets=None, probab=True, vtype='max'):
     """
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
+    dets should be filtered by index of image
     """
     if not dets:
       raise RuntimeWarning("Dont load the vector from file yourself!")
       vector = self.get_vector(image)
     else:
-      vector = self.create_vector_from_dets(d, dets, image, vtype=vtype,norm=norm)
+      vector = self.create_vector_from_dets(dets, vtype)
     
     if probab:
       return svm_proba(vector, self.svm)[0][1]
-    return svm_predict(vector, self.svm)#[0,0]
+    return svm_predict(vector, self.svm)
   
-  def create_vector_from_dets(self, d, dets, image, vtype='hist',bounds=None, w_count=False,norm=False):
-    if not isinstance(image, Image):
-      raise RuntimeWarning("Create feat vector should get an Image instance")
-    
-    # Find the correct img_idx for this image and dets
-    image_trainval = d.get_image_by_filename(image.name)
-    img_idx = d.images.index(image_trainval)
-    
+  def create_vector_from_dets(self, dets, vtype='max', bounds=None, w_count=False):
+    "dets should be filtered for the index of the image"
+
     if 'cls_ind' in dets.cols:
       dets = dets.filter_on_column('cls_ind', d.classes.index(self.cls), omit=True)
       
     if bounds == None:
       bounds = self.bounds
-    dets = dets.subset(['score', 'img_ind'])
-    if norm:
-      dets.arr = self.normalize_dpm_scores(dets.arr)
+    dets = dets.subset('score')
+
+    # Normalize detections!
+    dets.arr = self.normalize_dpm_scores(dets.arr)
   
     if dets.arr.size == 0:
-      img_dpm = np.array([])
-    else:
-      img_dpm = dets.filter_on_column('img_ind', img_idx, omit=True)
+      dets.arr = np.array([])
         
     if vtype == 'hist':
-      vect = self.create_hist_vector_from_dets(img_dpm, bounds=bounds, w_count=w_count)
+      vect = self.create_hist_vector_from_dets(dets, bounds, w_count)
     elif vtype == 'max':
-      vect = self.create_max2_vector_from_dets(img_dpm)
+      vect = self.create_max2_vector_from_dets(dets)
       
     return vect
       
@@ -83,24 +79,23 @@ class CSCClassifier(Classifier):
     return vect
       
   def create_hist_vector_from_dets(self, dets, bounds=None, w_count=False):
-    img_dpm = dets
-    if img_dpm.arr.size == 0:
+    if dets.arr.size == 0:
       if w_count:
         return np.zeros((1,self.num_bins+1))
       else:
         return np.zeros((1,self.num_bins))
-    bins = ut.determine_bin(img_dpm.arr.T[0], bounds)
+    bins = ut.determine_bin(dets.arr.T[0], bounds)
     hist = ut.histogram_just_count(bins, self.num_bins, normalize=True)
     if w_count:
-      hist = np.hstack((hist, np.array(img_dpm.shape()[0], ndmin=2)))
+      hist = np.hstack((hist, np.array(dets.shape()[0], ndmin=2)))
     return hist
      
   def get_vector(self, image):
-    #image = self.dataset.images[image]  
     filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
     if os.path.exists(filename):
       return np.load(filename)[()]
     else:
+      # TODO: what is going on? what is the difference between get_vector and this?
       vector = self.create_vector(image)
       np.save(filename, vector)
       return vector
@@ -109,7 +104,7 @@ class CSCClassifier(Classifier):
     filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
     csc_test = np.load(filename)
     dets = csc_test[()]
-    return self.create_vector_from_dets(dets, image)    
+    return self.create_vector_from_dets(dets)    
   
   def get_all_vectors(self):
     for img_idx in range(comm_rank, len(self.dataset.images), comm_size):
