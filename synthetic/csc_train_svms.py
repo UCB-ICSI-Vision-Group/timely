@@ -10,13 +10,17 @@ from synthetic.evaluation import Evaluation
 
 def train_csc_svms(d, d_train, d_val, kernel, C, num_bins):
   detector = 'csc_default'
+  # d: trainval
+  # d_train: train  |   trainval
+  # d_val: val      |   test
   dp = DatasetPolicy(d, d_train, detectors=[detector])
   test_dets = dp.load_ext_detections(d_val, detector)
     
   table = np.zeros((len(d_val.images), len(d_val.classes)))
   for cls_idx in range(comm_rank, len(d_train.classes), comm_size):
-    cls = d_train.classes[cls_idx]    
-    dets = dp.actions[cls_idx].obj.dets           
+    cls = d_train.classes[cls_idx]
+    dets = dp.actions[cls_idx].obj.dets
+    #dets = dp.actions[cls_idx].obj.detect(image)
     csc = CSCClassifier('default', cls, d, num_bins)
     test_det_cls = test_dets.filter_on_column('cls_ind', cls_idx)
     col = csc.train_for_cls(d_train, d_val, dets, test_det_cls, kernel, C, probab=True, vtype='max') # <----IMPORTANT LINE

@@ -623,7 +623,8 @@ class DatasetPolicy:
   ###############
   # External detections stuff
   ###############
-  def load_ext_detections(self,dataset,suffix,force=False):
+  @classmethod
+  def load_ext_detections(cls,dataset,suffix,force=False):
     """
     Loads multi-image, multi-class array of detections for all images in the
     given dataset.
@@ -641,7 +642,7 @@ class DatasetPolicy:
         image = dataset.images[i]
         if re.search('dpm',suffix):
           # NOTE: not actually using the given suffix in the call below
-          dets = self.load_dpm_dets_for_image(image)
+          dets = cls.load_dpm_dets_for_image(image,dataset)
           ind_vector = np.ones((np.shape(dets)[0],1)) * i
           dets = np.hstack((dets,ind_vector))
           cols = ['x','y','w','h','dummy','dummy','dummy','dummy','score','time','cls_ind','img_ind']
@@ -649,13 +650,13 @@ class DatasetPolicy:
           dets = dets[:,good_ind]
         elif re.search('csc',suffix):
           # NOTE: not actually using the given suffix in the call below
-          dets = self.load_csc_dpm_dets_for_image(image)
+          dets = cls.load_csc_dpm_dets_for_image(image,dataset)
           ind_vector = np.ones((np.shape(dets)[0],1)) * i
           dets = np.hstack((dets,ind_vector))
         elif re.search('ctf',suffix):
           # Split the suffix into ctf and the main part
           actual_suffix = suffix.split('_')[1]
-          dets = self.load_ctf_dets_for_image(image, actual_suffix)
+          dets = cls.load_ctf_dets_for_image(image, dataset, actual_suffix)
           ind_vector = np.ones((np.shape(dets)[0],1)) * i
           dets = np.hstack((dets,ind_vector))
         else:
@@ -680,7 +681,8 @@ class DatasetPolicy:
     print("DatasetPolicy.load_ext_detections took %.3f"%time_elapsed)
     return all_dets_table
 
-  def load_ctf_dets_for_image(self, image, suffix='default'):
+  @classmethod
+  def load_ctf_dets_for_image(cls, image, dataset, suffix='default'):
     """Load multi-class array of detections for this image."""
     t = time.time()
     dirname = '/u/vis/x1/sergeyk/object_detection/ctfdets/%s/'%suffix
@@ -690,14 +692,15 @@ class DatasetPolicy:
     print("On image %s, took %.3f s"%(image.name, time_elapsed))
     return dets_table.arr
 
-  def load_csc_dpm_dets_for_image(self, image):
+  @classmethod
+  def load_csc_dpm_dets_for_image(cls, image, dataset):
     """
     Loads HOS's cascaded dets.
     """
     t = time.time()
     name = os.path.splitext(image.name)[0]
     # if uest dataset, use HOS's detections. if not, need to output my own
-    if re.search('test', self.dataset.name):
+    if re.search('test', dataset.name):
       dirname = config.get_dets_test_wholeset_dir()
       filename = os.path.join(dirname,'%s_dets_all_test_original_cascade_wholeset.mat'%name)
     else:
@@ -713,7 +716,7 @@ class DatasetPolicy:
     feat_time = times[0,0]
     dets_seq = []
     cols = ['x1','y1','x2','y2','dummy','dummy','dummy','dummy','dummy','dummy','score'] 
-    for cls_ind,cls in enumerate(self.dataset.classes):
+    for cls_ind,cls in enumerate(dataset.classes):
       cls_dets = dets[cls_ind][0]
       if cls_dets.shape[0]>0:
         good_ind = [0,1,2,3,10]
@@ -732,10 +735,10 @@ class DatasetPolicy:
     print("On image %s, took %.3f s"%(image.name, time_elapsed))
     return dets_mc
 
-  def load_dpm_dets_for_image(self, image, suffix='dets_all_may25_DP'):
+  @classmethod
+  def load_dpm_dets_for_image(cls, image, dataset, suffix='dets_all_may25_DP'):
     """
     Loads multi-class array of detections for an image from .mat format.
-    self.suffix supercedes given suffix if present.
     """
     t = time.time()
     name = os.path.splitext(image.name)[0]
