@@ -10,189 +10,93 @@ from synthetic.training import svm_predict, svm_proba
 from synthetic.config import get_ext_dets_filename
 from synthetic.image import Image
 from synthetic.util import Table
+from synthetic.evaluation import Evaluation
 #from synthetic.dpm_classifier import create_vector
 
 class CSCClassifier(Classifier):
-  def __init__(self, suffix, cls, dataset, num_bins=5):
+  def __init__(self, suffix, cls, train_dataset, val_dataset, num_bins=5):
     self.name = 'csc'
     self.suffix = suffix
     self.cls = cls
-    self.dataset = dataset
+    self.train_dataset = train_dataset
+    self.val_dataset = val_dataset
     self.svm = self.load_svm()
     self.num_bins = num_bins
-    
-    self.bounds = self.load_bounds()
-    
-  def classify_image(self, image, dets=None, probab=True, vtype='max'):
-    # TODO: why have both this and get_score when they just do this??
-    result = self.get_score(image, dets, probab, vtype)    
-    return result
-    
-  def get_score(self, image, dets=None, probab=True, vtype='max'):
+        
+  def classify_image(self, image, dets):
     """
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
     dets should be filtered by index of image
     """
-    if not dets:
-      raise RuntimeWarning("Dont load the vector from file yourself!")
-      vector = self.get_vector(image)
-    else:
-      vector = self.create_vector_from_dets(dets, vtype)
+    vector = self.create_vector_from_scores(dets)
+    return svm_proba(vector, self.svm)[0][1]
+  
+  def create_vector_from_scores(self, scores):
+    "scores should be filtered for the index of the image"
+    scores = self.normalize_dpm_scores(scores)
     
-    if probab:
-      return svm_proba(vector, self.svm)[0][1]
-    return svm_predict(vector, self.svm)
-  
-  def create_vector_from_dets(self, dets, vtype='max', bounds=None, w_count=False):
-    "dets should be filtered for the index of the image"
-
-    if not dets.arr.size == 0:
-      if 'cls_ind' in dets.cols:
-        dets = dets.filter_on_column('cls_ind', config.pascal_classes.index(self.cls), omit=True)
-      
-    if bounds == None:
-      bounds = self.bounds
-    dets = dets.subset('score')
-
-    # Normalize detections!
-    dets.arr = self.normalize_dpm_scores(dets.arr)
-  
-    if dets.arr.size == 0:
-      dets.arr = np.array([])
-        
-    if vtype == 'hist':
-      vect = self.create_hist_vector_from_dets(dets, bounds, w_count)
-    elif vtype == 'max':
-      vect = self.create_max2_vector_from_dets(dets)
-      
-    return vect
-      
-  def create_max2_vector_from_dets(self, dets):
     vect = np.ones((1,3))
-    if dets.shape()[0] == 0:
+    if scores.shape[0] == 0:
       vect[0,:2] = 0
-    elif dets.shape()[0] == 1:
-      vect[0,0] = np.matrix([np.max(dets.arr)])
+    elif scores.shape[0] == 1:
+      vect[0,0] = np.matrix([np.max(scores)])
       vect[0,1] = 0
     else:
-      vect[0,:2] = np.sort(dets.arr)[:2].T
+      vect[0,:2] = np.sort(scores)[:2].T
     return vect
-      
-  def create_hist_vector_from_dets(self, dets, bounds=None, w_count=False):
-    if dets.arr.size == 0:
-      if w_count:
-        return np.zeros((1,self.num_bins+1))
-      else:
-        return np.zeros((1,self.num_bins))
-    bins = ut.determine_bin(dets.arr.T[0], bounds)
-    hist = ut.histogram_just_count(bins, self.num_bins, normalize=True)
-    if w_count:
-      hist = np.hstack((hist, np.array(dets.shape()[0], ndmin=2)))
-    return hist
+          
+  def normalize_dpm_scores(self, arr):     
+    return np.power(np.exp(-2.*arr)+1,-1)
+    
+  def train_for_cls(self, ext_detector, kernel, C):
+    dataset = ext_detector.dataset
+
+    print '%d trains %s'%(comm_rank, self.cls)
+    # Positive samples
+    pos_imgs = dataset.get_pos_samples_for_class(self.cls)
+    pos = []
+    for idx, img_idx in enumerate(pos_imgs):
+      image = dataset.images[img_idx]
+      img_dets, _ = ext_detector.detect(image)
+      img_scores = img_dets.subset_arr('score')
+      vector = self.create_vector_from_scores(img_scores)
+      print 'load image %d/%d on %d'%(idx, len(pos_imgs), comm_rank)
+      pos.append(vector)      
+
+    # Negative samples
+    neg_imgs = dataset.get_neg_samples_for_class(self.cls)
+    neg = []
+    for idx, img_idx in enumerate(neg_imgs):
+      image = dataset.images[img_idx]
+      img_dets, _ = ext_detector.detect(image)
+      img_scores = img_dets.subset_arr('score')
+      vector = self.create_vector_from_scores(img_scores)
+      print 'load image %d/%d on %d'%(idx, len(neg_imgs), comm_rank)
+      neg.append(vector)
+    
+    pos = np.concatenate(pos)
+    neg = np.concatenate(neg)
+    
+    print '%d trains the model for'%comm_rank, self.cls
+    self.train(pos, neg, kernel, C)
+    
+  def eval_cls(self, ext_detector):
+    print 'evaluate svm for %s'%self.cls
+    dataset = ext_detector.train_dataset   
      
-  def get_vector(self, image):
-    filename = os.path.join(config.get_ext_dets_vector_foldname(self.dataset),image.name[:-4])
-    if os.path.exists(filename):
-      return np.load(filename)[()]
-    else:
-      # TODO: what is going on? what is the difference between get_vector and this?
-      vector = self.create_vector(image)
-      np.save(filename, vector)
-      return vector
-    
-  def create_vector(self, image):
-    filename = config.get_ext_dets_filename(self.dataset, 'csc_'+self.suffix)
-    csc_test = np.load(filename)
-    dets = csc_test[()]
-    return self.create_vector_from_dets(dets)    
-  
-  def get_all_vectors(self):
-    for img_idx in range(comm_rank, len(self.dataset.images), comm_size):
-      print 'on %d_train get vect %d_train/%d_train'%(comm_rank, img_idx, len(self.dataset.images))
-      self.get_vector(img_idx)
-      
-  def csc_classifier_train(self, parameters, suffix, dets, train_dataset, probab=True, test=True, force_new=False):      
-    kernels = ['linear', 'rbf', 'chi2']       
-    for params_idx in range(comm_rank, len(parameters), comm_size):
-      params = parameters[params_idx] 
-      
-      kernel = params[2]
-      if not type(kernel) == type(''):
-        kernel = kernels[int(kernel)]
-      
-      C = params[5]
-      
-      print kernel, C
+    table_cls = np.zeros((len(dataset.images), 1))
+    for img_idx, image in enumerate(dataset.images):
+      print '%d eval on img %d/%d'%(comm_rank, img_idx, len(dataset.images))
+      img_dets, _ = ext_detector.detect(image)
+      img_scores = img_dets.subset_arr('score')
+      score = self.classify_image(image, img_scores)
+      table_cls[img_idx, 0] = score
+        
+    ap2, _,_ = Evaluation.compute_cls_pr(table_cls, dataset.get_cls_ground_truth().subset_arr(self.cls))
+    print 'ap on val for %s: %f'%(self.cls, ap2)
 
-      filename = config.get_csc_classifier_svm_filename(self.csc_classif, self.cls, kernel, C)
-      
-      if not os.path.isfile(filename) or force_new:
-        bounds = ut.importance_sample(dets.subset(['score']).arr, self.num_bins+1)
-        self.store_bounds(bounds)
-
-        self.train_for_cls(train_dataset, dets, kernel, self.cls, C, probab=probab)
-        if test:
-          #self.test_svm(val_dataset, csc_test, kernel, cls_idx, C)
-          None  
-
-  def csc_classifier_train_all_params(self,suffix):
-    lowers = [0.]#,0.2,0.4]
-    uppers = [1.,0.8,0.6]
-    kernels = ['linear']#, 'rbf']
-    intervallss = [10, 20, 50]
-    clss = range(20)
-    Cs = [1., 1.5, 2., 2.5, 3.]  
-    list_of_parameters = [lowers, uppers, kernels, intervallss, clss, Cs]
-    product_of_parameters = list(itertools.product(*list_of_parameters))  
-    self.csc_classifier_train(product_of_parameters)
-  
-def old_training_stuff(): 
-  test_set = 'full_pascal_test'
-  for suffix in ['half']:#,'default']:
-    test_dataset = Dataset(test_set)  
-    filename = config.get_ext_dets_filename(test_dataset, 'csc_'+suffix)
-    csc_test = np.load(filename)
-    csc_test = csc_test[()]  
-    csc_test = csc_test.subset(['score', 'cls_ind', 'img_ind'])
-    score = csc_test.subset(['score']).arr
-    csc_classif = CSCClassifier(suffix)
-    csc_test.arr = csc_classif.normalize_dpm_scores(csc_test.arr)
-    
-    classes = config.pascal_classes
-    
-    best_table = csc_classif.get_best_table()
-    
-    svm_save_dir = os.path.join(config.res_dir,csc_classif.name)+ '_svm_'+csc_classif.suffix+'/'
-    score_file = os.path.join(svm_save_dir,'test_accuracy.txt')
-                      
-    for cls_idx in range(comm_rank, 20, comm_size):
-      row = best_table.filter_on_column('cls_ind', cls_idx).arr
-      intervals = row[0,best_table.cols.index('bins')]
-      kernel = config.kernels[int(row[0,best_table.cols.index('kernel')])]
-      lower = row[0,best_table.cols.index('lower')]
-      upper = row[0,best_table.cols.index('upper')]
-      C = row[0,best_table.cols.index('C')]
-      acc = csc_classif.test_svm(test_dataset, csc_test, intervals,kernel, lower, \
-                                 upper, cls_idx, C, file_out=False, local=True)
-      print acc
-      with open(score_file, 'a') as myfile:
-          myfile.write(classes[cls_idx] + ' ' + str(acc) + '\n')
-
-def get_best_parameters():
-  parameters = []
-  d_train = Dataset('full_pascal_trainval')
-  
-  # this is just a dummy, we don't really need it, just to read best vals
-  csc = CSCClassifier('default', 'dog', d_train)
-  best_table = csc.get_best_table()
-  for row_idx in range(best_table.shape()[0]):
-    row = best_table.arr[row_idx, :]
-    params = []
-    for idx in ['lower', 'upper', 'kernel', 'bins', 'cls_ind', 'C']:
-      params.append(row[best_table.ind(idx)])
-    parameters.append(params)
-  return parameters
+    return table_cls
 
 def classify_all_images(d_train, force_new=False):
   suffix = 'default'

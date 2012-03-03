@@ -244,8 +244,9 @@ def get_classifier_dirname(classifier):
     name += '_'+classifier.suffix
   return makedirs(join(res_dir,name))
 
-def get_classifier_filename(classifier,cls):
-  return join(get_classifier_dirname(classifier), cls)
+def get_classifier_filename(classifier,cls, dataset):
+  dirname = makedirs(join(get_classifier_dirname(classifier), dataset.name)) 
+  return join(dirname, cls)
 
 def get_classifier_featvect_name(img):
   dirname = join(res_dir, 'classify_featvects')

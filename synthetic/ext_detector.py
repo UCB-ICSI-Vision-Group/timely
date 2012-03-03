@@ -26,7 +26,7 @@ class ExternalDetector(Detector):
     if self.detname=='dpm':
       self.classif = DPMClassifier()
     else:
-      self.classif = CSCClassifier(suffix,cls,dataset)
+      self.classif = CSCClassifier(suffix,cls, train_dataset, dataset)
 
   def detect(self, image):
     """
@@ -34,7 +34,7 @@ class ExternalDetector(Detector):
     Must return in the same format as the Detector superclass, so we have to
     delete a column.
     """
-    img_ind = self.dataset.get_img_ind(image)
+    img_ind = self.train_dataset.get_img_ind(image)
     dets = self.dets.filter_on_column('img_ind',img_ind,omit=True)
     time_passed = 0
     if not dets.arr.shape[0]<1:
@@ -44,7 +44,7 @@ class ExternalDetector(Detector):
     if self.detname=='dpm_may25' or self.detname=='csc_half':
       time_passed /= 2
     dets = dets.with_column_omitted('time')
-    return (dets.arr, time_passed)
+    return (dets, time_passed)
 
   def compute_score(self, image, oracle=False):
     """
