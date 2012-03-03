@@ -142,7 +142,8 @@ class Classifier(object):
     print ap
     #pcolor(vstack((model.predict_proba(x)[:,1],y2)));show()
     
-#    embed()
+    embed()
+
 
     save_svm(model, filename)
   
@@ -163,7 +164,7 @@ class Classifier(object):
     #print Evaluation.compute_cls_pr(prob3, y)          
 #    y = val_dataset.get_cls_ground_truth().subset(cls).arr
 #    acc = np.count_nonzero(table_cls == np.array(y,ndmin=2).T)/float(y.shape[0])
-#    embed()    
+    embed()    
     return table_cls
     
   def get_observation(self, image):
