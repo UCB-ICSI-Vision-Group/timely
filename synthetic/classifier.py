@@ -7,6 +7,8 @@ from common_mpi import *
 import synthetic.config as config
 from pylab import *
 
+from sklearn.svm import SVC, LinearSVC
+
 from synthetic.training import train_svm, svm_predict, save_svm, load_svm,\
   svm_proba
 from IPython import embed
@@ -71,46 +73,55 @@ class Classifier(object):
     arr[:, 0:1] = np.power(np.exp(-2.*arr[:,0:1])+1,-1)
     return arr
       
-  def train_for_cls(self, train_dataset, dets, kernel, C, probab=True):
+  def train_for_cls(self, train_dataset, val_dataset, dets, kernel, C, probab=True, vtype='hist'):
     cls = self.cls
     filename = config.get_classifier_svm_learning_filename(self,cls,kernel,C, self.num_bins)
 
     pos_imgs = train_dataset.get_pos_samples_for_class(cls)
-    neg_imgs = train_dataset.get_neg_samples_for_class(cls, number=len(pos_imgs))
+    neg_imgs = train_dataset.get_neg_samples_for_class(cls)#, number=len(pos_imgs))
     pos = []
     neg = []    
-    #dets.filter_on_column('')
-    
+      
     dets_arr = dets.subset(['score']).arr
-    #dets_arr = self.normalize_dpm_scores(dets_arr)
-    bounds = ut.importance_sample(dets_arr, self.num_bins+1)
+    dets_arr = self.normalize_dpm_scores(dets_arr)
+#    bounds = ut.importance_sample(dets_arr, self.num_bins+1)
+    bounds = np.linspace(np.min(dets_arr), np.max(dets_arr), self.num_bins+1)
     self.bounds = bounds
-    print bounds
     self.store_bounds(bounds)
     
     print comm_rank, 'trains', cls
     for img_idx, img in enumerate(pos_imgs):
-      vector = self.create_vector_from_dets(dets, img, bounds)
+      vector = self.create_vector_from_dets(dets, img, vtype, bounds)
       print 'load image %d/%d on %d'%(img_idx, len(pos_imgs), comm_rank)
-      pos.append(vector)
-      
+      pos.append(vector)      
+    
     for img_idx, img in enumerate(neg_imgs):
-      vector = self.create_vector_from_dets(dets, img, bounds)
-      print 'load image %d/%d on %d'%(img_idx, len(pos_imgs), comm_rank)
+      vector = self.create_vector_from_dets(dets, img, vtype, bounds)
+      print 'load image %d/%d on %d'%(img_idx, len(neg_imgs), comm_rank)
       neg.append(vector)
-              
+    
     pos = np.concatenate(pos)
     neg = np.concatenate(neg)
     
     print '%d trains the model for'%comm_rank, cls
-    model = self.train(pos, neg, kernel, C, probab=probab)
-   
-    save_svm(model, filename)
-    
-    table_cls = np.zeros((len(train_dataset.images), 1))
     x = np.concatenate((pos, neg))
-    y = [1]*pos.shape[0] + [0]*neg.shape[0]
-    y = np.vstack(y)
+    y = [1]*pos.shape[0] + [-1]*neg.shape[0]
+    #model = self.train(pos, neg, kernel, C, probab=probab)
+        
+    model = SVC(kernel='linear', C=100, probability=True)
+    model.fit(x, y, class_weight='auto')
+    print model.score(x,y)
+    
+    table_t = svm_proba(x, model)
+    
+    y = np.vstack(y)    
+    y = (y+1)/2    
+    acc_t = np.count_nonzero(table_t == y.T)/float(y.shape[0])
+    print acc_t
+    embed()
+    Evaluation.compute_cls_pr(table_t, y)
+    
+    save_svm(model, filename)
   
     prob2 = []
     prob3 = []
@@ -124,30 +135,36 @@ class Classifier(object):
       else:
         img = pos_imgs[idx]        
       #print 'comp prob3'
-      prob3.append(self.classify_image(img, dets, probab=False))
+      prob3.append(self.classify_image(img, dets, probab=probab, vtype=vtype))
     
     prob2 = np.vstack(prob2)
     prob3 = np.vstack(prob3)
-#    prob3[prob3 < 0]=-1
-#    prob3[prob3 > 0]=1
+
     np.testing.assert_equal(prob2, prob3)
     acc = np.count_nonzero(prob3 == y)/float(y.shape[0])
     
-    pcolor(np.array(np.vstack((pos,neg)))); show()
+    #pcolor(np.array(np.vstack((pos,neg)))); show()
     
     print 'acc', acc
-    
     
 #    pro2tab = ut.Table(prob2 , train_dataset.classes)
 #    ytab = ut.Table(y, train_dataset.classes)
     
-    print Evaluation.compute_cls_pr(prob3, y)   
+   
+    # Classify on val set
     
-    embed()
-    for img_idx, img in enumerate(train_dataset.images):
-      score = self.classify_image(img, dets)
+    print 'evaluate svm'
+    table_cls = np.zeros((len(val_dataset.images), 1))
+    for img_idx, img in enumerate(val_dataset.images):
+      print '%d eval on img %d/%d'%(comm_rank, img_idx, len(val_dataset.images))
+      score = self.classify_image(img, dets, probab=probab, vtype=vtype)
       table_cls[img_idx, 0] = score
-    
+      
+    print Evaluation.compute_cls_pr(prob3, y)
+          
+    y = val_dataset.get_cls_ground_truth().subset(cls).arr
+    acc = np.count_nonzero(table_cls == np.array(y,ndmin=2).T)/float(y.shape[0])
+    embed()    
     return table_cls
     
   def get_observation(self, image):

@@ -4,7 +4,7 @@ import synthetic.config as config
 
 import scipy.cluster.vq as sp
 from sklearn import cluster
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
 import matplotlib.pyplot as plt
 from collections import Counter
 from string import atoi
@@ -76,8 +76,9 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
     clf = SVC(kernel=kernel, C=C, probability=probab, gamma=gamma)
     clf.fit(x, y)
   elif kernel == 'linear':
-    clf = SVC(kernel=kernel, C=C, probability=probab)
-    clf.fit(x, y)
+    #clf = LinearSVC(C=C, class_weight='auto')
+    clf = SVC(C=C)
+    clf.fit(x, y, class_weight='auto')
   else:
     raise RuntimeError("Unknown kernel passed to train_svm")  
   

@@ -8,16 +8,16 @@ from synthetic.csc_classifier import CSCClassifier
 from IPython import embed
 from synthetic.evaluation import Evaluation
 
-def retrain_best_svms(d_train, kernel, C, num_bins):
-  d = Dataset('full_pascal_trainval')
+def retrain_best_svms(d, d_train, d_val, kernel, C, num_bins):
   dp = DatasetPolicy(d, d_train, detectors=['csc_default'])  
   
-  table = np.zeros((len(d_train.images), len(d_train.classes)))
+  table = np.zeros((len(d_val.images), len(d_val.classes)))
   for cls_idx in range(comm_rank, len(d_train.classes), comm_size):
     cls = d_train.classes[cls_idx]    
     dets = dp.actions[cls_idx].obj.dets           
-    csc = CSCClassifier('default', cls, d_train, num_bins)
-    col = csc.train_for_cls(d_train, dets, kernel, C, probab=True)
+    csc = CSCClassifier('default', cls, d, num_bins)
+    col = csc.train_for_cls(d_train, d_val, dets, kernel, C, probab=True, vtype='max') # <----IMPORTANT LINE
+    print col
     table[:, cls_idx] = col[:,0]
   
   print '%d_train is at safebarrier'%comm_rank
@@ -41,6 +41,7 @@ def conv(d_train, table_arr):
   return table
   
 if __name__=='__main__':
+  d = Dataset('full_pascal_trainval')
   d_train = Dataset('full_pascal_train')
   d_val = Dataset('full_pascal_val')
   train_gt = d_train.get_cls_ground_truth()
@@ -56,8 +57,8 @@ if __name__=='__main__':
 #  Cs = [1, 5, 10]
 #  num_binss = [20, 50, 100]
   kernels = ['linear']
-  Cs = [1]
-  num_binss = [15]
+  Cs = [100]
+  num_binss = [5]
 
   settings = list(itertools.product(kernels, Cs, num_binss))
   
@@ -66,10 +67,10 @@ if __name__=='__main__':
     C = sets[1]
     num_bins = sets[2]
     
-    table_arr = retrain_best_svms(d_train, kernel, C, num_bins)
+    table_arr = retrain_best_svms(d, d_train, d_val, kernel, C, num_bins)
     if comm_rank == 0:
       table = conv(d_train, table_arr)
-      res = Evaluation.compute_cls_map(table, train_gt)
+      res = Evaluation.compute_cls_map(table, val_gt)
       print res
       w.write('%s %f %d_train - %f\n'%(kernel, C, num_bins, res))
   

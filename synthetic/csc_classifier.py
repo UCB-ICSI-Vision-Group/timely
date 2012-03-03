@@ -23,11 +23,11 @@ class CSCClassifier(Classifier):
     
     self.bounds = self.load_bounds()
     
-  def classify_image(self, img, dets=None, probab=True):
-    result = self.get_score(img, dets=dets, probab=probab)    
+  def classify_image(self, img, dets=None, probab=True, vtype='hist'):
+    result = self.get_score(img, dets=dets, probab=probab, vtype=vtype)    
     return result
     
-  def get_score(self, img, dets=None, probab=True):
+  def get_score(self, img, dets=None, probab=True, vtype='hist'):
     """
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
@@ -36,37 +36,59 @@ class CSCClassifier(Classifier):
       image = self.dataset.images[img]
     else:
       image = img
-      img = self.dataset.images.index(img)
+      img = self.dataset.get_image_by_filename(img.name)
     if not dets:
       vector = self.get_vector(img)
     else:
-      vector = self.create_vector_from_dets(dets,img)
+      vector = self.create_vector_from_dets(dets, img, vtype=vtype)
     
     if probab:
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)#[0,0]
   
-  def create_vector_from_dets(self, dets, img, bounds=None):
+  def create_vector_from_dets(self, dets, img, vtype='hist',bounds=None, w_count=False):
     if 'cls_ind' in dets.cols:
       dets = dets.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
     
     if bounds == None:
       bounds = self.bounds
     dets = dets.subset(['score', 'img_ind'])
-    #dets.arr = self.normalize_dpm_scores(dets.arr)
-    
-    # TODO from sergeyk: what is .size? Be specific and use .shape[0] or .shape[1]
+    dets.arr = self.normalize_dpm_scores(dets.arr)
+  
     if dets.arr.size == 0:
-      return np.zeros((1,self.num_bins))
-
-    img_dpm = dets.filter_on_column('img_ind', img, omit=True)
-
+      img_dpm = np.array([])
+    else:
+      img_dpm = dets.filter_on_column('img_ind', img, omit=True)
+        
+    if vtype == 'hist':
+      vect = self.create_hist_vector_from_dets(img_dpm, bounds=bounds, w_count=w_count)
+    elif vtype == 'max':
+      vect = self.create_max2_vector_from_dets(img_dpm)
+      
+    return vect
+      
+  def create_max2_vector_from_dets(self, dets):
+    vect = np.ones((1,2))
+    if dets.shape()[0] == 0:
+      vect[0,0:1] = 0
+    elif dets.shape()[0] == 1:
+      vect[0,0:1] = np.matrix([max(dets.arr) ])
+    else:
+      vect[0,0:1] = np.sort(dets.arr)[:1].T
+    #vect = np.hstack((vect,np.array(1, ndmin=2)))
+    return vect
+      
+  def create_hist_vector_from_dets(self, dets, bounds=None, w_count=False):
+    img_dpm = dets
     if img_dpm.arr.size == 0:
-      #print 'empty vector'
-      return np.zeros((1,self.num_bins))
+      if w_count:
+        return np.zeros((1,self.num_bins+1))
+      else:
+        return np.zeros((1,self.num_bins))
     bins = ut.determine_bin(img_dpm.arr.T[0], bounds)
     hist = ut.histogram_just_count(bins, self.num_bins, normalize=True)
-    
+    if w_count:
+      hist = np.hstack((hist, np.array(img_dpm.shape()[0], ndmin=2)))
     return hist
      
   def get_vector(self, img):
