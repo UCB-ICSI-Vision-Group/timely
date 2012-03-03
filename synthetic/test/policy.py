@@ -117,7 +117,7 @@ class TestDatasetPolicy:
 if __name__ == '__main__':
   tdp = TestDatasetPolicy()
   #tdp.test_run_on_dataset()
-  #tdp.test_unique_samples()
+  tdp.test_unique_samples()
   #tdp.test_output_det_statistics()
   #tdp.test_load_weights()
   #tdp.test_regress()

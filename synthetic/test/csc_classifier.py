@@ -9,7 +9,6 @@ class TestCscClassifier:
     suffix = 'default'
     self.csc = CSCClassifier(suffix, cls, self.d)
     
-    
   def test_classify_image(self):
     res = self.csc.classify_image(0)
     res2 = self.csc.classify_image(self.d.images[0])

@@ -37,3 +37,6 @@ Sample at img_ind: %(img_ind)s:
       self.det_actual_ap == other.det_actual_ap and \
       np.all(self.state == other.state) and \
       np.all(self.next_state == other.next_state)
+
+  def __hash__(self):
+    return self.__repr__()

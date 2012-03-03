@@ -225,7 +225,7 @@ class DatasetPolicy:
     Otherwise, check for cached files first, unless force is True.
     Return dets,clses,samples.
     """
-    self.tt.tic()
+    self.tt.tic('run_on_dataset')
 
     dets_table = None
     clses_table = None
@@ -310,7 +310,7 @@ class DatasetPolicy:
     final_samples = comm.bcast(final_samples,root=0)
     if comm_rank==0:
       print("Running the %s policy on %d images took %.3f s"%(
-        self.policy_mode, len(images), self.tt.toc()))
+        self.policy_mode, len(images), self.tt.qtoc('run_on_dataset')))
     return dets_table,clses_table,final_samples
 
   def learn_greedy_weights(self):
@@ -318,8 +318,10 @@ class DatasetPolicy:
     Runs iterations of generating samples with current weights and training
     new weight vectors based on the collected samples.
     """
+    print("Beginning to learn regression weights")
+    self.tt.tic('learn_greedy_weights:all')
     # Collect samples (parallelized)
-    num_samples = 200 # actually this refers to images
+    num_samples = 40 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(True,num_samples)
     
     # Loop until max_iterations or the error is below threshold
@@ -327,10 +329,12 @@ class DatasetPolicy:
     max_iterations = 10
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
-      self.tt.tic()
       self.weights, error = self.regress(all_samples)
-      print("After iteration %d which took %.3f s, we've trained on %d samples and the weights and error are:"%(i,self.tt.qtoc(),len(all_samples)))
-      np.set_printoptions(precision=2)
+      print("""
+After iteration %d, we've trained on %d samples and
+the weights and error are:"""%(
+  i,len(all_samples)))
+      np.set_printoptions(precision=2,suppress=True,linewidth=160)
       print self.weights
       print error
 
@@ -338,12 +342,22 @@ class DatasetPolicy:
       if i>0 and error<threshold:
         break
 
-      # collect more samples with the updated weights, adding new ones
+      print("Now collecting more samples with the updated weights...")
       new_dets,new_clses,new_samples = self.run_on_dataset(True,num_samples)
-      for sample in new_samples:
-        if not (sample in all_samples):
-          all_samples.append(sample)
 
+      # We either collect only unique samples or all samples
+      only_unique_samples = False
+      if only_unique_samples:
+        self.tt.tic('learn_greedy_weights:unique_samples')
+        for sample in new_samples:
+          if not (sample in all_samples):
+            all_samples.append(sample)
+        print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_greedy_weights:unique_samples'))
+      else:
+        all_samples += new_samples
+
+    print("Done training regression weights! Took %.3 f s total"%
+      self.tt.qtoc('learn_greedy_weights:all'))
     # Save the weights
     filename = config.get_dp_weights_dirname(self)
     np.savetxt(filename, self.weights, fmt='%.6f')
@@ -368,20 +382,20 @@ class DatasetPolicy:
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
-    alphas = [0.1,1,10]
+    alphas = [0.001, 0.01, 0.1, 1, 10]
     for alpha in alphas:
       clf = sklearn.linear_model.Lasso(alpha=alpha)
       errors = []
       for train_ind,val_ind in folds:
         clf.fit(X[train_ind,:],y[train_ind])
-        errors.append(sklearn.metrics.mean_square_error(clf.predict(X[val_ind,:]),y[val_ind]))
+        errors.append(ut.mean_squared_error(clf.predict(X[val_ind,:]),y[val_ind]))
       alpha_errors.append(np.mean(errors))
     best_ind = np.argmin(alpha_errors)
     best_alpha = alphas[best_ind]
     clf = sklearn.linear_model.Lasso(alpha=best_alpha)
     clf.fit(X,y)
     weights = clf.coef_
-    error = sklearn.metrics.mean_square_error(clf.predict(X),y)
+    error = ut.mean_squared_error(clf.predict(X[val_ind,:]),y[val_ind])
     return (weights,error)
 
   def get_b(self):
@@ -466,7 +480,7 @@ class DatasetPolicy:
     max_untaken_ind = self.action_values[untaken_inds].argmax()
     return untaken_inds[max_untaken_ind]
 
-  def run_on_image(self, image, dataset):
+  def run_on_image(self, image, dataset, verbose=False):
     """
     Return
     - list of detections in the image, with each row as self.get_det_cols()
@@ -474,7 +488,7 @@ class DatasetPolicy:
     - list of <s,a,r,s',dt> samples.
     """
     gt = image.get_ground_truth(include_diff=True)
-    self.tt.tic()
+    self.tt.tic('run_on_image')
 
     all_detections = []
     all_clses = []
@@ -607,8 +621,11 @@ class DatasetPolicy:
     else:
       all_detections = np.array([])
 
-    print("DatasetPolicy on image with ind %d took %.3f s"%(img_ind,self.tt.qtoc()))
+    if verbose:
+      print("DatasetPolicy on image with ind %d took %.3f s"%(
+        img_ind,self.tt.qtoc('run_on_image')))
 
+    # TODO: temp debug thing
     if False:
       print("Action sequence was: %s"%[s.action_ind for s in samples])
       print("here's an image:")
