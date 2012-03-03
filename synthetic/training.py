@@ -53,6 +53,7 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
   y - n x 1 labels
   kernel - kernel to be used in ['linear', 'rbf', 'chi2']
   """
+  probab=True
   if kernel == 'chi2':
     clf = SVC(kernel='precomputed',C=C, probability=probab)
     gram = np.zeros((x.shape[0],x.shape[0]))
@@ -80,7 +81,7 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
     clf.fit(x, y)
   elif kernel == 'linear':
     #clf = LinearSVC(C=C, class_weight='auto')
-    clf = SVC(C=C)
+    clf = SVC(C=C,probability=probab)
     clf.fit(x, y, class_weight='auto')
   else:
     raise RuntimeError("Unknown kernel passed to train_svm")  
