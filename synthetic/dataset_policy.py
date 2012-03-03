@@ -334,7 +334,7 @@ class DatasetPolicy:
 After iteration %d, we've trained on %d samples and
 the weights and error are:"""%(
   i,len(all_samples)))
-      np.set_printoptions(precision=2)
+      np.set_printoptions(precision=2,suppress=True,linewidth=160)
       print self.weights
       print error
 
@@ -352,8 +352,7 @@ the weights and error are:"""%(
         for sample in new_samples:
           if not (sample in all_samples):
             all_samples.append(sample)
-        print("Only adding unique samples to all_samples took %.3f s"%
-          self.tt.qtoc('learn_greedy_weights:unique_samples'))
+        print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_greedy_weights:unique_samples'))
       else:
         all_samples += new_samples
 

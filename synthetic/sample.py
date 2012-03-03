@@ -39,4 +39,4 @@ Sample at img_ind: %(img_ind)s:
       np.all(self.next_state == other.next_state)
 
   def __hash__(self):
-    return self.__repr__().__hash__()
+    return self.__repr__()
