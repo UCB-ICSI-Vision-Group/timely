@@ -92,7 +92,7 @@ class Classifier(object):
     pos_det_scores = []
     for idx, img_idx in enumerate(pos_imgs):
       image = train_dataset.images[img_idx]
-      vector = self.create_vector_from_dets(dets, image, vtype, bounds)
+      vector = self.create_vector_from_dets(dets, image, vtype, bounds,norm=True)
       scores = dets.filter_on_column('img_ind',img_idx).subset_arr('score')
       #scores = np.power(np.exp(-2.*scores)+1,-1)
       pos_det_scores.append(scores)
@@ -103,7 +103,7 @@ class Classifier(object):
     neg_det_scores = []
     for idx, img_idx in enumerate(neg_imgs):
       image = train_dataset.images[img_idx]
-      vector = self.create_vector_from_dets(dets, image, vtype, bounds)
+      vector = self.create_vector_from_dets(dets, image, vtype, bounds,norm=True)
       scores = dets.filter_on_column('img_ind',img_idx).subset_arr('score')
       #scores = np.power(np.exp(-2.*scores)+1,-1)
       neg_det_scores.append(scores)
@@ -142,9 +142,6 @@ class Classifier(object):
     print ap
     #pcolor(vstack((model.predict_proba(x)[:,1],y2)));show()
     
-    embed()
-
-
     save_svm(model, filename)
   
     # TODO
@@ -158,13 +155,16 @@ class Classifier(object):
     table_cls = np.zeros((len(val_dataset.images), 1))
     for idx, image in enumerate(val_dataset.images):
       print '%d eval on img %d/%d'%(comm_rank, idx, len(val_dataset.images))
-      score = self.classify_image(image, dets, probab=probab, vtype=vtype)
-      table_cls[img_idx, 0] = score
-      
+      score = self.classify_image(image, dets, probab=probab, vtype=vtype,norm=True)
+      table_cls[idx, 0] = score
+        
+    ap2, _,_ = Evaluation.compute_cls_pr(table_cls, val_dataset.get_cls_ground_truth().subset_arr(cls))
+    print 'ap on val for %s: %f'%(self.cls, ap2)
+ 
     #print Evaluation.compute_cls_pr(prob3, y)          
 #    y = val_dataset.get_cls_ground_truth().subset(cls).arr
 #    acc = np.count_nonzero(table_cls == np.array(y,ndmin=2).T)/float(y.shape[0])
-    embed()    
+
     return table_cls
     
   def get_observation(self, image):

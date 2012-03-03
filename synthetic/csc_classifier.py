@@ -23,20 +23,22 @@ class CSCClassifier(Classifier):
     
     self.bounds = self.load_bounds()
     
-  def classify_image(self, image, dets=None, probab=True, vtype='hist'):
-    result = self.get_score(image, dets=dets, probab=probab, vtype=vtype)    
+  def classify_image(self, image, dets=None, probab=True, vtype='hist',norm=False):
+    result = self.get_score(image, dets=dets, probab=probab, vtype=vtype, norm=norm)    
     return result
     
-  def get_score(self, image, dets=None, probab=True, vtype='hist'):
+  def get_score(self, image, dets=None, probab=True, vtype='hist', norm=False):
     """
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
     """
     if not dets:
+      raise RuntimeWarning("Dont load the vector from file yourself!")
       vector = self.get_vector(image)
     else:
-      vector = self.create_vector_from_dets(dets, image, vtype=vtype)
+      vector = self.create_vector_from_dets(dets, image, vtype=vtype,norm=norm)
     
+    print vector
     if probab:
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)#[0,0]
