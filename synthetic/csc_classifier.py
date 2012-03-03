@@ -42,7 +42,7 @@ class CSCClassifier(Classifier):
     elif scores.shape[0] == 1:
       vect[0,:2] = [np.max(scores), 0]
     else:
-      vect[0,:2] = np.sort(scores)[:2].T
+      vect[0,:2] = (-np.sort(-scores))[:2]
     return vect
           
   def normalize_dpm_scores(self, arr):     
