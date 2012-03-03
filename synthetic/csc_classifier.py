@@ -23,13 +23,13 @@ class CSCClassifier(Classifier):
     self.svm = self.load_svm()
     self.num_bins = num_bins
         
-  def classify_image(self, image, dets):
+  def classify_image(self, image, scores):
     """
-    with probab=True returns score as a probability [0,1] for this class
-    without it, returns result of older svm
-    dets should be filtered by index of image
+    Return score as a probability [0,1] for this class.
+    Scores should be a vector of scores of the detections for this image.
     """
-    vector = self.create_vector_from_scores(dets)
+    # TODO: rename classify_scores(), does not use image at all!
+    vector = self.create_vector_from_scores(scores)
     return svm_proba(vector, self.svm)[0][1]
   
   def create_vector_from_scores(self, scores):
@@ -40,8 +40,7 @@ class CSCClassifier(Classifier):
     if scores.shape[0] == 0:
       vect[0,:2] = 0
     elif scores.shape[0] == 1:
-      vect[0,0] = np.matrix([np.max(scores)])
-      vect[0,1] = 0
+      vect[0,:2] = [np.max(scores), 0]
     else:
       vect[0,:2] = np.sort(scores)[:2].T
     return vect
@@ -51,6 +50,8 @@ class CSCClassifier(Classifier):
     
   def train_for_cls(self, ext_detector, kernel, C):
     dataset = ext_detector.dataset
+    assert(dataset.name in ['full_pascal_train','full_pascal_trainval'])
+    print dataset.name
 
     print '%d trains %s'%(comm_rank, self.cls)
     # Positive samples
@@ -62,7 +63,8 @@ class CSCClassifier(Classifier):
       img_scores = img_dets.subset_arr('score')
       vector = self.create_vector_from_scores(img_scores)
       print 'load image %d/%d on %d'%(idx, len(pos_imgs), comm_rank)
-      pos.append(vector)      
+      pos.append(vector)
+    pos = np.concatenate(pos)
 
     # Negative samples
     neg_imgs = dataset.get_neg_samples_for_class(self.cls)
@@ -74,8 +76,6 @@ class CSCClassifier(Classifier):
       vector = self.create_vector_from_scores(img_scores)
       print 'load image %d/%d on %d'%(idx, len(neg_imgs), comm_rank)
       neg.append(vector)
-    
-    pos = np.concatenate(pos)
     neg = np.concatenate(neg)
     
     print '%d trains the model for'%comm_rank, self.cls
@@ -83,18 +83,20 @@ class CSCClassifier(Classifier):
     
   def eval_cls(self, ext_detector):
     print 'evaluate svm for %s'%self.cls
-    dataset = ext_detector.train_dataset   
-     
-    table_cls = np.zeros((len(dataset.images), 1))
+    dataset = ext_detector.dataset
+    assert(dataset.name in ['full_pascal_val','full_pascal_test'])
+    print dataset.name
+
+    table_cls = np.zeros(len(dataset.images))
     for img_idx, image in enumerate(dataset.images):
       print '%d eval on img %d/%d'%(comm_rank, img_idx, len(dataset.images))
       img_dets, _ = ext_detector.detect(image)
       img_scores = img_dets.subset_arr('score')
       score = self.classify_image(image, img_scores)
-      table_cls[img_idx, 0] = score
-        
-    ap2, _,_ = Evaluation.compute_cls_pr(table_cls, dataset.get_cls_ground_truth().subset_arr(self.cls))
-    print 'ap on val for %s: %f'%(self.cls, ap2)
+      table_cls[img_idx] = score
+      
+    ap, _,_ = Evaluation.compute_cls_pr(table_cls, dataset.get_cls_ground_truth().subset_arr(self.cls))
+    print 'ap on val for %s: %f'%(self.cls, ap)
 
     return table_cls
 

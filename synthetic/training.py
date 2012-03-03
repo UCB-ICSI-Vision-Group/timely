@@ -46,14 +46,14 @@ def chi_square_kernel(x, y):
   
   return chi_sum
 
-def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
+def train_svm(x, y, kernel='linear', C=100.0, gamma=0.0):
   """
   Train a svm.
   x - n x features data
   y - n x 1 labels
   kernel - kernel to be used in ['linear', 'rbf', 'chi2']
   """
-  probab=True
+  probab=True # Never change this value!
   if kernel == 'chi2':
     clf = SVC(kernel='precomputed',C=C, probability=probab)
     gram = np.zeros((x.shape[0],x.shape[0]))
@@ -94,6 +94,7 @@ def svm_predict(x, clf):
   return (result+1)/2
 
 def svm_proba(x, clf):
+  # TODO: why is this method needed? Just call directly!
   return clf.predict_proba(x)
 
 def save_svm(model, filename):

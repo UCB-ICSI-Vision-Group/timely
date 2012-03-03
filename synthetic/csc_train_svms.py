@@ -20,18 +20,19 @@ def train_csc_svms(d_train, d_val, kernel, C):
     csc = CSCClassifier('default', cls, d_train, d_val)
     csc.train_for_cls(ext_detector, kernel, C)
     
-def test_csc_svm(d_train, d_val):
-  
-  dp = DatasetPolicy(d_val, d_val, detectors=['csc_default'])
+def test_csc_svm(d_train, d_val): 
+  dp = DatasetPolicy(d_val, d_train, detectors=['csc_default'])
   
   table = np.zeros((len(d_val.images), len(d_val.classes)))
   for cls_idx in range(comm_rank, len(d_val.classes), comm_size):
     cls = d_val.classes[cls_idx]
     ext_detector = dp.actions[cls_idx].obj
-    csc = CSCClassifier('default', cls, d_train, d_val)    
+    # Load the classifier we trained in train_csc_svms
+    csc = CSCClassifier('default', cls, d_train, d_val)
     table[:, cls_idx] = csc.eval_cls(ext_detector)[:,0]
   print '%d_train is at safebarrier'%comm_rank
   safebarrier(comm)
+
   print 'passed safebarrier'
   table = comm.reduce(table, op=MPI.SUM, root=0)
   if comm_rank == 0:
@@ -51,8 +52,6 @@ def conv(d_train, table_arr):
   return table
   
 if __name__=='__main__':
-  d = Dataset('full_pascal_trainval')
-
   d_train = Dataset('full_pascal_train')
   d_val = Dataset('full_pascal_val')
 
@@ -64,7 +63,6 @@ if __name__=='__main__':
 
   train_csc_svms(d_train, d_val, kernel, C)
   table_arr = test_csc_svm(d_train, d_val)
-  
   
   if comm_rank == 0:
     #embed()
