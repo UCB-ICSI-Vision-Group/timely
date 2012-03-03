@@ -38,7 +38,6 @@ class CSCClassifier(Classifier):
     else:
       vector = self.create_vector_from_dets(dets, image, vtype=vtype,norm=norm)
     
-    print vector
     if probab:
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)#[0,0]
@@ -73,13 +72,14 @@ class CSCClassifier(Classifier):
     return vect
       
   def create_max2_vector_from_dets(self, dets):
-    vect = np.ones((1,2))
+    vect = np.ones((1,3))
     if dets.shape()[0] == 0:
-      vect[0,:1] = 0
+      vect[0,:2] = 0
     elif dets.shape()[0] == 1:
-      vect[0,:1] = np.matrix([np.max(dets.arr)])
+      vect[0,0] = np.matrix([np.max(dets.arr)])
+      vect[0,1] = 0
     else:
-      vect[0,:1] = np.sort(dets.arr)[:1].T
+      vect[0,:2] = np.sort(dets.arr)[:2].T
     return vect
       
   def create_hist_vector_from_dets(self, dets, bounds=None, w_count=False):

@@ -119,15 +119,15 @@ class Classifier(object):
     y = [1]*pos.shape[0] + [-1]*neg.shape[0]
     #model = self.train(pos, neg, kernel, C, probab=probab)
 
-    model = SVC(kernel='linear', C=1000, probability=True)
-    model.fit(x, y)#, class_weight='auto')
-    print("model.score(C=1000)")
-    print model.score(x,y)
-
-    model = SVC(kernel='linear', C=100, probability=True)
-    model.fit(x, y)#, class_weight='auto')
-    print("model.score(C=100)")
-    print model.score(x,y)
+#    model = SVC(kernel='linear', C=1000, probability=True)
+#    model.fit(x, y)#, class_weight='auto')
+#    print("model.score(C=1000)")
+#    print model.score(x,y)
+#
+#    model = SVC(kernel='linear', C=100, probability=True)
+#    model.fit(x, y)#, class_weight='auto')
+#    print("model.score(C=100)")
+#    print model.score(x,y)
 
     model = SVC(kernel='linear', C=1, probability=True)
     model.fit(x, y)#, class_weight='auto')
@@ -138,7 +138,7 @@ class Classifier(object):
     
     y2 = np.array(y)    
     y2 = (y2+1)/2    
-    ap,rec,prec=Evaluation.compute_cls_pr(table_t[:,1], y2)
+    ap,_,_ =Evaluation.compute_cls_pr(table_t[:,1], y2)
     print ap
     #pcolor(vstack((model.predict_proba(x)[:,1],y2)));show()
     
