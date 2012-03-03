@@ -47,12 +47,19 @@ def load_configs(name):
         if isinstance(cf['policy_mode'], list) else [cf['policy_mode']]
       num_conditions *= len(cp_modes_list)
 
+    if 'weights_mode' in cf:
+      w_modes_list = []
+      w_modes_list = cf['weights_mode'] \
+        if isinstance(cf['weights_mode'], list) else [cf['weights_mode']]
+      num_conditions *= len(cp_modes_list)
+
     configs = []
     for i in range(0,num_conditions):
       configs.append(dict(cf))
       if 'bounds' in cf:
         configs[i]['bounds'] = bounds_list[i%len(bounds_list)]
       configs[i]['policy_mode'] = cp_modes_list[i%len(cp_modes_list)]
+      configs[i]['weights_mode'] = w_modes_list[i%len(w_modes_list)]
     return configs
 
   dirname = opjoin(config.config_dir,name)
@@ -77,7 +84,10 @@ def main():
     The training dataset is inferred (val->train; test->trainval).""")
 
   parser.add_argument('--first_n', type=int,
-    help='only take the first N images in the datasets')
+    help='only take the first N images in the test dataset')
+
+  parser.add_argument('--first_n_train', type=int,
+    help='only take the first N images in the train dataset')
 
   parser.add_argument('--config',
     help="""Config file name that specifies the experiments to run.
@@ -117,6 +127,13 @@ def main():
     train_dataset = Dataset('full_pascal_train')
   else:
     None # impossible by argparse settings
+  
+  # TODO: hack
+  if args.first_n_train:
+    train_dataset.images = train_dataset.images[:args.first_n_train]
+
+  # In both the above cases, we use the val dataset for weights
+  weights_dataset_name = 'full_pascal_val'
 
   dets_tables = []
   clses_tables = []
@@ -125,7 +142,7 @@ def main():
   all_bounds = []
 
   for config_f in configs:
-    dp = DatasetPolicy(dataset, train_dataset, **config_f)
+    dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)
 

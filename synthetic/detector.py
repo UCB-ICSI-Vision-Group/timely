@@ -24,8 +24,20 @@ class Detector(object):
   def get_cols(cls):
     return ['x','y','w','h','score']
 
-  def __init__(self, dataset, cls, detector_config=None):
+  def __init__(self, dataset, train_dataset, cls, detector_config=None,detname='perfect'):
+    # Check if configs exist and look up the correct config for this detname and cls
+    # TODO: this is inefficient because this file is re-opened for every class
+    detector_config = None
+    filename = opjoin(config.get_dets_configs_dir(train_dataset),detname+'.txt')
+    if opexists(filename):
+      with open(filename) as f:
+        configs = json.load(f)
+      config_name = detname+'_'+cls
+      if config_name in configs:
+        detector_config = configs[config_name]
+
     self.dataset = dataset
+    self.train_dataset = train_dataset
     self.cls = cls
     self.cls_ind = dataset.get_ind(cls)
 
@@ -153,8 +165,8 @@ class SWDetector(Detector):
   Perfect classification performance.
   """
 
-  def __init__(self, dataset, cls, sw_generator, detector_config=None):
-    Detector.__init__(self,dataset,cls,detector_config)
+  def __init__(self, dataset, train_dataset, cls, sw_generator, detector_config=None):
+    Detector.__init__(self,dataset,train_dataset,cls,detector_config)
     self.sw = sw_generator
 
 class PerfectDetector(Detector):
@@ -177,6 +189,8 @@ class PerfectDetectorWithNoise(SWDetector):
   negatives, generated randomly according to a couple of parameters.
   Still perfect classification!
   """
+
+  # TODO: detname in __init__ is wrong here
 
   def detect(self, image):
     """

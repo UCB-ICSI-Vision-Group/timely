@@ -15,13 +15,13 @@ class BeliefState(object):
   ngram_modes = ['no_smooth','backoff']
   accepted_modes = ngram_modes+['fixed_order','fastinf']
 
-  def __init__(self,dataset,actions,mode='fixed_order',bounds=None,model=None,fastinf_suffix='perfect'):
+  def __init__(self,dataset,actions,mode='fixed_order',bounds=None,model=None,fastinf_model_name='perfect'):
     assert(mode in self.accepted_modes)
     self.mode = mode
     self.dataset = dataset
     self.actions = actions
     self.bounds = bounds
-    self.fastinf_suffix = fastinf_suffix
+    self.fastinf_model_name = fastinf_model_name
 
     if mode=='no_smooth' or mode=='backoff':
       if model:
@@ -41,7 +41,7 @@ class BeliefState(object):
         self.model = model
       else:
         num_actions = len(self.actions)
-        self.model = FastinfModel(dataset,self.fastinf_suffix,num_actions)
+        self.model = FastinfModel(dataset,self.fastinf_model_name,num_actions)
     else:
       raise RuntimeError("Unknown mode")
 
@@ -66,31 +66,40 @@ class BeliefState(object):
     self.taken[action_ind] = 1
     self.observations[action_ind] = score
     self.model.update_with_observations(self.taken,self.observations)
+    self.full_feature = self.compute_full_feature()
 
-  def featurize(self):
+  num_time_blocks = 1
+  num_features = num_time_blocks * 4 # [P(C) P(not C) H(C) 1]
+  def compute_full_feature(self):
     """
     Return featurized representation of the current belief state.
+    The features are in action blocks, meaning that this method returns
+    a vector of size self.num_features*len(self.actions).
+    Return a matrix that can be zeroed out everywhere except the
+    relevant action_ind, and then flattened.
+    NOTE: Keep the class variable num_features synced with the behavior here.
     """
-    if self.mode=='fastinf':
-      features = self.get_p_c()
-      # TODO
-      #features = self.model.get_infogains()
-    else:
-      features = self.get_p_c()
+    p_c = self.get_p_c()
+    p_not_c = 1 - p_c
+    h_c = -p_c*ut.log2(p_c) + -p_not_c*ut.log2(p_not_c)
+    h_c[h_c==-0]=0
+    ones = np.ones(len(self.actions))
 
-    #def H(x): return np.sum([-x_i*ut.log(x_i) -(1-x_i)*ut.log(1-x_i) for x_i in x])
-    #entropy = H(b['priors'].priors)
-    #features += [entropy]
+    # TODO: work out the time-blocks
 
-    time_to_start = 0
-    if self.bounds:
-      if self.bounds[0]>0:
-        time_to_start = max(0, (self.bounds[0]-b['t'])/self.bounds[0])
-      time_to_deadline = max(0, (self.bounds[1]-b['t'])/self.bounds[1])
-    else:
-      time_to_start = 0
-      time_to_deadline = 1
-    #features += [time_to_start,time_to_deadline]
-    #features += [time_to_deadline]
+    return np.vstack((p_c,p_not_c,h_c,ones))
 
-    return features
+  def block_out_action(self, full_feature, action_ind=-1):
+    """
+    Take a full_feature matrix and zero out all the values except those
+    in the relevant action block.
+    If action_ind < 0, returns the flat feature with nothing zeroed out.
+    """
+    if action_ind < 0:
+      # flatten in column-major format (column index varies slowest)
+      return full_feature.flatten('F')
+    assert(action_ind<len(self.actions))
+    feature = np.zeros(np.prod(full_feature.shape))
+    start_ind = action_ind*self.num_features
+    feature[start_ind:start_ind+self.num_features] = full_feature[:,action_ind]
+    return feature

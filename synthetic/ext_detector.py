@@ -12,23 +12,13 @@ class ExternalDetector(Detector):
   requested.
   """
 
-  def __init__(self, dataset, cls, dets, detname):
+  def __init__(self, dataset, train_dataset, cls, dets, detname):
     """
     Expects cached detections in Table format to be passed in.
     The dets should not have the 'cls_ind' column, as they should all be of the
     same class.
     """
-    # Check if configs exist and look up the correct config for this detname and cls
-    detector_config = None
-    filename = os.path.join(config.dets_configs_dir,detname+'.txt')
-    if os.path.exists(filename):
-      with open(filename) as f:
-        configs = json.load(f)
-      config_name = detname+'_'+cls
-      if config_name in configs:
-        detector_config = configs[config_name]
-
-    Detector.__init__(self,dataset,cls,detector_config)
+    Detector.__init__(self,dataset,train_dataset,cls,detector_config)
     self.detname = detname
     self.dets = dets
     suffix = detname[4:]

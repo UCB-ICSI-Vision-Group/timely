@@ -29,11 +29,11 @@ class Table:
     return ret
 
   def __repr__(self):
-    return \
-      "Table (%s):\n" % self.name +\
-      "%s\n"          % self.cols +\
-      "%s"            % str(self.arr.shape) +\
-      "\n%s"          % self.arr
+    return """
+Table name: %(name)s | size: %(shape)s
+%(cols)s
+%(arr)s
+"""%dict(self.__dict__.items()+{'shape':self.shape()}.items())
 
   def __eq__(self,other):
     "Two Tables are equal if all columns and their names are equal, in order."
@@ -164,7 +164,8 @@ def append_index_column(arr, index):
 
 def filter_on_column(arr, ind, val, op=operator.eq, omit=False):
   """
-  Returns the rows of arr where (arr(:,ind)==val), optionally omitting the ind column.
+  Returns the rows of arr where arr[:,ind]==val,
+  optionally omitting the ind column.
   """
   arr = arr[op(arr[:,ind], val),:]
   if omit:
@@ -275,7 +276,7 @@ def fequal(a,b,tol=.0000001):
 
 def log2(x):
   "Base-2 log that returns 0 if x==0."
-  y = atleast_1d(np.copy(x))
+  y = np.atleast_1d(np.copy(x))
   y[y==0]=1
   return np.log2(y)
 
@@ -382,25 +383,6 @@ def histogram_just_count(x, num_bins, normalize=False):
   if normalize:
     histogram = histogram/np.sum(histogram)
   return histogram
-
-"""From http://vjethava.blogspot.com/2010/11/matlabs-keyboard-command-in-python.html"""
-import code
-import sys
-def keyboard(banner=None):
-    ''' Function that mimics the matlab keyboard command '''
-    # use exception trick to pick up the current frame
-    try:
-        raise None
-    except:
-        frame = sys.exc_info()[2].tb_frame.f_back
-    print "# Use quit() to exit :) Happy debugging!"
-    # evaluate commands in current namespace
-    namespace = frame.f_globals.copy()
-    namespace.update(frame.f_locals)
-    try:
-        code.interact(banner=banner, local=namespace)
-    except SystemExit:
-        return
 
 ##############################################
 # Tic/Toc
