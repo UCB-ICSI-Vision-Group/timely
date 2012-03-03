@@ -22,12 +22,12 @@ class Classifier(object):
   def train(self, pos, neg, kernel, C):    
     y = [1]*pos.shape[0] + [-1]*neg.shape[0]
     x = np.concatenate((pos,neg))
-    model = train_svm(x, y, kernel=kernel, C=C)
+    model = train_svm(x, y, kernel, C)
     self.svm = model
     print 'model.score(C=%d): %f'%(C, model.score(x,y))
-    table_t = svm_proba(x, model)    
-    y2 = np.array(y)    
-    y2 = (y2+1)/2    
+    table_t = svm_proba(x, model)
+    y2 = np.array(y)
+    y2 = (y2+1)/2 # switch to 0/1
     ap,_,_ = Evaluation.compute_cls_pr(table_t[:,1], y2)
     print 'ap on train set: %f'%ap
     filename = config.get_classifier_filename(self, self.cls, self.train_dataset)
