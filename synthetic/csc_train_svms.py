@@ -28,8 +28,9 @@ def test_csc_svm(d_train, d_val):
   for cls_idx in range(comm_rank, len(d_val.classes), comm_size):
     cls = d_val.classes[cls_idx]
     ext_detector = dp.actions[cls_idx].obj
-    csc = CSCClassifier('default', cls, d_train, d_val)    
-    table[:, cls_idx] = csc.eval_cls(ext_detector)[:,0]
+    csc = CSCClassifier('default', cls, d_train, d_val)
+    embed()    
+    table[:, cls_idx] = csc.eval_cls(ext_detector)
   print '%d_train is at safebarrier'%comm_rank
   safebarrier(comm)
   print 'passed safebarrier'
@@ -60,7 +61,7 @@ if __name__=='__main__':
   val_gt = d_val.get_cls_ground_truth()
   
   kernel = 'linear'
-  C = 1
+  C = 100
 
   train_csc_svms(d_train, d_val, kernel, C)
   table_arr = test_csc_svm(d_train, d_val)

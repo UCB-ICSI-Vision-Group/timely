@@ -51,7 +51,7 @@ class CSCClassifier(Classifier):
     
   def train_for_cls(self, ext_detector, kernel, C):
     dataset = ext_detector.dataset
-
+    
     print '%d trains %s'%(comm_rank, self.cls)
     # Positive samples
     pos_imgs = dataset.get_pos_samples_for_class(self.cls)
@@ -83,7 +83,7 @@ class CSCClassifier(Classifier):
     
   def eval_cls(self, ext_detector):
     print 'evaluate svm for %s'%self.cls
-    dataset = ext_detector.train_dataset   
+    dataset = ext_detector.dataset   
      
     table_cls = np.zeros((len(dataset.images), 1))
     for img_idx, image in enumerate(dataset.images):
