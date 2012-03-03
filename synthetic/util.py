@@ -29,11 +29,11 @@ class Table:
     return ret
 
   def __repr__(self):
-    return \
-      "Table (%s):\n" % self.name +\
-      "%s\n"          % self.cols +\
-      "%s"            % str(self.arr.shape) +\
-      "\n%s"          % self.arr
+    return """
+Table name: %(name)s | size: %(shape)s
+%(cols)s
+%(arr)s
+"""%dict(self.__dict__.items()+{'shape':self.shape()}.items())
 
   def __eq__(self,other):
     "Two Tables are equal if all columns and their names are equal, in order."
@@ -164,7 +164,8 @@ def append_index_column(arr, index):
 
 def filter_on_column(arr, ind, val, op=operator.eq, omit=False):
   """
-  Returns the rows of arr where (arr(:,ind)==val), optionally omitting the ind column.
+  Returns the rows of arr where arr[:,ind]==val,
+  optionally omitting the ind column.
   """
   arr = arr[op(arr[:,ind], val),:]
   if omit:

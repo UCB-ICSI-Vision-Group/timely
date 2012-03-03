@@ -177,21 +177,28 @@ class DatasetPolicy:
       per_action = np.array([1,0,0,0])
       weights = np.tile(per_action,(len(self.actions),1)).flatten('C')
 
-    # OPTION 2: the manual weights are [naive_ap|present naive_ap|absent 0 0]
-    elif self.weights_mode == 'manual_2':
-      if 'naive_ap|present' not in self.actions[0].obj.config:
-        self.output_det_statistics()
-      weights[:,0] = [action.obj.config['naive_ap|present'] for action in self.actions]
-      weights = weights.flatten('C') # row-major
-
-    # OPTION 3: the manual weights are [actual_ap|present actual_ap|absent 0 0]
-    elif self.weights_mode == 'manual_3':
-      if 'actual_ap|present' not in self.actions[0].obj.config or \
+    elif self.weights_mode in ['manual_2','manual_3']:
+      # Figure out the statistics if they aren't there
+      if 'naive_ap|present' not in self.actions[0].obj.config or \
+         'actual_ap|present' not in self.actions[0].obj.config or \
          'actual_ap|absent' not in self.actions[0].obj.config:
-         self.output_det_statistics()
-      weights[:,0] = [action.obj.config['actual_ap|present'] for action in self.actions]
-      weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
-      weights = weights.flatten('C') # row-major
+        self.output_det_statistics()
+        self.test_actions = self.init_actions()
+        self.actions = self.test_actions
+
+      # OPTION 2: the manual weights are [naive_ap|present naive_ap|absent 0 0]
+      if self.weights_mode == 'manual_2':
+        weights[:,0] = [action.obj.config['naive_ap|present'] for action in self.actions]
+        weights = weights.flatten('C') # row-major
+
+      # OPTION 3: the manual weights are [actual_ap|present actual_ap|absent 0 0]
+      elif self.weights_mode == 'manual_3':
+        weights[:,0] = [action.obj.config['actual_ap|present'] for action in self.actions]
+        weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
+        weights = weights.flatten('C') # row-major
+
+      else:
+        None # impossible
 
     elif self.weights_mode == 'greedy':
       weights = self.learn_greedy_weights()
@@ -255,7 +262,7 @@ class DatasetPolicy:
     all_clses = []
     all_samples = []
     for i in range(comm_rank,len(images),comm_size):
-      dets,clses,samples = self.run_on_image(images[i])
+      dets,clses,samples = self.run_on_image(images[i],dataset)
       all_dets.append(dets)
       all_clses.append(clses)
       all_samples += samples
@@ -279,7 +286,6 @@ class DatasetPolicy:
       clses_table = ut.Table(cols=self.get_cls_cols())
       clses_table.arr = np.vstack(final_clses)
       print("Found %d dets"%dets_table.shape()[0])
-      print("Classified %d images"%clses_table.shape()[0])
 
       # Only save results if we are not collecting samples
       if not sample_size > 0:
@@ -366,7 +372,7 @@ class DatasetPolicy:
     all_dets,all_clses,all_samples = self.run_on_dataset(train=True)
     if comm_rank==0:
       cols = ['action_ind','dt','det_naive_ap','det_actual_ap','img_ind']
-      sample_array = np.array(([s[col] for s in samples] for col in cols)).T
+      sample_array = np.array([[getattr(s,col) for s in all_samples] for col in cols]).T
       table = ut.Table(sample_array,cols)
 
       # go through actions
@@ -425,7 +431,7 @@ class DatasetPolicy:
     max_untaken_ind = self.action_values[untaken_inds].argmax()
     return untaken_inds[max_untaken_ind]
 
-  def run_on_image(self, image):
+  def run_on_image(self, image, dataset):
     """
     Return
     - list of detections in the image, with each row as self.get_det_cols()
@@ -439,8 +445,7 @@ class DatasetPolicy:
     all_clses = []
     samples = []
     prev_ap = 0
-   
-    img_ind = self.dataset.get_img_ind(image) if image else -1
+    img_ind = dataset.get_img_ind(image)
 
     # If we have previously run_on_image(), then we already have a reference to an inf_model
     # Otherwise, we make a new one and store a reference to it, to keep it alive

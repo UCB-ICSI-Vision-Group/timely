@@ -29,9 +29,10 @@ class TestDatasetPolicy:
     # run on test dataset
     dets,clses,samples = self.dp.run_on_dataset(force=True) 
     assert(len(samples) == clses.shape()[0])
-    embed()
+    assert(len(samples) == self.dp.dataset.num_images()*len(self.dp.actions))
     train_dets,train_clses,train_samples = self.dp.run_on_dataset(train=True,force=True)
     assert(len(train_samples) == train_clses.shape()[0])
+    assert(len(train_samples) == self.dp.train_dataset.num_images()*len(self.dp.actions))
 
   def test_unique_samples(self):
     "Test the correctness of making a list of samples unique."
@@ -93,6 +94,7 @@ class TestDatasetPolicy:
 
 if __name__ == '__main__':
   tdp = TestDatasetPolicy()
-  tdp.test_run_on_dataset()
+  #tdp.test_run_on_dataset()
   #tdp.test_unique_samples()
-  #tdp.test_dp_weights()
+  tdp.test_dp_weights()
+  #tdp.test_output_det_statistics()
