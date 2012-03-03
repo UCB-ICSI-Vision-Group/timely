@@ -8,27 +8,29 @@ from synthetic.ngram_model import NGramModel
 from synthetic.image import Image
 from synthetic.training import *
 from synthetic.classifier import Classifier
+from synthetic.evaluation import Evaluation
 
 class GistClassifier(Classifier):
   """
   Compute a likelihood-vector for the classes given a (precomputed) gist detection
   """
-  def __init__(self, cls, dataset):
-    """
+  def __init__(self, cls, train_d, gist_table=None, val_d=None):
+    """ 
     Load all gist features right away
     """
-    if type(dataset) == type(''):
-      self.dataset = Dataset(dataset)
-      dataset_name = dataset
-    else:
-      self.dataset = dataset
-      dataset_name = dataset.name
+    self.train_d = train_d
+    dataset_name = self.train_d.name
+    self.val_d = val_d
       
     Classifier.__init__(self)
-    print("Started loading GIST")
+    
     self.tt.tic()
-    self.gist_table = np.load(config.get_gist_dict_filename(dataset_name))
-    print("Time spent loading gist: %.3f"%self.tt.qtoc())
+    if gist_table == None:
+      print("Started loading GIST")
+      self.gist_table = np.load(config.get_gist_dict_filename(dataset_name))
+      print("Time spent loading gist: %.3f"%self.tt.qtoc())
+    else:
+      self.gist_table = gist_table    
     self.cls = cls
     self.svm = self.load_svm()
   
@@ -79,7 +81,18 @@ class GistClassifier(Classifier):
       ind += 1
     return gist
   
-  def train_all_svms(self, dataset,C=1.0):
+  def train_svm(self):
+    self.tt.tic()
+    pos_idx = self.train_d.get_pos_samples_for_class(self.cls)
+    neg_idx = self.train_d.get_neg_samples_for_class(self.cls, number=pos_idx.size)
+    
+    #print self.gist_table
+    
+    print 'pos_idc', pos_idx
+    print 'neg_idc', neg_idx
+    
+    
+  def train_all_svms(self, dataset, C=1.0):
     """
     Train classifiers to 
     """
@@ -101,28 +114,31 @@ class GistClassifier(Classifier):
       svm_filename = config.get_gist_svm_filename(cls)+'_'+str(C)
       save_svm(svm, svm_filename)     
       print '\ttook', time.time()-t,'sec'
+  
+  def scores_for_dataset(self, dataset):
+    
+    None
 
-  def evaluate_svm(self, cls, dataset, C):
-    svm_filename = config.get_gist_svm_filename(cls)+'_'+str(C)
-    svm = load_svm(svm_filename)
-    print 'evaluate class', cls
-    t = time.time()
-    pos = dataset.get_pos_samples_for_class(cls)
-    num_pos = pos.size 
-    neg = dataset.get_neg_samples_for_class(cls)
-    neg = np.random.permutation(neg)[:num_pos]
-    print '\tload pos gists'
-    pos_gist = self.get_gists_for_imgs(pos, dataset)
-    print '\tload neg gists'       
-    neg_gist = self.get_gists_for_imgs(neg, dataset)
-    x = np.concatenate((pos_gist, neg_gist))
-    y = [1]*num_pos + [-1]*num_pos
-    result = svm_predict(x, svm)
-    test_classification = np.matrix([1]*pos_gist.shape[0] + [-1]*neg_gist.shape[0]).reshape((result.shape[0],1))  
-    acc = sum(np.multiply(result,test_classification) > 0)/float(2.*num_pos)
-    outfile_name = os.path.join(config.gist_dir, cls)
-    outfile = open(outfile_name,'a')
-    outfile.writelines(str(C) + ' ' + str(acc[0][0])+'\n') 
+#  def evaluate_svm(self, cls, dataset, C):
+#    svm = self.svm
+#    print 'evaluate class', cls
+#    t = time.time()
+#    pos = dataset.get_pos_samples_for_class(cls)
+#    num_pos = pos.size 
+#    neg = dataset.get_neg_samples_for_class(cls)
+#    neg = np.random.permutation(neg)[:num_pos]
+#    print '\tload pos gists'
+#    pos_gist = self.get_gists_for_imgs(pos, dataset)
+#    print '\tload neg gists'       
+#    neg_gist = self.get_gists_for_imgs(neg, dataset)
+#    x = np.concatenate((pos_gist, neg_gist))
+#    y = [1]*num_pos + [-1]*num_pos
+#    result = svm_predict(x, svm)
+#    test_classification = np.matrix([1]*pos_gist.shape[0] + [-1]*neg_gist.shape[0]).reshape((result.shape[0],1))  
+#    acc = sum(np.multiply(result,test_classification) > 0)/float(2.*num_pos)
+#    outfile_name = os.path.join(config.gist_dir, cls)
+#    outfile = open(outfile_name,'a')
+#    outfile.writelines(str(C) + ' ' + str(acc[0][0])+'\n') 
     
   def cross_val_lambda(self, lam):
     images = self.dataset.images
@@ -162,16 +178,23 @@ class GistClassifier(Classifier):
     
 def gist_evaluate_best_svm():
   train_d = Dataset('full_pascal_train')
-  train_dect = GistClassifier(train_d.name)
   val_d = Dataset('full_pascal_val')
-  val_dect = GistClassifier(val_d.name)  
+  cls = 'dog'
   
-  ranges = np.arange(0.5,10.,0.5)
-  for C_idx in range(comm_rank, len(ranges), comm_size):
-    C = ranges[C_idx] 
-    train_dect.train_all_svms(train_d, C)
-    for cls in config.pascal_classes:
-      val_dect.evaluate_svm(cls, val_d, C)
+  gist_table = np.load(config.get_gist_dict_filename(train_d.name))
+  clf = GistClassifier(cls, train_d, gist_table=gist_table, val_d=val_d)
+  #clf.train_svm()
+  
+  val_gist_table = np.load(config.get_gist_dict_filename(val_d.name))
+  #emb
+  #gt = 
+  #Evaluation.compute_cls_pr(val_gist_table, gt) 
+  
+  return
+  
+  clf.train_all_svms(train_d)
+  for cls in config.pascal_classes:
+    clf.evaluate_svm(cls, val_d)
     
 def test_gist_one_sample(dataset):    
   dect = GistClassifier(dataset)
@@ -206,8 +229,7 @@ def convert_gist_datasets(dataset_origin, datasets_new):
     for img_idx, img in enumerate(images):
       orig_img = d_orig.get_image_by_filename(img.name)
       row = d_orig.images.index(orig_img)
-      new_data[img_idx, :] = data[row, :] 
-      
+      new_data[img_idx, :] = data[row, :]       
     np.save(savefile, new_data)
   
 def crossval():
@@ -267,14 +289,15 @@ def cls_for_dataset(dataset):
     cPickle.dump(table, open(savefile,'w'))
   return table
 
-if __name__=='__main__':
+def gist_fastinf():
   from synthetic.fastInf import write_out_mrf, execute_lbp, discretize_table
   dataset_name = 'full_pascal_train'
-  table = cls_gt_for_dataset(dataset)
+  d = Dataset(dataset_name)
+  table = d.cls_gt_for_dataset()
   d = Dataset(dataset_name)
   num_bins = 5
   suffix = 'gist_pair'
-  filename = config.get_fastinf_mrf_file(dataset, suffix)
+  filename = config.get_fastinf_mrf_file(d, suffix)
   data_filename = config.get_fastinf_data_file(d, suffix)
   filename_out = config.get_fastinf_res_file(d, suffix)
   
@@ -287,4 +310,6 @@ if __name__=='__main__':
   if comm_rank == 0:  
     write_out_mrf(table, num_bins, filename, data_filename)  
     result = execute_lbp(filename, data_filename, filename_out)
-  
+
+if __name__=='__main__':
+  gist_evaluate_best_svm()  

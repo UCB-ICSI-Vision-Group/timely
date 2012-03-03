@@ -75,6 +75,9 @@ def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=True):
   elif kernel == 'rbf':
     clf = SVC(kernel=kernel, C=C, probability=probab, gamma=gamma)
     clf.fit(x, y)
+  elif kernel == 'poly':
+    clf = SVC(kernel=kernel, C=C, probability=probab, gamma=2.0, degree=2)
+    clf.fit(x, y)
   elif kernel == 'linear':
     #clf = LinearSVC(C=C, class_weight='auto')
     clf = SVC(C=C)

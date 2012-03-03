@@ -92,9 +92,10 @@ class DatasetPolicy:
       # GIST classifier
       elif detector=='gist':
         # TODO: this should be per-class
-        gist_obj = GistClassifier(self.dataset.name)
-        self.actions.append(ImageAction('gist', gist_obj))
-
+        for cls in self.dataset.classes:
+          gist_table = np.load(config.get_gist_dict_filename(self.dataset))
+          det = GistClassifier(cls, self.dataset.name,gist_table)
+          self.actions.append(ImageAction('%s_%s'%(detector,cls), det))
       # real detectors, with pre-cached detections
         
       elif detector in ['dpm','csc_default','csc_half']:

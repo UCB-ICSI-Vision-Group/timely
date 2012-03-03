@@ -8,16 +8,18 @@ from synthetic.csc_classifier import CSCClassifier
 from IPython import embed
 from synthetic.evaluation import Evaluation
 
-def retrain_best_svms(d, d_train, d_val, kernel, C, num_bins):
-  dp = DatasetPolicy(d, d_train, detectors=['csc_default'])  
-  
+def train_csc_svms(d, d_train, d_val, kernel, C, num_bins):
+  detector = 'csc_default'
+  dp = DatasetPolicy(d, d_train, detectors=[detector])
+  test_dets = dp.load_ext_detections(d_val, detector)
+    
   table = np.zeros((len(d_val.images), len(d_val.classes)))
   for cls_idx in range(comm_rank, len(d_train.classes), comm_size):
     cls = d_train.classes[cls_idx]    
     dets = dp.actions[cls_idx].obj.dets           
     csc = CSCClassifier('default', cls, d, num_bins)
-    col = csc.train_for_cls(d_train, d_val, dets, kernel, C, probab=True, vtype='max') # <----IMPORTANT LINE
-    print col
+    test_det_cls = test_dets.filter_on_column('cls_ind', cls_idx)
+    col = csc.train_for_cls(d_train, d_val, dets, test_det_cls, kernel, C, probab=True, vtype='max') # <----IMPORTANT LINE
     table[:, cls_idx] = col[:,0]
   
   print '%d_train is at safebarrier'%comm_rank
@@ -27,7 +29,7 @@ def retrain_best_svms(d, d_train, d_val, kernel, C, num_bins):
   if comm_rank == 0:
     print 'save table'
     print table 
-    #cPickle.dump(table, open('table_linear_5','w'))
+    cPickle.dump(table, open('table_poly','w'))
     print 'saved'
   return table
 
@@ -42,14 +44,18 @@ def conv(d_train, table_arr):
   
 if __name__=='__main__':
   d = Dataset('full_pascal_trainval')
-  d_train = Dataset('full_pascal_train')
-  d_val = Dataset('full_pascal_val')
+#  d_train = Dataset('full_pascal_train')
+#  d_val = Dataset('full_pascal_val')
+  
+  d_train = Dataset('full_pascal_trainval')
+  d_val = Dataset('full_pascal_test')
+
   train_gt = d_train.get_cls_ground_truth()
   val_gt = d_val.get_cls_ground_truth()
 
   if comm_rank == 0:
     results_filename = 'results.txt'
-    w = open(results_filename, 'w')
+    w = open(results_filename, 'a')
 #  kernels = ['linear', 'rbf']
 #  Cs = [1, 5, 10]
 #  num_binss = [5, 10, 20]
@@ -58,7 +64,7 @@ if __name__=='__main__':
 #  num_binss = [20, 50, 100]
   kernels = ['linear']
   Cs = [100]
-  num_binss = [5]
+  num_binss = [1]
 
   settings = list(itertools.product(kernels, Cs, num_binss))
   
@@ -67,7 +73,7 @@ if __name__=='__main__':
     C = sets[1]
     num_bins = sets[2]
     
-    table_arr = retrain_best_svms(d, d_train, d_val, kernel, C, num_bins)
+    table_arr = train_csc_svms(d, d_train, d_val, kernel, C, num_bins)
     if comm_rank == 0:
       table = conv(d_train, table_arr)
       res = Evaluation.compute_cls_map(table, val_gt)

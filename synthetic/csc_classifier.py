@@ -23,11 +23,11 @@ class CSCClassifier(Classifier):
     
     self.bounds = self.load_bounds()
     
-  def classify_image(self, image, dets=None, probab=True, vtype='hist',norm=False):
-    result = self.get_score(image, dets=dets, probab=probab, vtype=vtype, norm=norm)    
+  def classify_image(self, d, image, dets=None, probab=True, vtype='hist',norm=False):
+    result = self.get_score(d, image, dets=dets, probab=probab, vtype=vtype, norm=norm)    
     return result
     
-  def get_score(self, image, dets=None, probab=True, vtype='hist', norm=False):
+  def get_score(self, d, image, dets=None, probab=True, vtype='hist', norm=False):
     """
     with probab=True returns score as a probability [0,1] for this class
     without it, returns result of older svm
@@ -36,23 +36,23 @@ class CSCClassifier(Classifier):
       raise RuntimeWarning("Dont load the vector from file yourself!")
       vector = self.get_vector(image)
     else:
-      vector = self.create_vector_from_dets(dets, image, vtype=vtype,norm=norm)
+      vector = self.create_vector_from_dets(d, dets, image, vtype=vtype,norm=norm)
     
     if probab:
       return svm_proba(vector, self.svm)[0][1]
     return svm_predict(vector, self.svm)#[0,0]
   
-  def create_vector_from_dets(self, dets, image, vtype='hist',bounds=None, w_count=False,norm=False):
+  def create_vector_from_dets(self, d, dets, image, vtype='hist',bounds=None, w_count=False,norm=False):
     if not isinstance(image, Image):
       raise RuntimeWarning("Create feat vector should get an Image instance")
     
     # Find the correct img_idx for this image and dets
-    image_trainval = self.dataset.get_image_by_filename(image.name)
-    img_idx = self.dataset.images.index(image_trainval)
+    image_trainval = d.get_image_by_filename(image.name)
+    img_idx = d.images.index(image_trainval)
     
     if 'cls_ind' in dets.cols:
-      dets = dets.filter_on_column('cls_ind', self.dataset.classes.index(self.cls), omit=True)
-    
+      dets = dets.filter_on_column('cls_ind', d.classes.index(self.cls), omit=True)
+      
     if bounds == None:
       bounds = self.bounds
     dets = dets.subset(['score', 'img_ind'])
@@ -129,7 +129,7 @@ class CSCClassifier(Classifier):
       
       print kernel, C
 
-      filename = config.get_classifier_svm_learning_filename(self.csc_classif, self.cls, kernel, C)
+      filename = config.get_csc_classifier_svm_filename(self.csc_classif, self.cls, kernel, C)
       
       if not os.path.isfile(filename) or force_new:
         bounds = ut.importance_sample(dets.subset(['score']).arr, self.num_bins+1)
