@@ -1,7 +1,7 @@
 {
   "suffix": "csc_greedy",
   "detectors": ["csc_default"],
-  "policy_mode": ["fixed_order"],
+  "policy_mode": ["fastinf"],
   "weights_mode": ["greedy"],
   "rewards_mode": ["det_actual_ap"]
 }

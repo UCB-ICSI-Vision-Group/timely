@@ -7,7 +7,7 @@ class Sample:
     "Initialize all the fields with None."
     fields = [
       'img_ind','step_ind','state','action_ind','dt','t',
-      'det_naive_ap', 'det_actual_ap']
+      'det_naive_ap', 'det_actual_ap', 'entropy']
     for field in fields:
       self.__dict__[field] = None
 
@@ -21,6 +21,7 @@ Sample at img_ind: %(img_ind)s:
   action_ind: %(action_ind)d
   dt: %(dt).3f \t|\t t: %(t).3f
   det_naive_ap/det_actual_ap: %(det_naive_ap).3f/%(det_actual_ap).3f
+  entropy: %(entropy)s
 """%self.__dict__
 
   def __ne__(self,other):
@@ -33,6 +34,7 @@ Sample at img_ind: %(img_ind)s:
       self.dt == other.dt and \
       self.det_naive_ap == other.det_naive_ap and \
       self.det_actual_ap == other.det_actual_ap and \
+      self.entropy == other.entropy and \
       np.all(self.state == other.state)
 
   def __hash__(self):

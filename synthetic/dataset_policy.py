@@ -34,8 +34,10 @@ class DatasetPolicy:
       # policy mode can be one of random, oracle, fixed_order,
       # no_smooth, backoff, fastinf
     'bounds': None, # start and deadline times for the policy
-    'weights_mode': 'manual_1'
+    'weights_mode': 'manual_1',
     # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
+    'rewards_mode': 'det_actual_ap'
+    # det_actual_ap, entropy 
   }
 
   def get_config_name(self):
@@ -419,14 +421,18 @@ class DatasetPolicy:
       feats.append(b.block_out_action(sample.state,sample.action_ind))
     return np.array(feats)
 
-  def compute_reward_from_samples(self,samples,mode='greedy',discount=0.9):
+  def compute_reward_from_samples(self, samples, mode='greedy',
+    discount=0.9, attr=None):
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action
     - mode=='rl_regression' or 'rl_lspi' uses discounted sum
     of actual_aps to the end of the episode
+    - attr can be ['det_naive_ap', 'det_actual_ap', 'entropy']
     """ 
-    y = np.array([sample.det_actual_ap for sample in samples])
+    if not attr:
+      attr = self.rewards_mode
+    y = np.array([getattr(sample,attr) for sample in samples])
     if mode=='greedy':
       return y
     # we have to figure out the boundaries of the episodes
@@ -630,6 +636,7 @@ class DatasetPolicy:
       b.t += obs['dt']
       sample.dt = obs['dt']
       sample.t = b.t
+      sample.entropy = np.mean(b.get_entropies())
       samples.append(sample)
       step_ind += 1
       b.update_with_score(action_ind, obs['score'])

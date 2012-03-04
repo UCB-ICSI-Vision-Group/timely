@@ -59,6 +59,11 @@ class BeliefState(object):
   def get_p_c(self):
     return self.model.p_c
 
+  def get_entropies(self):
+    p_c = self.model.p_c
+    p_not_c = 1 - p_c
+    return -p_c*ut.log2(p_c) + -p_not_c*ut.log2(p_not_c)
+
   def reset(self):
     "Zero everything and reset the model."
     self.t = 0
@@ -86,7 +91,7 @@ class BeliefState(object):
     """
     p_c = self.get_p_c()
     p_not_c = 1 - p_c
-    h_c = -p_c*ut.log2(p_c) + -p_not_c*ut.log2(p_not_c)
+    h_c = self.get_entropies()
     h_c[h_c==-0]=0
     ones = np.ones(p_c.shape)
     # TODO: work out the time-blocks

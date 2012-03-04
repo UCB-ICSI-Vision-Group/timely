@@ -52,6 +52,11 @@ def load_configs(name):
         if isinstance(cf['weights_mode'], list) else [cf['weights_mode']]
       num_conditions *= len(w_modes_list)
 
+    if 'rewards_mode' in cf:
+      r_modes_list = cf['rewards_mode'] \
+        if isinstance(cf['rewards_mode'], list) else [cf['rewards_mode']]
+      num_conditions *= len(r_modes_list)
+
     configs = []
     for i in range(0,num_conditions):
       configs.append(dict(cf))
@@ -61,6 +66,8 @@ def load_configs(name):
         configs[i]['policy_mode'] = cp_modes_list[i%len(cp_modes_list)]
       if 'weights_mode' in cf:
         configs[i]['weights_mode'] = w_modes_list[i%len(w_modes_list)]
+      if 'rewards_mode' in cf:
+        configs[i]['rewards_mode'] = r_modes_list[i%len(r_modes_list)]
     return configs
 
   dirname = opjoin(config.config_dir,name)

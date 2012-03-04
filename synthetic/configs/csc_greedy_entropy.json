@@ -3,5 +3,5 @@
   "detectors": ["csc_default"],
   "policy_mode": ["fixed_order"],
   "weights_mode": ["greedy"],
-  "rewards_mode": ["det_actual_ap"]
+  "rewards_mode": ["entropy"]
 }
