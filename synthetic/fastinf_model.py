@@ -67,8 +67,6 @@ class FastinfModel(InferenceModel):
     Also update self.p_c with the marginals.
     """
     if evidence:
-      print "Evidence:"
-      print evidence
       if evidence in self.cache:
         print "Fetching cached marginals"
         marginals = self.cache[evidence]
