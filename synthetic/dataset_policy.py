@@ -473,9 +473,9 @@ class DatasetPolicy:
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
-    alphas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
+    alphas = [0.0001, 0.001, 0.01, 0.1, 1]
     for alpha in alphas:
-      clf = sklearn.linear_model.Lasso(alpha=alpha)
+      clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=2000)
       errors = []
       # TODO parallelize this? seems fast enough
       for train_ind,val_ind in folds:
@@ -484,7 +484,7 @@ class DatasetPolicy:
       alpha_errors.append(np.mean(errors))
     best_ind = np.argmin(alpha_errors)
     best_alpha = alphas[best_ind]
-    clf = sklearn.linear_model.Lasso(alpha=best_alpha)
+    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=2000)
     clf.fit(X,y)
     print("Best lambda was %.3f"%best_alpha)
     weights = clf.coef_
