@@ -48,10 +48,9 @@ def load_configs(name):
       num_conditions *= len(cp_modes_list)
 
     if 'weights_mode' in cf:
-      w_modes_list = []
       w_modes_list = cf['weights_mode'] \
         if isinstance(cf['weights_mode'], list) else [cf['weights_mode']]
-      num_conditions *= len(cp_modes_list)
+      num_conditions *= len(w_modes_list)
 
     configs = []
     for i in range(0,num_conditions):
@@ -138,7 +137,6 @@ def main():
   weights_dataset_name = 'full_pascal_val'
 
   dets_tables = []
-  clses_tables = []
   dets_tables_whole = []
   clses_tables_whole = []
   all_bounds = []
@@ -154,11 +152,10 @@ def main():
 
     # evaluate in the AP vs. Time regime, unless told not to
     if not args.no_apvst:
-      dets_table,clses_table = ev.evaluate_vs_t(None,None,force=args.force)
+      dets_table = ev.evaluate_vs_t(None,None,force=args.force)
       dets_table_whole,clses_table_whole = ev.evaluate_vs_t_whole(None,None,force=args.force)
       if comm_rank==0:
         dets_tables.append(dets_table)
-        clses_tables.append(clses_table)
         dets_tables_whole.append(dets_table_whole)
         clses_tables_whole.append(clses_table_whole)
 
