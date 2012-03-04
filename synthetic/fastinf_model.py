@@ -78,7 +78,8 @@ class FastinfModel(InferenceModel):
     self.process.expect('Enter your evidence')
     output = self.process.before
     marginals = FastinfModel.extract_marginals(output)
-    self.cache[evidence] = marginals
+    # TODO: not caching for fear of ulimit
+    #self.cache[evidence] = marginals
     self.p_c = np.array([m[1] for m in marginals[:20]])
     return marginals
 
