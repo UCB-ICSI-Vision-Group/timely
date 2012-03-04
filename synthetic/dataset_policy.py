@@ -607,6 +607,7 @@ class DatasetPolicy:
     action_ind = self.select_action(b)
     step_ind = 0
     initial_clses = np.array(b.get_p_c().tolist() + [img_ind,0])
+    entropy_prev = np.mean(b.get_entropies())
     while True:
       # Populate the sample with stuff we know
       sample = Sample()
@@ -657,7 +658,10 @@ class DatasetPolicy:
       b.t += obs['dt']
       sample.dt = obs['dt']
       sample.t = b.t
-      sample.entropy = np.mean(b.get_entropies())
+      entropy = np.mean(b.get_entropies())
+      sample.entropy = entropy_prev-entropy
+      entropy_prev = entropy
+
       samples.append(sample)
       step_ind += 1
       b.update_with_score(action_ind, obs['score'])
