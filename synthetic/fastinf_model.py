@@ -30,6 +30,7 @@ class FastinfModel(InferenceModel):
     self.num_actions = num_actions
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
+    self.blacklist = []
     marginals = self.get_marginals()
     #print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
 
@@ -45,14 +46,17 @@ class FastinfModel(InferenceModel):
     for i in np.flatnonzero(taken):
       evidence[i] = str(self.fd.discretize_value(observations[i],i))
     evidence = "(%s %s )"%(self.dataset.num_classes()*' ?', ' '.join(evidence))
+    if evidence in self.blacklist:
+      print("comm_rank %d: Skipping blacklisted evidence!"%comm_rank)
+      # don't do anything, we don't want to get stuck with another timeout
+      return
     try:
       marginals = self.get_marginals(evidence)
     except Exception as e:
       print("comm_rank %d: something went wrong in fastinf:get_marginals!!!"%
         comm_rank)
-      print e
-      print str(self.process)
-      # restart process
+      # blacklist this evidence and restart process
+      self.blacklist.append(evidence)
       try:
         self.process.close(force=True)
       except Exception as e2:
