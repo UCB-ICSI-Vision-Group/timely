@@ -216,8 +216,7 @@ def get_gist_crossval_filename(dataset, cls):
 
 
 def get_gist_fastinf_table_name(dataset, cls):
-  savedir = join(res_dir, 'gist', dataset)
-  makedirs(savedir)
+  savedir = makedirs(join(get_gist_svm_dirname(dataset), 'classif'))
   if cls == None:
     savefile = join(savedir,'cls_gt')
   else:
