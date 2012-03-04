@@ -532,7 +532,8 @@ class Evaluation:
   def compute_rec_prec_ap(cls,tp,fp,npos):
     fp=np.cumsum(fp)
     tp=np.cumsum(tp)
-    # TODO: does it make it sense dividing by such a small number?
+    # NOTE: this will give a warning if dividing by 0, but it's only a warning
+    # and the behavior is correct (dividing by 0 gives 0)
     rec=1.*tp/npos
     prec=1.*tp/(fp+tp)
     ap = cls.compute_ap(rec,prec)
