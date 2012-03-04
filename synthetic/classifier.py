@@ -19,7 +19,7 @@ class Classifier(object):
     self.cls = ''
     self.tt = ut.TicToc()
           
-  def train(self, pos, neg, kernel, C):    
+  def train(self, pos, neg, kernel, C):
     y = [1]*pos.shape[0] + [-1]*neg.shape[0]
     x = np.concatenate((pos,neg))
     model = train_svm(x, y, kernel, C)

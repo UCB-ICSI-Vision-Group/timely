@@ -5,9 +5,10 @@ import synthetic.config as config
 import subprocess as subp
 
 from synthetic.dataset import Dataset
-from synthetic.csc_classifier import create_csc_stuff
 from synthetic.gist_classifier import cls_for_dataset
+from matplotlib.pylab import *
 import argparse
+from matplotlib.pyplot import hist
 
 # TODO: why are these two needed?
 def plausible_assignments(assignments):
@@ -265,8 +266,7 @@ def c_corr_to_a(num_lines, func):
 
 def store_bound(d, suffix, bounds):
   bound_file = config.get_mrf_bound_filename(d, suffix)
-  if not os.path.exists(bound_file):
-    np.savetxt(bound_file, bounds)  
+  np.savetxt(bound_file, bounds)  
 
 def create_gist_model_for_dataset(d):
   dataset = d.name
@@ -300,15 +300,20 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'CSC':
-      create_csc_stuff(d)
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
-      table = cPickle.load(open(filename_csc,'r'))
-      bounds, discr_table = discretize_table(table, num_bins)
+      print filename_csc
+      if not os.path.exists(filename_csc):
+        raise RuntimeWarning('The csc classification could not be loaded from %s'%filename_csc)
+      orig_table = cPickle.load(open(filename_csc,'r'))
+      if isinstance(orig_table, ut.Table):
+        orig_table = orig_table.arr[:,:-1]
+      bounds, discr_table = discretize_table(orig_table, num_bins)
       table = np.hstack((table_gt, discr_table))
       
     elif suffix == 'GIST_CSC':
-      create_csc_stuff(d)
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
+      if not os.path.exists(filename_csc):
+        raise RuntimeWarning('The csc classification could not be loaded')
       table = cPickle.load(open(filename_csc,'r'))
       bounds, discr_table = discretize_table(table, num_bins)      
       table = np.hstack((table_gt, discr_table))
@@ -380,7 +385,7 @@ def run_all_in_3_parts():
 
 def run_fastinf_for_dataset(dataset):
   
-  suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
+  suffixs = ['CSC']#, 'GIST_CSC', 'perfect', 'GIST']
   ms = ['0', '2', '5']
   rs = ['', '0.5', '1']
   
@@ -388,7 +393,7 @@ def run_fastinf_for_dataset(dataset):
 
 if __name__=='__main__':
  
-  run_fastinf_for_dataset('full_pascal_trainval')
+  run_fastinf_for_dataset('full_pascal_train')
   #run_all_in_3_parts()
   
 #  dataset = 'full_pascal_trainval'

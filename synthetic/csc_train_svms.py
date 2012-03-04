@@ -54,17 +54,17 @@ def conv(d_train, table_arr):
   return table
   
 if __name__=='__main__':
-  d_train = Dataset('full_pascal_train')
+  d_train = Dataset('full_pascal_trainval')
   d_val = Dataset('full_pascal_val')
 
   train_gt = d_train.get_cls_ground_truth()
   val_gt = d_val.get_cls_ground_truth()
 
   if comm_rank == 0:
-    res_file = open(os.path.join(config.get_classifier_dataset_dirname(CSCClassifier('default','dog', d_train, d_val), d_train),'crossval.txt'),'w')
+    filename = os.path.join(config.get_classifier_dataset_dirname(CSCClassifier('default','dog', d_train, d_val), d_train),'crossval.txt')
   
-  kernels =  ['linear','poly']
-  Cs = [1,10,50,100,1000]
+  kernels =  ['linear']
+  Cs = [50]
   
   settings = list(itertools.product(kernels, Cs))
   
@@ -77,12 +77,13 @@ if __name__=='__main__':
     table_arr = test_csc_svm(d_train, d_val)
     
     safebarrier(comm)
+    
     if comm_rank == 0:
-      #embed()
-      table = conv(d_train, table_arr)
+      table = conv(d_val, table_arr)
+      cPickle.dump(table, open(os.path.join(config.get_ext_dets_foldname(d_val),'table'),'w'))
+      
       res = Evaluation.compute_cls_map(table, val_gt)
+      res_file = open(filename,'a')
       res_file.write('%s, C=%d - %f\n'%(kernel, C, res))
+      res_file.close()
       print res
-
-  if comm_rank == 0:
-    res_file.close()
