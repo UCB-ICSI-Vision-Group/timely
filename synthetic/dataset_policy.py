@@ -333,14 +333,14 @@ class DatasetPolicy:
     - mode can be ['greedy','rl_regression','rl_lspi']
     """
     print("Beginning to learn regression weights")
-    self.tt.tic('learn_greedy_weights:all')
+    self.tt.tic('learn_weights:all')
 
     # Need to have weights set here to collect samples, so let's set
     # to manual_1 to get a reasonable execution trace.
     self.weights = self.load_weights(weights_mode='manual_1') 
 
     # Collect samples (parallelized)
-    num_samples = 400 # actually this refers to images
+    num_samples = 4 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(True,num_samples)
     
     # Loop until max_iterations or the error is below threshold
@@ -348,8 +348,9 @@ class DatasetPolicy:
     max_iterations = 8
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
+      weights = None
       if comm_rank==0:
-        self.weights, error = self.regress(all_samples, mode)
+        weights, error = self.regress(all_samples, mode)
 
         # write image of the weights
         img_filename = opjoin(
@@ -379,6 +380,8 @@ class DatasetPolicy:
 
       # collect more samples (parallelized)
       safebarrier(comm)
+      comm.bcast(weights,root=0)
+      self.weights = weights
       new_dets,new_clses,new_samples = self.run_on_dataset(True,num_samples)
 
       if comm_rank==0:
@@ -392,14 +395,16 @@ class DatasetPolicy:
           print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_weights:unique_samples'))
         else:
           all_samples += new_samples
-      safebarrier(comm)
 
-    print("Done training regression weights! Took %.3f s total"%
-      self.tt.qtoc('learn_weights:all'))
-    # Save the weights
-    filename = config.get_dp_weights_filename(self)
-    np.savetxt(filename, self.weights, fmt='%.6f')
-    return self.weights
+    safebarrier(comm)
+    if comm_rank==0:
+      print("Done training regression weights! Took %.3f s total"%
+        self.tt.qtoc('learn_weights:all'))
+      # Save the weights
+      filename = config.get_dp_weights_filename(self)
+      np.savetxt(filename, self.weights, fmt='%.6f')
+    comm.bcast(weights,root=0)
+    return weights
 
   def construct_X_from_samples(self,samples):
     "Return array of (len(samples), BeliefState.num_features*len(self.actions)."
