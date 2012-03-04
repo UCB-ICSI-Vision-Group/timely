@@ -116,7 +116,7 @@ class Evaluation:
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_fname, bounds, force)
+        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_fname, bounds, True, force)
       except:
         print("Could not plot")
     safebarrier(comm)
@@ -206,8 +206,8 @@ class Evaluation:
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_whole_fname, bounds, force)
-        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_whole_fname, bounds, force)
+        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_whole_fname, bounds, True, force)
+        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_whole_fname, bounds, True, force)
       except:
         print("Could not plot")
     return (dets_table,clses_table)
@@ -242,8 +242,8 @@ class Evaluation:
       return
     plt.clf()
     colors = ['black','orange','#4084ff','purple']
-    styles = ['-','--','-..','-.']
-    prod = [x for x in itertools.product(colors,styles)]
+    styles = ['-','--','-.','-..']
+    prod = [x for x in itertools.product(styles,colors)]
     none_bounds = [None for table in tables]
     # TODO: oooh that's messy
     if np.all(all_bounds==none_bounds):
