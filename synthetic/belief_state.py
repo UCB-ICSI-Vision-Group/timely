@@ -85,7 +85,14 @@ class BeliefState(object):
     h_c[h_c==-0]=0
     ones = np.ones(len(self.actions))
     # TODO: work out the time-blocks
-    return np.vstack((p_c,p_not_c,h_c,ones)).T
+    feat = np.vstack((p_c,p_not_c,h_c,ones)).T
+
+    # zero out those actions that have been taken
+    # NOTE: this makes sense because it allows the policy to simply do argmax
+    # all the time, without worrying about actions that have been taken:
+    # the best it will be able to do for those is 0
+    feat[np.flatnonzero(self.taken),:] = 0
+    return feat
 
   def block_out_action(self, full_feature, action_ind=-1):
     """
