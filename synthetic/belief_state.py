@@ -50,10 +50,7 @@ class BeliefState(object):
         self.model = FastinfModel(dataset,self.fastinf_model_name,num_actions)
     else:
       raise RuntimeError("Unknown mode")
-
-    self.model.reset()
-    self.t = 0
-    self.reset_actions()
+    self.reset()
 
   def __repr__(self):
     return "BeliefState: \n%s\n%s"%(
@@ -62,10 +59,12 @@ class BeliefState(object):
   def get_p_c(self):
     return self.model.p_c
 
-  def reset_actions(self):
-    "Zero the 'taken' info of the actions and the observations."
+  def reset(self):
+    "Zero everything and reset the model."
+    self.t = 0
     self.taken = np.zeros(len(self.actions))
     self.observations = np.zeros(len(self.actions))
+    self.model.reset()
 
   def update_with_score(self,action_ind,score):
     "Update the taken and observations lists, the model, and get the new marginals."

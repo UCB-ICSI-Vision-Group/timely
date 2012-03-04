@@ -437,8 +437,8 @@ the weights and error are:"""%(i,len(all_samples)))
     clf = sklearn.linear_model.Lasso(alpha=best_alpha)
     clf.fit(X,y)
     weights = clf.coef_
-    error = ut.mean_squared_error(clf.predict(X[val_ind,:]),y[val_ind])
-    return (weights,error)
+    error = ut.mean_squared_error(clf.predict(X),y)
+    return (weights, error)
 
   def get_b(self):
     "Fetch a belief state, and if we don't have one, initialize one."
@@ -552,6 +552,7 @@ the weights and error are:"""%(i,len(all_samples)))
     self.update_actions(b)
     action_ind = self.select_action(b)
     step_ind = 0
+    initial_clses = np.array(b.get_p_c().tolist() + [img_ind,0])
     while True:
       # Populate the sample with stuff we know
       sample = Sample()
@@ -602,7 +603,8 @@ the weights and error are:"""%(i,len(all_samples)))
       b.t += obs['dt']
       sample.dt = obs['dt']
       sample.t = b.t
-      b.taken[action_ind] = 1
+      samples.append(sample)
+      step_ind += 1
       b.update_with_score(action_ind, obs['score'])
 
       # The updated belief state posterior over C is our classification result
@@ -613,12 +615,6 @@ the weights and error are:"""%(i,len(all_samples)))
       self.update_actions(b)
       action_ind = self.select_action(b)
 
-      # store the next state in sample along with action
-      sample.next_state = b.compute_full_feature()
-      sample.next_action_ind = action_ind
-      samples.append(sample)
-      step_ind += 1
-
       # check for stopping conditions
       if action_ind < 0:
         break
@@ -627,19 +623,27 @@ the weights and error are:"""%(i,len(all_samples)))
           break
 
     # in case of 'oracle' mode, re-sort the detections and times in order of AP
-    # contributions
-    times = [s.dt for s in samples]
-    all_clses = np.array(all_clses)
+    # contributions, and actually re-gather p_c's for clses.
+    action_inds = [s.action_ind for s in samples]
     if self.policy_mode=='oracle':
       naive_aps = np.array([s.det_naive_ap for s in samples])
-      sorted_inds = np.argsort(-naive_aps)
+      sorted_inds = np.argsort(-naive_aps,kind='merge') # order-preserving
       all_detections = np.take(all_detections, sorted_inds)
-      times = np.take(times, sorted_inds)
-      all_clses = all_clses[sorted_inds]
-      time_ind = self.get_cls_cols().index('time')
-      all_clses[:,time_ind] = times
+      sorted_action_inds = np.take(action_inds, sorted_inds)
 
-    # now construct the final return array, with correct times
+      # actually go through the whole thing again, getting new p_c's
+      b.reset()
+      all_clses = []
+      for action_ind in sorted_action_inds:
+        action = self.actions[action_ind]
+        obs = action.obj.get_observations(image)
+        b.t += obs['dt']
+        b.update_with_score(action_ind, obs['score'])
+        clses = b.get_p_c().tolist() + [img_ind,b.t]
+        all_clses.append(clses)
+
+    # now construct the final dets array, with correct times
+    times = [s.dt for s in samples]
     assert(len(all_detections)==len(all_clses)==len(times))
     cum_times = np.cumsum(times)
     all_times = []
@@ -662,6 +666,7 @@ the weights and error are:"""%(i,len(all_samples)))
           all_detections = all_detections[:first_overdeadline_ind,:]
     else:
       all_detections = np.array([])
+    all_clses = np.array(all_clses)
 
     if verbose:
       print("DatasetPolicy on image with ind %d took %.3f s"%(
