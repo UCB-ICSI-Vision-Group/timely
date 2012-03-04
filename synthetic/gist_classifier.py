@@ -48,12 +48,14 @@ class GistClassifier(Classifier):
     return self.get_proba(img)[0][1]
         
   def load_svm(self):
-    filename = config.get_gist_svm_filename(self.cls)
+    filename = config.get_gist_svm_filename(self.cls,self.train_d)
     if os.path.exists(filename):
       print 'load svm %s'%filename
-      svm = load_svm(config.get_gist_svm_filename(self.cls))
+      svm = load_svm(filename)
+      self.svm = svm
     else:
       print 'gist svm for',self.cls,'does not exist'
+      svm = None
     return svm
     
   def get_proba(self, img):
@@ -81,40 +83,28 @@ class GistClassifier(Classifier):
       ind += 1
     return gist
   
-  def train_svm(self):
-    self.tt.tic()
-    pos_idx = self.train_d.get_pos_samples_for_class(self.cls)
-    neg_idx = self.train_d.get_neg_samples_for_class(self.cls, number=pos_idx.size)
-    
-    #print self.gist_table
-    
-    print 'pos_idc', pos_idx
-    print 'neg_idc', neg_idx
-    
-    
-  def train_all_svms(self, dataset, C=1.0):
+  def train_svm(self, dataset, kernel='linear', C=1.0):
     """
-    Train classifiers to 
-    """
-    for cls_idx in range(comm_rank, len(config.pascal_classes), comm_size):
-      cls = config.pascal_classes[cls_idx]
-      print 'train class', cls
-      t = time.time()
-      pos = dataset.get_pos_samples_for_class(cls)
-      num_pos = pos.size
-      neg = dataset.get_neg_samples_for_class(cls)
-      neg = np.random.permutation(neg)[:num_pos]
-      print '\tload pos gists'
-      pos_gist = self.get_gists_for_imgs(pos, dataset)
-      print '\tload neg gists'       
-      neg_gist = self.get_gists_for_imgs(neg, dataset)
-      x = np.concatenate((pos_gist, neg_gist))
-      y = [1]*num_pos + [-1]*num_pos
-      print '\tcompute svm'
-      svm = train_svm(x, y, kernel='linear',C=C,probab=True)
-      svm_filename = config.get_gist_svm_filename(cls)
-      save_svm(svm, svm_filename)     
-      print '\ttook', time.time()-t,'sec'
+    Train classifiers for class  
+    """  
+    print '%d trains class %s'%(comm_rank, self.cls)
+    t = time.time()
+    pos = dataset.get_pos_samples_for_class(self.cls)
+    neg = dataset.get_neg_samples_for_class(self.cls)
+               
+    pos_gist = self.gist_table[pos, :]
+    neg_gist = self.gist_table[neg, :]      
+    
+    x = np.concatenate((pos_gist, neg_gist))
+    y = [1]*pos.shape[0] + [-1]*neg.shape[0]
+    print '%d compute svm for %s'%(comm_rank, self.cls)
+    svm_filename = config.get_gist_svm_filename(self.cls, dataset)
+    print svm_filename
+    svm = train_svm(x, y, kernel,C)
+    
+    save_svm(svm, svm_filename)     
+    self.svm = svm
+    print '\ttook', time.time()-t,'sec'
   
   def scores_for_dataset(self, dataset):
     
@@ -180,31 +170,18 @@ class GistClassifier(Classifier):
 def gist_evaluate_best_svm():
   train_d = Dataset('full_pascal_train')
   val_d = Dataset('full_pascal_val')
-  cls = 'dog'
-  
-  
-  
+
   gist_table = np.load(config.get_gist_dict_filename(train_d.name))
-  clf = GistClassifier(cls, train_d, gist_table=gist_table, val_d=val_d)
-  #clf.train_all_svms(train_d)
-  #clf.train_svm()
-  
-  val_gist_table = np.load(config.get_gist_dict_filename(val_d.name))
-  #clf.get_proba(val_gist_table)
-  
-  clf.load_svm()
-  #for 
-  gist_score = svm_predict(val_gist_table, clf.svm)
-  
-  embed() 
-  
-  #emb
-  #gt = 
-  #Evaluation.compute_cls_pr(val_gist_table, gt) 
-  
+  for cls in val_d.classes:  
+    gist = GistClassifier(cls, train_d, gist_table=gist_table, val_d=val_d)
+    gist.train_svm(train_d)
+
+    val_gist_table = np.load(config.get_gist_dict_filename(val_d.name))     
+    gist_score = svm_proba(val_gist_table, clf.svm)
+
   return
   
-  clf.train_all_svms(train_d)
+  clf.train_svm_for_cls(train_d)
   for cls in config.pascal_classes:
     clf.evaluate_svm(cls, val_d)
     

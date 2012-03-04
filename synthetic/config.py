@@ -161,10 +161,7 @@ def get_cached_dataset_filename(name):
 
 # ./res_dir/ext_dets/{dataset}_*.npy
 def get_ext_dets_foldname(dataset):
-  if dataset.name == 'full_pascal_trainval':
-    dirname = makedirs(join(res_dir,'ext_dets'))
-  else:
-    dirname = makedirs(join(res_dir,'ext_dets',dataset.name))
+  dirname = makedirs(join(res_dir,'ext_dets',dataset.name))
   return dirname
 
 def get_ext_dets_vector_foldname(dataset):
@@ -201,8 +198,8 @@ def get_gist_dict_filename(dataset_name):
   return join(gist_dir, dataset_name + '.npy')
 
 # results/gist_features/svm/
-def get_gist_svm_filename(for_cls):
-  dirname = makedirs(join(gist_dir,'svm'))
+def get_gist_svm_filename(for_cls, dataset):
+  dirname = makedirs(join(res_dir, 'gist_svm', dataset.name))
   return join(dirname,for_cls)
 
 def get_gist_fastinf_table_name(dataset, cls):
