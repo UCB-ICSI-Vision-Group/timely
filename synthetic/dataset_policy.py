@@ -350,7 +350,7 @@ class DatasetPolicy:
       print self.get_reshaped_weights()
 
     # Collect samples (parallelized)
-    num_samples = 40 # actually this refers to images
+    num_samples = 200 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
@@ -406,7 +406,6 @@ class DatasetPolicy:
           print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_weights:unique_samples'))
         else:
           all_samples += new_samples
-    safebarrier(comm)
 
     if comm_rank==0:
       print("Done training regression weights! Took %.3f s total"%
@@ -414,6 +413,8 @@ class DatasetPolicy:
       # Save the weights
       filename = config.get_dp_weights_filename(self)
       np.savetxt(filename, self.weights, fmt='%.6f')
+
+    safebarrier(comm)
     weights = comm.bcast(weights,root=0)
     self.weights = weights
     return weights
