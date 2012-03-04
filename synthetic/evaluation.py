@@ -158,6 +158,9 @@ class Evaluation:
       if bounds:
         points = np.sort(np.array(points.tolist() + bounds))
         num_points += 2
+      else:
+        # or at least add the 0 point if no bounds were given
+        points = np.hstack((0,points))
 
       cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       det_arr = np.zeros((num_points,2))

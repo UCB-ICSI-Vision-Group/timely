@@ -87,6 +87,8 @@ class DatasetPolicy:
     # fixed_order, random, oracle policy modes get fixed_order inference mode
     if re.search('fastinf',self.policy_mode):
       self.inference_mode = 'fastinf'
+    elif self.policy_mode == 'random':
+      self.inference_mode = 'random'
     elif self.policy_mode in ['no_smooth','backoff']:
       self.inference_mode = self.policy_mode
     else:

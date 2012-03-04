@@ -16,6 +16,21 @@ class InferenceModel(object):
     that has been applied.
     """
 
+class RandomModel(InferenceModel):
+  "P(C) is random, but is updated with observations."
+
+  def __init__(self,num_actions):
+    self.num_actions = num_actions
+    self.reset()
+  
+  def reset(self):
+    self.p_c = np.random.rand(self.num_actions)
+
+  def update_with_observations(self, taken, observations):
+    "Simply set relevant values of p_c to the observations."
+    inds = np.flatnonzero(taken)
+    self.p_c[inds] = observations[inds]
+
 class FixedOrderModel(InferenceModel):
   "Model updates p_c with observations, but does not propagate that info."
 

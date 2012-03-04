@@ -3,7 +3,7 @@ from common_imports import *
 import synthetic.config as config
 
 from synthetic.fastinf_model import FastinfModel
-from synthetic.ngram_model import NGramModel,FixedOrderModel
+from synthetic.ngram_model import RandomModel,NGramModel,FixedOrderModel
 
 class BeliefState(object):
   """
@@ -13,7 +13,7 @@ class BeliefState(object):
   """
 
   ngram_modes = ['no_smooth','backoff']
-  accepted_modes = ngram_modes+['fixed_order','fastinf']
+  accepted_modes = ngram_modes+['random','fixed_order','fastinf']
 
   def __init__(self,dataset,actions,mode='fixed_order',bounds=None,model=None,fastinf_model_name='perfect'):
     assert(mode in self.accepted_modes)
@@ -23,7 +23,13 @@ class BeliefState(object):
     self.bounds = bounds
     self.fastinf_model_name = fastinf_model_name
 
-    if mode=='no_smooth' or mode=='backoff':
+    if mode == 'random':
+      if model:
+        assert(isinstance(model,RandomModel))
+        self.model = model
+      else:
+        self.model = RandomModel(len(self.actions))
+    elif mode=='no_smooth' or mode=='backoff':
       if model:
         assert(isinstance(model,NGramModel))
         self.model = model
