@@ -435,8 +435,21 @@ class DatasetPolicy:
     y = np.array([getattr(sample,attr) for sample in samples])
     if mode=='greedy':
       return y
-    # we have to figure out the boundaries of the episodes
-    # TODO
+    elif mode=='rl_regression':
+      y = np.zeros(len(samples))
+      for sample_idx in range(len(samples)):
+        sample = samples[sample_idx]
+        reward = sample.det_actual_ap
+        i = 1
+        while sample_idx + i < len(samples):
+          next_samp = samples[sample_idx + i]
+          if next_samp.step_ind == 0:
+            # New episode begins here
+            break
+          reward += discount**i*next_samp.det_actual_ap  
+          i += 1
+        y[sample_idx] = reward
+      return y    
     return None
 
   def regress(self,samples,mode,warm_start=False):
