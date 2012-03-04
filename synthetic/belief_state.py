@@ -101,7 +101,6 @@ class BeliefState(object):
     # all the time, without worrying about actions that have been taken:
     # the best it will be able to do for those is 0
     feat[np.flatnonzero(self.taken),:] = 0
-    print feat
     return feat
 
   def block_out_action(self, full_feature, action_ind=-1):

@@ -70,6 +70,7 @@ class FastinfModel(InferenceModel):
     Is actually instantaneous due to caching.
     """
     observations = taken = np.zeros(self.num_actions)
+    self.steps = 0
     self.update_with_observations(taken,observations)
 
   def get_marginals(self,evidence=None):
@@ -85,11 +86,13 @@ class FastinfModel(InferenceModel):
         self.p_c = np.array([m[1] for m in marginals[:20]])
         return marginals
       self.process.sendline(evidence)
+      self.steps += 1
     self.process.expect('Enter your evidence')
     output = self.process.before
     marginals = FastinfModel.extract_marginals(output)
     # TODO: not caching for fear of ulimit
-    #self.cache[evidence] = marginals
+    if self.steps < 3:
+      self.cache[evidence] = marginals
     self.p_c = np.array([m[1] for m in marginals[:20]])
     return marginals
 
