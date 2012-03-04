@@ -482,7 +482,6 @@ class DatasetPolicy:
     clf = sklearn.linear_model.Lasso(alpha=best_alpha)
     clf.fit(X,y)
     print("Best lambda was %.3f"%best_alpha)
-    embed()
     weights = clf.coef_
     error = ut.mean_squared_error(clf.predict(X),y)
     return (weights, error)
