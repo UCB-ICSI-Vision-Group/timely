@@ -17,7 +17,7 @@ class Evaluation:
   """
 
   MIN_OVERLAP = 0.5
-  TIME_INTERVALS = 8
+  TIME_INTERVALS = 12
 
   def __init__(self,dataset_policy=None,dataset=None,name='default'):
     """

@@ -88,7 +88,7 @@ class BeliefState(object):
     p_not_c = 1 - p_c
     h_c = -p_c*ut.log2(p_c) + -p_not_c*ut.log2(p_not_c)
     h_c[h_c==-0]=0
-    ones = np.ones(len(self.actions))
+    ones = np.ones(p_c.shape)
     # TODO: work out the time-blocks
     feat = np.vstack((p_c,p_not_c,h_c,ones)).T
 

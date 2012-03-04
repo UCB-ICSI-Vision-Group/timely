@@ -1,6 +1,6 @@
 {
   "suffix": "csc_greedy",
   "detectors": ["csc_default"],
-  "policy_mode": ["fixed_order"],
+  "policy_mode": ["fixed_order","fastinf"],
   "weights_mode": ["greedy"]
 }

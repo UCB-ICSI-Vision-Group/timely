@@ -8,7 +8,7 @@ from synthetic.ngram_model import InferenceModel
 from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,model_name,num_actions,m='5',r2='0.5'):
+  def __init__(self,dataset,model_name,num_actions,m='2',r2='1'):
     # TODO: experiment with different values of fastinf
 
     self.dataset = dataset

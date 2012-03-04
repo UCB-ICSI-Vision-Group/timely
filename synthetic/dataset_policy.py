@@ -192,7 +192,7 @@ class DatasetPolicy:
         self.test_actions = self.init_actions()
         self.actions = self.test_actions
 
-      # OPTION 2: the manual weights are [naive_ap|present naive_ap|absent 0 0]
+      # OPTION 2: the manual weights are [naive_ap|present 0 0 0]
       if weights_mode == 'manual_2':
         for action in self.actions:
           print action.obj.config
@@ -338,10 +338,14 @@ class DatasetPolicy:
     # Need to have weights set here to collect samples, so let's set
     # to manual_1 to get a reasonable execution trace.
     self.weights = self.load_weights(weights_mode='manual_1') 
+    if comm_rank==0:
+      print("Initial weights:")
+      np.set_printoptions(precision=2,suppress=True,linewidth=160)
+      print self.get_reshaped_weights()
 
     # Collect samples (parallelized)
-    num_samples = 4 # actually this refers to images
-    dets,clses,all_samples = self.run_on_dataset(True,num_samples)
+    num_samples = 400 # actually this refers to images
+    dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
     error = threshold = 0.01
@@ -369,6 +373,7 @@ class DatasetPolicy:
   After iteration %d, we've trained on %d samples and
   the weights and error are:"""%(i,len(all_samples)))
         np.set_printoptions(precision=2,suppress=True,linewidth=160)
+        self.weights = weights
         print self.get_reshaped_weights()
         print error
 
@@ -382,7 +387,7 @@ class DatasetPolicy:
       safebarrier(comm)
       comm.bcast(weights,root=0)
       self.weights = weights
-      new_dets,new_clses,new_samples = self.run_on_dataset(True,num_samples)
+      new_dets,new_clses,new_samples = self.run_on_dataset(False,num_samples)
 
       if comm_rank==0:
         # We either collect only unique samples or all samples
@@ -395,8 +400,8 @@ class DatasetPolicy:
           print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_weights:unique_samples'))
         else:
           all_samples += new_samples
-
     safebarrier(comm)
+
     if comm_rank==0:
       print("Done training regression weights! Took %.3f s total"%
         self.tt.qtoc('learn_weights:all'))
@@ -418,12 +423,14 @@ class DatasetPolicy:
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action
-    - mode=='rl' uses discounted sum of actual_aps to the end of the episode
-    """
+    - mode=='rl_regression' or 'rl_lspi' uses discounted sum
+    of actual_aps to the end of the episode
+    """ 
     y = np.array([sample.det_actual_ap for sample in samples])
     if mode=='greedy':
       return y
     # we have to figure out the boundaries of the episodes
+    # TODO
     return None
 
   def regress(self,samples,mode,warm_start=False):
@@ -435,14 +442,17 @@ class DatasetPolicy:
     X = self.construct_X_from_samples(samples)
     y = self.compute_reward_from_samples(samples,mode)
     assert(X.shape[0]==y.shape[0])
+    print("Number of non-zero rewards: %d/%d"%(
+      np.sum(y!=0),y.shape[0]))
 
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
-    alphas = [0.001, 0.01, 0.1, 1, 10]
+    alphas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
     for alpha in alphas:
       clf = sklearn.linear_model.Lasso(alpha=alpha)
       errors = []
+      # TODO parallelize this? seems fast enough
       for train_ind,val_ind in folds:
         clf.fit(X[train_ind,:],y[train_ind])
         errors.append(ut.mean_squared_error(clf.predict(X[val_ind,:]),y[val_ind]))
@@ -451,6 +461,8 @@ class DatasetPolicy:
     best_alpha = alphas[best_ind]
     clf = sklearn.linear_model.Lasso(alpha=best_alpha)
     clf.fit(X,y)
+    print("Best lambda was %.3f"%best_alpha)
+    embed()
     weights = clf.coef_
     error = ut.mean_squared_error(clf.predict(X),y)
     return (weights, error)

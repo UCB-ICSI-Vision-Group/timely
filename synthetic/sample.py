@@ -7,7 +7,6 @@ class Sample:
     "Initialize all the fields with None."
     fields = [
       'img_ind','step_ind','state','action_ind','dt','t',
-      'next_state','next_action_ind',
       'det_naive_ap', 'det_actual_ap']
     for field in fields:
       self.__dict__[field] = None
@@ -32,11 +31,9 @@ Sample at img_ind: %(img_ind)s:
       self.img_ind == other.img_ind and \
       self.action_ind == other.action_ind and \
       self.dt == other.dt and \
-      self.next_action_ind == other.next_action_ind and \
       self.det_naive_ap == other.det_naive_ap and \
       self.det_actual_ap == other.det_actual_ap and \
-      np.all(self.state == other.state) and \
-      np.all(self.next_state == other.next_state)
+      np.all(self.state == other.state)
 
   def __hash__(self):
     return self.__repr__()
