@@ -1,0 +1,7 @@
+{
+  "suffix": "csc_rlreg",
+  "detectors": ["csc_default"],
+  "policy_mode": ["fixed_order"],
+  "weights_mode": ["rl_regression"],
+  "rewards_mode": ["entropy"]
+}

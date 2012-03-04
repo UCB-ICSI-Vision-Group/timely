@@ -51,6 +51,7 @@ class DatasetPolicy:
         detectors,
         bounds,
         self.weights_mode,
+        self.rewards_mode,
         self.suffix])
     return name
 
@@ -428,7 +429,7 @@ class DatasetPolicy:
     - mode=='greedy' just uses the actual_ap of the taken action
     - mode=='rl_regression' or 'rl_lspi' uses discounted sum
     of actual_aps to the end of the episode
-    - attr can be ['det_naive_ap', 'det_actual_ap', 'entropy']
+    - attr can be ['det_actual_ap', 'entropy']
     """ 
     if not attr:
       attr = self.rewards_mode
@@ -439,14 +440,14 @@ class DatasetPolicy:
       y = np.zeros(len(samples))
       for sample_idx in range(len(samples)):
         sample = samples[sample_idx]
-        reward = sample.det_actual_ap
+        reward = getattr(sample,attr)
         i = 1
         while sample_idx + i < len(samples):
           next_samp = samples[sample_idx + i]
           if next_samp.step_ind == 0:
             # New episode begins here
             break
-          reward += discount**i*next_samp.det_actual_ap  
+          reward += discount**i*getattr(next_samp,attr)
           i += 1
         y[sample_idx] = reward
       return y    
