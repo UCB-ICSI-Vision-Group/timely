@@ -30,10 +30,8 @@ class FastinfModel(InferenceModel):
     self.num_actions = num_actions
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
-    print "FastinfModel: Process started"
     marginals = self.get_marginals()
-    print(self.p_c)
-    print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
+    #print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
 
   def save_cache(self):
     "Write cache out to file with cPickle."
@@ -48,7 +46,7 @@ class FastinfModel(InferenceModel):
       evidence[i] = str(self.fd.discretize_value(observations[i],i))
     evidence = "(%s %s )"%(self.dataset.num_classes()*' ?', ' '.join(evidence))
     marginals = self.get_marginals(evidence)
-    print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
+    #print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
 
   def reset(self):
     """
