@@ -363,18 +363,21 @@ class DatasetPolicy:
         weights, error = self.regress(all_samples, mode)
         self.weights = weights
 
-        # write image of the weights
-        img_filename = opjoin(
-          config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
-        self.write_weights_image(img_filename)
+        try:
+          # write image of the weights
+          img_filename = opjoin(
+            config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
+          self.write_weights_image(img_filename)
 
-        # write image of the average feature
-        all_features = self.construct_X_from_samples(all_samples)
-        avg_feature = np.mean(all_features,0).reshape(
-          len(self.actions),BeliefState.num_features)
-        img_filename = opjoin(
-          config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
-        self.write_feature_image(avg_feature, img_filename)
+          # write image of the average feature
+          all_features = self.construct_X_from_samples(all_samples)
+          avg_feature = np.mean(all_features,0).reshape(
+            len(self.actions),BeliefState.num_features)
+          img_filename = opjoin(
+            config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
+          self.write_feature_image(avg_feature, img_filename)
+        except:
+          print("Couldn't plot, no big deal.")
 
         print("""
   After iteration %d, we've trained on %d samples and
@@ -484,7 +487,7 @@ class DatasetPolicy:
       alpha_errors.append(np.mean(errors))
     best_ind = np.argmin(alpha_errors)
     best_alpha = alphas[best_ind]
-    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=2000)
+    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=200,max_iter=20000)
     clf.fit(X,y)
     print("Best lambda was %.3f"%best_alpha)
     weights = clf.coef_
