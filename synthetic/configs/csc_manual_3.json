@@ -1,6 +1,6 @@
 {
-  "suffix": "csc_manual",
+  "suffix": "csc_manual_3",
   "detectors": ["csc_default"],
   "policy_mode": ["random","oracle","fixed_order"],
-  "weights_mode": ["manual_1"]
+  "weights_mode": ["manual_3"]
 }
