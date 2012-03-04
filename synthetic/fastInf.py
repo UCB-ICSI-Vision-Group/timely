@@ -393,7 +393,7 @@ def run_fastinf_for_dataset(dataset):
 
 if __name__=='__main__':
  
-  run_fastinf_for_dataset('full_pascal_train')
+  run_fastinf_for_dataset('full_pascal_trainval')
   #run_all_in_3_parts()
   
 #  dataset = 'full_pascal_trainval'
