@@ -8,7 +8,7 @@ from synthetic.ngram_model import InferenceModel
 from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,model_name,num_actions,m='2',r2='1'):
+  def __init__(self,dataset,model_name,num_actions,m='0',r2='1'):
     # TODO: experiment with different values of fastinf
 
     self.dataset = dataset
@@ -45,7 +45,21 @@ class FastinfModel(InferenceModel):
     for i in np.flatnonzero(taken):
       evidence[i] = str(self.fd.discretize_value(observations[i],i))
     evidence = "(%s %s )"%(self.dataset.num_classes()*' ?', ' '.join(evidence))
-    marginals = self.get_marginals(evidence)
+    print evidence
+    try:
+      marginals = self.get_marginals(evidence)
+    except Exception as e:
+      print("comm_rank %d: something went wrong in fastinf:get_marginals!!!"%
+        comm_rank)
+      print e
+      print str(self.process)
+      # restart process
+      try:
+        self.process.close(force=True)
+      except Exception as e2:
+        print("comm_rank %d: can't close process!"%comm_rank)
+      self.process = pexpect.spawn(self.cmd)
+      self.get_marginals()
     #print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
 
   def reset(self):
@@ -64,21 +78,14 @@ class FastinfModel(InferenceModel):
     If evidence is given, first sends it to stdin of the process.
     Also update self.p_c with the marginals.
     """
-    try:
-      if evidence:
-        if evidence in self.cache:
-          print "Fetching cached marginals"
-          marginals = self.cache[evidence]
-          self.p_c = np.array([m[1] for m in marginals[:20]])
-          return marginals
-        self.process.sendline(evidence)
-      self.process.expect('Enter your evidence')
-    except:
-      print("something went wrong in fastinf:get_marginals!!!")
-      self.process.close(force=True)
-      self.process = pexpect.spawn(self.cmd)
-      self.get_marginals()
-      self.get_marginals(evidence)
+    if evidence:
+      if evidence in self.cache:
+        print "Fetching cached marginals"
+        marginals = self.cache[evidence]
+        self.p_c = np.array([m[1] for m in marginals[:20]])
+        return marginals
+      self.process.sendline(evidence)
+    self.process.expect('Enter your evidence')
     output = self.process.before
     marginals = FastinfModel.extract_marginals(output)
     # TODO: not caching for fear of ulimit
