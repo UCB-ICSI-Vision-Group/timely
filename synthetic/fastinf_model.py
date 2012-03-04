@@ -64,21 +64,21 @@ class FastinfModel(InferenceModel):
     If evidence is given, first sends it to stdin of the process.
     Also update self.p_c with the marginals.
     """
-    if evidence:
-      if evidence in self.cache:
-        print "Fetching cached marginals"
-        marginals = self.cache[evidence]
-        self.p_c = np.array([m[1] for m in marginals[:20]])
-        return marginals
-      self.process.sendline(evidence)
     try:
+      if evidence:
+        if evidence in self.cache:
+          print "Fetching cached marginals"
+          marginals = self.cache[evidence]
+          self.p_c = np.array([m[1] for m in marginals[:20]])
+          return marginals
+        self.process.sendline(evidence)
       self.process.expect('Enter your evidence')
     except:
-      # something went wrong! restart the process and try again
+      print("something went wrong in fastinf:get_marginals!!!")
       self.process.close(force=True)
       self.process = pexpect.spawn(self.cmd)
-      self.get_marginals(evidence)
-
+      self.process.get_marginals()
+      self.process.get_marginals(evidence)
     output = self.process.before
     marginals = FastinfModel.extract_marginals(output)
     # TODO: not caching for fear of ulimit
