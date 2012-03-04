@@ -101,7 +101,7 @@ class DatasetPolicy:
         self.fastinf_model_name='perfect'
       elif self.detectors == ['gist']:
         self.fastinf_model_name='GIST'
-      elif self.detectors == ['gist','csc']:
+      elif self.detectors == ['gist','csc_default']:
         self.fastinf_model_name='GIST_CSC'
       else:
         raise RuntimeError("""
@@ -267,14 +267,11 @@ class DatasetPolicy:
     # Check for cached results
     det_filename = config.get_dp_dets_filename(self,train)
     cls_filename = config.get_dp_clses_filename(self,train)
-    samples_filename = config.get_dp_samples_filename(self,train)
     if not force \
-        and opexists(det_filename) and opexists(cls_filename) \
-        and opexists(samples_filename):
+        and opexists(det_filename) and opexists(cls_filename):
       dets_table = np.load(det_filename)[()]
       clses_table = np.load(cls_filename)[()]
-      with open(samples_filename) as f:
-        samples = cPickle.load(f)
+      samples = None
       print("DatasetPolicy: Loaded dets and clses from cache.")
       return dets_table,clses_table,samples
 
@@ -316,8 +313,6 @@ class DatasetPolicy:
       if not sample_size > 0:
         np.save(det_filename,dets_table)
         np.save(cls_filename,clses_table)
-        with open(samples_filename,'w') as f:
-          cPickle.dump(final_samples,f)
 
       # Save the fastinf cache
       # TODO: turning this off for now
