@@ -17,7 +17,7 @@ class Evaluation:
   """
 
   MIN_OVERLAP = 0.5
-  TIME_INTERVALS = 12
+  TIME_INTERVALS = 8
 
   def __init__(self,dataset_policy=None,dataset=None,name='default'):
     """
@@ -75,15 +75,6 @@ class Evaluation:
     else:
       if not dets:
         dets,clses,samples = self.dp.run_on_dataset(force=True)
-      
-      # determine time sampling points
-      all_times = dets.subset_arr('time')
-      num_points = self.time_intervals
-      points = ut.importance_sample(all_times,num_points)
-      # make sure bounds are included in the sampling points if given
-      if bounds:
-        points = np.sort(np.array(points.tolist() + list(bounds)))
-        num_points += 2
 
       # do this now to save time in the inner loop later
       gt_for_image_list = []
@@ -93,6 +84,8 @@ class Evaluation:
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
         img_dets_list.append(dets.filter_on_column('img_ind',img_ind))
 
+      points = self.determine_time_points(dets,bounds)
+      num_points = points.shape[0]
       det_arr = np.zeros((num_points,3))
       cls_arr = np.zeros((num_points,3))
       for i in range(comm_rank,num_points,comm_size):
@@ -129,6 +122,19 @@ class Evaluation:
     safebarrier(comm)
     return dets_table
 
+  def determine_time_points(self,dets,bounds):
+    "Helper function shared by evaluate_vs_t and evaluate_vs_t_whole."
+    # determine time sampling points
+    all_times = dets.subset_arr('time')
+    points = ut.importance_sample(all_times,self.time_intervals)
+    # make sure bounds are included in the sampling points if given
+    if bounds:
+      points = np.sort(np.array(points.tolist() + bounds))
+    else:
+      # or at least add the 0 point if no bounds given
+      points = np.hstack((0,points))
+    return points
+
   def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False):
     """
     Evaluate detections in the AP vs Time regime and write out plots to
@@ -150,18 +156,8 @@ class Evaluation:
       if not dets:
         dets,clses,samples = self.dp.run_on_dataset()
 
-      # determine time sampling points
-      all_times = dets.subset_arr('time')
-      num_points = self.time_intervals
-      points = ut.importance_sample(all_times,num_points)
-      # make sure bounds are included in the sampling points if given
-      if bounds:
-        points = np.sort(np.array(points.tolist() + bounds))
-        num_points += 2
-      else:
-        # or at least add the 0 point if no bounds were given
-        points = np.hstack((0,points))
-
+      points = self.determine_time_points(dets,bounds)
+      num_points = points.shape[0]
       cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       det_arr = np.zeros((num_points,2))
       cls_arr = np.zeros((num_points,2))
@@ -402,7 +398,8 @@ class Evaluation:
     pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)
     return pr_and_hard_neg[4]
     
-  def compute_det_pr_and_hard_neg(self, dets, gt):
+  @classmethod
+  def compute_det_pr_and_hard_neg(cls, dets, gt):
     """
     Take Table of detections and Table of ground truth.
     Ground truth can be for a single image or a whole dataset.
@@ -466,7 +463,7 @@ class Evaluation:
       ovmax = overlaps[jmax]
 
       # assign detection as true positive/don't care/false positive
-      if ovmax >= self.MIN_OVERLAP:
+      if ovmax >= cls.MIN_OVERLAP:
         if not gt_for_image[jmax,gt.ind('diff')]:
           is_matched = gt_for_image[jmax,gt.ind('matched')]
           if is_matched == 0:
@@ -493,12 +490,8 @@ class Evaluation:
       # changes we make to gt_for_image
       if 'img_ind' in gt.cols:
         gt.arr[inds,:] = gt_for_image
-    fp=np.cumsum(fp)
-    tp=np.cumsum(tp)
-    rec=1.*tp/(npos+0.0000001)
-    prec=1.*tp/(fp+tp+0.000001)
-    
-    ap = self.compute_ap(rec,prec)
+
+    ap,rec,prec = cls.compute_rec_prec_ap(tp,fp,npos)
     return (ap,rec,prec,hard_neg)
 
   @classmethod
@@ -514,13 +507,11 @@ class Evaluation:
     if not clses.shape()[0]>0:
       return 0
     if 'img_ind' in clses.cols:
-      img_inds = clses.subset_arr('img_ind').flatten().tolist()
+      img_inds = clses.subset_arr('img_ind')
       assert(len(img_inds)==len(np.unique(np.array(img_inds))))
       gt = gt.row_subset(img_inds)
     aps = []
-    for col in clses.cols:
-      if col=='img_ind' or col=='time':
-        continue
+    for col in gt.cols:
       ap,rec,prec=cls.compute_cls_pr(clses.subset_arr(col),gt.subset_arr(col))
       aps.append(ap)
     return np.mean(aps)
@@ -534,10 +525,15 @@ class Evaluation:
     ind = np.argsort(-confidences, axis=0)
     tp = gt[ind]==True
     fp = gt[ind]==False
+    npos = np.sum(gt==True)
+    return cls.compute_rec_prec_ap(tp,fp,npos)
+
+  @classmethod
+  def compute_rec_prec_ap(cls,tp,fp,npos):
     fp=np.cumsum(fp)
     tp=np.cumsum(tp)
-    npos = np.sum(gt==True)
-    rec=1.*tp/(npos+0.000000001) # to avoid dividing by 0
+    # TODO: does it make it sense dividing by such a small number?
+    rec=1.*tp/(npos+0.000000001)
     prec=1.*tp/(fp+tp+0.000000001)
     ap = cls.compute_ap(rec,prec)
     return (ap,rec,prec)
@@ -548,6 +544,8 @@ class Evaluation:
     Takes recall and precision vectors and computes piecewise area under the
     curve.
     """
+    assert(np.all(rec>=0) and np.all(rec<=1))
+    assert(np.all(prec>=0) and np.all(prec<=1))
     mprec = np.hstack((0,prec,0))
     mrec = np.hstack((0,rec,1))
     # make sure prec is monotonically decreasing

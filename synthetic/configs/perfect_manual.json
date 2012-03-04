@@ -1,0 +1,6 @@
+{
+  "suffix": "perfect_manual",
+  "detectors": ["perfect"],
+  "policy_mode": ["random","oracle","fixed_order"],
+  "weights_mode": ["manual_1"]
+}

@@ -1,6 +1,0 @@
-{
-  "suffix": "mar1",
-  "detectors": ["csc_default"],
-  "policy_mode": ["random","fixed_order"],
-  "weights_mode": ["manual_1"]
-}

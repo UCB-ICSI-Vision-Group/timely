@@ -172,20 +172,20 @@ def main():
     # det avg
     ff = opjoin(dirname, '%s_det_avg.png'%filename)
     ff_nl = opjoin(dirname, '%s_det_avg_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True)
-    Evaluation.plot_ap_vs_t(dets_tables, ff_nl, all_bounds, with_legend=False)
+    Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True, force=True)
+    Evaluation.plot_ap_vs_t(dets_tables, ff_nl, all_bounds, with_legend=False, force=True)
 
     # det whole
     ff = opjoin(dirname, '%s_det_whole.png'%filename)
     ff_nl = opjoin(dirname, '%s_det_whole_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(dets_tables_whole, ff, all_bounds, with_legend=True)
-    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_nl, all_bounds, with_legend=False)
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff, all_bounds, with_legend=True, force=True)
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_nl, all_bounds, with_legend=False, force=True)
 
     # cls whole
     ff = opjoin(dirname, '%s_cls_whole.png'%filename)
     ff_nl = opjoin(dirname, '%s_cls_whole_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(clses_tables_whole, ff, all_bounds, with_legend=True)
-    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_nl, all_bounds, with_legend=False)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff, all_bounds, with_legend=True, force=True)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_nl, all_bounds, with_legend=False, force=True)
     
 if __name__ == '__main__':
   main()

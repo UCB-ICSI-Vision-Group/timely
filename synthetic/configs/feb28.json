@@ -1,5 +1,0 @@
-{
-  "suffix": "feb28",
-  "detectors": ["csc_default"],
-  "policy_mode": ["random","oracle","fixed_order","no_smooth"]
-}
