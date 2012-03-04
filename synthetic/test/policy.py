@@ -74,8 +74,9 @@ class TestDatasetPolicy:
       print "%s weights:"%mode
       self.dp.weights_mode=mode
       self.dp.load_weights()
-      print self.dp.weights
+      print self.dp.get_reshaped_weights()
       assert(self.dp.weights.shape[0] == len(self.dp.actions)*BeliefState.num_features)
+      self.dp.write_weights_image('temp_weights_%s.png'%mode)
 
   def test_perfect_detector(self):
     dets,clses,samples = self.dp.run_on_dataset()
@@ -117,8 +118,8 @@ class TestDatasetPolicy:
 if __name__ == '__main__':
   tdp = TestDatasetPolicy()
   #tdp.test_run_on_dataset()
-  tdp.test_unique_samples()
+  #tdp.test_unique_samples()
   #tdp.test_output_det_statistics()
-  #tdp.test_load_weights()
+  tdp.test_load_weights()
   #tdp.test_regress()
-  tdp.test_learn_greedy_weights()
+  #tdp.test_learn_greedy_weights()

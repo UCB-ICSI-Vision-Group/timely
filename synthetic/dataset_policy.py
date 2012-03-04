@@ -34,7 +34,8 @@ class DatasetPolicy:
       # policy mode can be one of random, oracle, fixed_order,
       # no_smooth, backoff, fastinf
     'bounds': None, # start and deadline times for the policy
-    'weights_mode': 'manual_1' # manual_1, manual_2, manual_3, greedy, rl
+    'weights_mode': 'manual_1'
+    # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
   }
 
   def get_config_name(self):
@@ -62,7 +63,7 @@ class DatasetPolicy:
     """
     Initialize the DatasetPolicy, getting it ready to run on the whole dataset
     or a single image.
-    - test,train,weights datasets should be:
+    - test, train, weights datasets should be:
       - val,  train,    val:    for training the weights
       - test, trainval, val:    for final run
     - **kwargs update the default config
@@ -100,7 +101,7 @@ class DatasetPolicy:
         self.fastinf_model_name='perfect'
       elif self.detectors == ['gist']:
         self.fastinf_model_name='GIST'
-      elif self.detectors == ['gist','csc']:
+      elif self.detectors == ['gist','csc_default']:
         self.fastinf_model_name='GIST_CSC'
       else:
         raise RuntimeError("""
@@ -110,7 +111,7 @@ class DatasetPolicy:
     # load the actions and the corresponding weights and we're ready to go
     self.test_actions = self.init_actions()
     self.actions = self.test_actions
-    self.weights = self.load_weights()
+    self.load_weights()
 
   def init_actions(self,train=False):
     """
@@ -158,27 +159,29 @@ class DatasetPolicy:
         raise RuntimeError("Unknown mode in detectors: %s"%self.detectors)
       return actions
 
-  def load_weights(self,force=False):
+  def load_weights(self,weights_mode=None,force=False):
     """
-    Return weights from file or construct from scratch according
-    to self.weights_mode and self.weights_dataset_name.
+    Set self.weights to weights loaded from file or constructed from scratch
+    according to weights_mode and self.weights_dataset_name.
     """
-    # TODO: load from file if exists
-    filename = config.get_dp_weights_dirname(self)
+    if not weights_mode:
+      weights_mode = self.weights_mode
+
+    filename = config.get_dp_weights_filename(self)
     if not force and opexists(filename):
-      weights = np.loadtxt(filename)
-      return weights
+      self.weights = np.loadtxt(filename)
+      return self.weights
 
     # Construct the weight vector by concatenating per-action vectors
     # The features are [P(C) P(not C) H(C) 1]
     weights = np.zeros((len(self.actions), BeliefState.num_features))
 
     # OPTION 1: the corresponding manual weights are [1 0 0 0]
-    if self.weights_mode == 'manual_1':
-      per_action = np.array([1,0,0,0])
-      weights = np.tile(per_action,(len(self.actions),1)).flatten('C')
+    if weights_mode == 'manual_1':
+      weights[:,0] = 1
+      weights = weights.flatten()
 
-    elif self.weights_mode in ['manual_2','manual_3']:
+    elif weights_mode in ['manual_2','manual_3']:
       # Figure out the statistics if they aren't there
       if 'naive_ap|present' not in self.actions[0].obj.config or \
          'actual_ap|present' not in self.actions[0].obj.config or \
@@ -188,32 +191,51 @@ class DatasetPolicy:
         self.actions = self.test_actions
 
       # OPTION 2: the manual weights are [naive_ap|present naive_ap|absent 0 0]
-      if self.weights_mode == 'manual_2':
+      if weights_mode == 'manual_2':
         for action in self.actions:
           print action.obj.config
         weights[:,0] = [action.obj.config['naive_ap|present'] for action in self.actions]
-        weights = weights.flatten('C') # row-major
 
       # OPTION 3: the manual weights are [actual_ap|present actual_ap|absent 0 0]
-      elif self.weights_mode == 'manual_3':
+      elif weights_mode == 'manual_3':
         weights[:,0] = [action.obj.config['actual_ap|present'] for action in self.actions]
         weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
-        weights = weights.flatten('C') # row-major
 
       else:
         None # impossible
+      weights = weights.flatten()
 
-    elif self.weights_mode == 'greedy':
+    elif weights_mode == 'greedy':
       weights = self.learn_greedy_weights()
 
-    elif self.weights_mode == 'rl':
+    elif weights_mode == 'rl_regression':
+      # TODO
+      None
+
+    elif weights_mode == 'rl_lspi':
       # TODO
       None
 
     else:
-      raise ValueError("unsupported weights_mode %s"%self.weights_mode)
-
+      raise ValueError("unsupported weights_mode %s"%weights_mode)
+    self.weights = weights
     return weights
+
+  def get_reshaped_weights(self):
+    "Return weights vector reshaped to (num_actions, num_features)."
+    return self.weights.reshape((len(self.actions),BeliefState.num_features))
+
+  def write_weights_image(self,filename):
+    "Output plot of current weights to filename."
+    self.write_feature_image(self.get_reshaped_weights(),filename)
+
+  def write_feature_image(self,feature,filename):
+    "Output plot of feature to filename."
+    plt.clf()
+    p = plt.pcolor(feature)
+    p.axes.invert_yaxis()
+    plt.colorbar()
+    plt.savefig(filename)
 
   def run_on_dataset(self,train=False,sample_size=-1,force=False):
     """
@@ -245,14 +267,11 @@ class DatasetPolicy:
     # Check for cached results
     det_filename = config.get_dp_dets_filename(self,train)
     cls_filename = config.get_dp_clses_filename(self,train)
-    samples_filename = config.get_dp_samples_filename(self,train)
     if not force \
-        and opexists(det_filename) and opexists(cls_filename) \
-        and opexists(samples_filename):
+        and opexists(det_filename) and opexists(cls_filename):
       dets_table = np.load(det_filename)[()]
       clses_table = np.load(cls_filename)[()]
-      with open(samples_filename) as f:
-        samples = cPickle.load(f)
+      samples = None
       print("DatasetPolicy: Loaded dets and clses from cache.")
       return dets_table,clses_table,samples
 
@@ -294,8 +313,6 @@ class DatasetPolicy:
       if not sample_size > 0:
         np.save(det_filename,dets_table)
         np.save(cls_filename,clses_table)
-        with open(samples_filename,'w') as f:
-          cPickle.dump(final_samples,f)
 
       # Save the fastinf cache
       # TODO: turning this off for now
@@ -320,6 +337,11 @@ class DatasetPolicy:
     """
     print("Beginning to learn regression weights")
     self.tt.tic('learn_greedy_weights:all')
+
+    # Need to have weights set here to collect samples, so let's set
+    # to manual_1 to get a reasonable execution trace.
+    self.weights = self.load_weights(weights_mode='manual_1') 
+
     # Collect samples (parallelized)
     num_samples = 40 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(True,num_samples)
@@ -330,12 +352,25 @@ class DatasetPolicy:
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
       self.weights, error = self.regress(all_samples)
+
+      # write image of the weights
+      img_filename = opjoin(
+        config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
+      self.write_weights_image(img_filename)
+
+      # write image of the average feature
+      all_features = self.construct_X_from_samples(all_samples)
+      avg_feature = np.mean(all_features,0).reshape(
+        len(self.actions),BeliefState.num_features)
+      img_filename = opjoin(
+        config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
+      self.write_feature_image(avg_feature, img_filename)
+
       print("""
 After iteration %d, we've trained on %d samples and
-the weights and error are:"""%(
-  i,len(all_samples)))
+the weights and error are:"""%(i,len(all_samples)))
       np.set_printoptions(precision=2,suppress=True,linewidth=160)
-      print self.weights
+      print self.get_reshaped_weights()
       print error
 
       # after the first iteration, check if the error is small
@@ -356,11 +391,20 @@ the weights and error are:"""%(
       else:
         all_samples += new_samples
 
-    print("Done training regression weights! Took %.3 f s total"%
+    print("Done training regression weights! Took %.3f s total"%
       self.tt.qtoc('learn_greedy_weights:all'))
     # Save the weights
-    filename = config.get_dp_weights_dirname(self)
+    filename = config.get_dp_weights_filename(self)
     np.savetxt(filename, self.weights, fmt='%.6f')
+    return self.weights
+
+  def construct_X_from_samples(self,samples):
+    "Return array of (len(samples), BeliefState.num_features*len(self.actions)."
+    b = self.get_b()
+    feats = []
+    for sample in samples:
+      feats.append(b.block_out_action(sample.state,sample.action_ind))
+    return np.array(feats)
 
   def regress(self,samples,warm_start=False):
     """
@@ -369,15 +413,11 @@ the weights and error are:"""%(
     Return tuple of weights and error.
     """
     # Construct data and output arrays
-    feats = []
-    for sample in samples:
-      b = self.get_b()
-      feats.append(b.block_out_action(sample.state,sample.action_ind))
+    X = self.construct_X_from_samples(samples)
 
     # TODO: reward function is implictly defined here: maybe move somewhere?
-    X = np.array(feats)
     y = np.array([sample.det_actual_ap for sample in samples])
-    assert(X.shape[0]==len(feats)==y.shape[0])
+    assert(X.shape[0]==y.shape[0])
 
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)

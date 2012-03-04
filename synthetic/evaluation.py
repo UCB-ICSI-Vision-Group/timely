@@ -40,12 +40,10 @@ class Evaluation:
     # Determine filenames and create directories
     self.results_path = config.get_evals_dp_dir(self.dp)
     self.det_apvst_data_fname = opjoin(self.results_path, 'det_apvst_table.npy')
-    self.cls_apvst_data_fname = opjoin(self.results_path, 'cls_apvst_table.npy')
     self.det_apvst_data_whole_fname = opjoin(self.results_path, 'det_apvst_table_whole.npy')
     self.cls_apvst_data_whole_fname = opjoin(self.results_path, 'cls_apvst_table_whole.npy')
 
     self.det_apvst_png_fname = opjoin(self.results_path, 'det_apvst.png')
-    self.cls_apvst_png_fname = opjoin(self.results_path, 'cls_apvst.png')
     self.det_apvst_png_whole_fname = opjoin(self.results_path, 'det_apvst_whole.png')
     self.cls_apvst_png_whole_fname = opjoin(self.results_path, 'cls_apvst_whole.png')
 
@@ -71,11 +69,9 @@ class Evaluation:
 
     dets_table = None
     clses_table = None
-    if opexists(self.det_apvst_data_fname) and \
-       opexists(self.cls_apvst_data_fname) and not force:
+    if opexists(self.det_apvst_data_fname) and not force:
       if comm_rank==0:
         dets_table = np.load(self.det_apvst_data_fname)[()]
-        clses_table = np.load(self.cls_apvst_data_fname)[()]
     else:
       if not dets:
         dets,clses,samples = self.dp.run_on_dataset(force=True)
@@ -92,13 +88,10 @@ class Evaluation:
       # do this now to save time in the inner loop later
       gt_for_image_list = []
       img_dets_list = []
-      img_clses_list = []
       gt = self.dataset.get_ground_truth(include_diff=True)
-      cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
         img_dets_list.append(dets.filter_on_column('img_ind',img_ind))
-        img_clses_list.append(clses.filter_on_column('img_ind',img_ind))
 
       det_arr = np.zeros((num_points,3))
       cls_arr = np.zeros((num_points,3))
@@ -111,44 +104,30 @@ class Evaluation:
         for img_ind,image in enumerate(self.dataset.images):
           gt_for_image = gt_for_image_list[img_ind]
           img_dets = img_dets_list[img_ind]
-          img_clses = img_clses_list[img_ind]
           dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)
-          # take the latest before the cut-off time
-          clses_to_this_point = img_clses.filter_on_column('time',point,operator.le)
-          clses_at_this_point = ut.Table(arr=np.array([]),cols=clses.cols)
-          if clses_to_this_point.shape()[0]>0:
-            clses_to_this_point = clses_to_this_point.sort_by_column('time')
-            clses_at_this_point.set_arr(clses_to_this_point.arr[-1,:])
-          cls_aps.append(self.compute_cls_map(clses_at_this_point, cls_gt))
 
           num_dets += dets_to_this_point.shape()[0]
           det_ap,rec,prec = self.compute_det_pr(dets_to_this_point, gt_for_image)
           det_aps.append(det_ap)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
-        cls_arr[i,:] = [point,np.mean(cls_aps),np.std(cls_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
           np.mean(det_aps),num_dets,point,tt.qtoc()))
       det_arr_all = None
-      cls_arr_all = None
       if comm_rank == 0:
         det_arr_all = np.zeros((num_points,3))
-        cls_arr_all = np.zeros((num_points,3))
       safebarrier(comm)
       comm.Reduce(det_arr,det_arr_all)
-      comm.Reduce(cls_arr,cls_arr_all)
       if comm_rank==0:
         dets_table = ut.Table(det_arr_all, ['time','ap_mean','ap_std'], self.name)
         np.save(self.det_apvst_data_fname,dets_table)
-        clses_table = ut.Table(cls_arr_all, ['time','ap_mean','ap_std'], self.name)
-        np.save(self.cls_apvst_data_fname,clses_table)
     # Plot the table
     if plot and comm_rank==0:
       try:
         Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_fname, bounds, force)
-        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_fname, bounds, force)
       except:
         print("Could not plot")
-    return (dets_table,clses_table)
+    safebarrier(comm)
+    return dets_table
 
   def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False):
     """
