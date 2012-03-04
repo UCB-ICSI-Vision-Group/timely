@@ -74,9 +74,9 @@ class BeliefState(object):
     """
     Return featurized representation of the current belief state.
     The features are in action blocks, meaning that this method returns
-    a vector of size self.num_features*len(self.actions).
-    Return a matrix that can be zeroed out everywhere except the
-    relevant action_ind, and then flattened.
+    an array of size (len(self.actions), self.num_features).
+    To get a usable vector, simply flatten() this array.
+    This is useful for zeroing-out all actions but the relevant one.
     NOTE: Keep the class variable num_features synced with the behavior here.
     """
     p_c = self.get_p_c()
@@ -84,10 +84,8 @@ class BeliefState(object):
     h_c = -p_c*ut.log2(p_c) + -p_not_c*ut.log2(p_not_c)
     h_c[h_c==-0]=0
     ones = np.ones(len(self.actions))
-
     # TODO: work out the time-blocks
-
-    return np.vstack((p_c,p_not_c,h_c,ones))
+    return np.vstack((p_c,p_not_c,h_c,ones)).T
 
   def block_out_action(self, full_feature, action_ind=-1):
     """
@@ -96,10 +94,9 @@ class BeliefState(object):
     If action_ind < 0, returns the flat feature with nothing zeroed out.
     """
     if action_ind < 0:
-      # flatten in column-major format (column index varies slowest)
-      return full_feature.flatten('F')
+      return full_feature.flatten()
     assert(action_ind<len(self.actions))
     feature = np.zeros(np.prod(full_feature.shape))
     start_ind = action_ind*self.num_features
-    feature[start_ind:start_ind+self.num_features] = full_feature[:,action_ind]
+    feature[start_ind:start_ind+self.num_features] = full_feature[action_ind,:]
     return feature

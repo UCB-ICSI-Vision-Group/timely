@@ -2,5 +2,5 @@
   "suffix": "mar1",
   "detectors": ["perfect"],
   "policy_mode": ["random","no_smooth"],
-  "weights_mode": ["manual_1"]
+  "weights_mode": ["greedy"]
 }
