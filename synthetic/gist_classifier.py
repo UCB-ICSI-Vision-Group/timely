@@ -1,10 +1,7 @@
-from sklearn.cross_validation import KFold
-
 from common_imports import *
 from common_mpi import *
 import synthetic.config as config
 
-from synthetic.ngram_model import NGramModel
 from synthetic.image import Image
 from synthetic.training import *
 from synthetic.classifier import Classifier
@@ -195,28 +192,6 @@ def gist_classify_dataset(d):
     cPickle.dump(table, open(savefile,'w'))
   return table
 
-def gist_fastinf():
-  from synthetic.fastInf import write_out_mrf, execute_lbp, discretize_table
-  dataset_name = 'full_pascal_train'
-  d = Dataset(dataset_name)
-  table = d.cls_gt_for_dataset()
-  d = Dataset(dataset_name)
-  num_bins = 5
-  suffix = 'gist_pair'
-  filename = config.get_fastinf_mrf_file(d, suffix)
-  data_filename = config.get_fastinf_data_file(d, suffix)
-  filename_out = config.get_fastinf_res_file(d, suffix)
-  
-  table_gt = d.get_cls_ground_truth().arr.astype(int)
-  print table.shape
-  
-  table = np.hstack((table_gt, table))
-  
-  discretize_table(table, num_bins)
-  if comm_rank == 0:  
-    write_out_mrf(table, num_bins, filename, data_filename)  
-    result = execute_lbp(filename, data_filename, filename_out)
-
 def read_best_svms_from_file(d_train):
   all_settings = []
   for cls in config.pascal_classes:
@@ -229,8 +204,6 @@ def read_best_svms_from_file(d_train):
       if ap > best_ap:
         best_ap = ap
         best_line_idx = line_idx
-    
-    #embed()
     
     best_line = lines[best_line_idx].split()
     kernel = best_line[0]
