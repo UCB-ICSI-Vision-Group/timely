@@ -204,7 +204,8 @@ class DatasetPolicy:
       # OPTION 3: the manual weights are [actual_ap|present actual_ap|absent 0 0]
       elif weights_mode == 'manual_3':
         weights[:,0] = [action.obj.config['actual_ap|present'] for action in self.actions]
-        weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
+        # TODO: get rid of this
+      #  weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
 
       else:
         None # impossible
@@ -318,6 +319,8 @@ class DatasetPolicy:
       if False and self.inference_mode=='fastinf':
         self.inf_model.cache = dict(all_fm_cache_items)
         self.inf_model.save_cache()
+    else:
+      print("comm_rank %d reached last safebarrier in run_on_dataset"%comm_rank)
     safebarrier(comm)
 
     # Broadcast results to all workers, because Evaluation splits its work as well.
@@ -347,36 +350,39 @@ class DatasetPolicy:
       print self.get_reshaped_weights()
 
     # Collect samples (parallelized)
-    num_samples = 400 # actually this refers to images
+    num_samples = 200 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
-    error = threshold = 0.01
+    error = threshold = 0.001
     max_iterations = 8
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
       weights = None
       if comm_rank==0:
         weights, error = self.regress(all_samples, mode)
+        self.weights = weights
 
-        # write image of the weights
-        img_filename = opjoin(
-          config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
-        self.write_weights_image(img_filename)
+        try:
+          # write image of the weights
+          img_filename = opjoin(
+            config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
+          self.write_weights_image(img_filename)
 
-        # write image of the average feature
-        all_features = self.construct_X_from_samples(all_samples)
-        avg_feature = np.mean(all_features,0).reshape(
-          len(self.actions),BeliefState.num_features)
-        img_filename = opjoin(
-          config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
-        self.write_feature_image(avg_feature, img_filename)
+          # write image of the average feature
+          all_features = self.construct_X_from_samples(all_samples)
+          avg_feature = np.mean(all_features,0).reshape(
+            len(self.actions),BeliefState.num_features)
+          img_filename = opjoin(
+            config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
+          self.write_feature_image(avg_feature, img_filename)
+        except:
+          print("Couldn't plot, no big deal.")
 
         print("""
   After iteration %d, we've trained on %d samples and
   the weights and error are:"""%(i,len(all_samples)))
         np.set_printoptions(precision=2,suppress=True,linewidth=160)
-        self.weights = weights
         print self.get_reshaped_weights()
         print error
 
@@ -388,7 +394,7 @@ class DatasetPolicy:
 
       # collect more samples (parallelized)
       safebarrier(comm)
-      comm.bcast(weights,root=0)
+      weights = comm.bcast(weights,root=0)
       self.weights = weights
       new_dets,new_clses,new_samples = self.run_on_dataset(False,num_samples)
 
@@ -403,7 +409,6 @@ class DatasetPolicy:
           print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_weights:unique_samples'))
         else:
           all_samples += new_samples
-    safebarrier(comm)
 
     if comm_rank==0:
       print("Done training regression weights! Took %.3f s total"%
@@ -411,7 +416,10 @@ class DatasetPolicy:
       # Save the weights
       filename = config.get_dp_weights_filename(self)
       np.savetxt(filename, self.weights, fmt='%.6f')
-    comm.bcast(weights,root=0)
+
+    safebarrier(comm)
+    weights = comm.bcast(weights,root=0)
+    self.weights = weights
     return weights
 
   def construct_X_from_samples(self,samples):
@@ -468,9 +476,9 @@ class DatasetPolicy:
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
-    alphas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
+    alphas = [0.0001, 0.001, 0.01, 0.1, 1]
     for alpha in alphas:
-      clf = sklearn.linear_model.Lasso(alpha=alpha)
+      clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=2000)
       errors = []
       # TODO parallelize this? seems fast enough
       for train_ind,val_ind in folds:
@@ -479,7 +487,7 @@ class DatasetPolicy:
       alpha_errors.append(np.mean(errors))
     best_ind = np.argmin(alpha_errors)
     best_alpha = alphas[best_ind]
-    clf = sklearn.linear_model.Lasso(alpha=best_alpha)
+    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=200)
     clf.fit(X,y)
     print("Best lambda was %.3f"%best_alpha)
     weights = clf.coef_
@@ -540,7 +548,7 @@ class DatasetPolicy:
       with open(filename,'w') as f:
         json.dump(det_configs,f)
     safebarrier(comm)
-    comm.bcast(det_configs,root=0)
+    det_configs = comm.bcast(det_configs,root=0)
     return det_configs
 
   ################
@@ -599,6 +607,7 @@ class DatasetPolicy:
     action_ind = self.select_action(b)
     step_ind = 0
     initial_clses = np.array(b.get_p_c().tolist() + [img_ind,0])
+    entropy_prev = np.mean(b.get_entropies())
     while True:
       # Populate the sample with stuff we know
       sample = Sample()
@@ -649,7 +658,10 @@ class DatasetPolicy:
       b.t += obs['dt']
       sample.dt = obs['dt']
       sample.t = b.t
-      sample.entropy = np.mean(b.get_entropies())
+      entropy = np.mean(b.get_entropies())
+      sample.entropy = entropy_prev-entropy
+      entropy_prev = entropy
+
       samples.append(sample)
       step_ind += 1
       b.update_with_score(action_ind, obs['score'])

@@ -30,10 +30,8 @@ class FastinfModel(InferenceModel):
     self.num_actions = num_actions
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
-    print "FastinfModel: Process started"
     marginals = self.get_marginals()
-    print(self.p_c)
-    print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
+    #print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
 
   def save_cache(self):
     "Write cache out to file with cPickle."
@@ -48,7 +46,7 @@ class FastinfModel(InferenceModel):
       evidence[i] = str(self.fd.discretize_value(observations[i],i))
     evidence = "(%s %s )"%(self.dataset.num_classes()*' ?', ' '.join(evidence))
     marginals = self.get_marginals(evidence)
-    print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
+    #print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
 
   def reset(self):
     """
@@ -66,16 +64,21 @@ class FastinfModel(InferenceModel):
     If evidence is given, first sends it to stdin of the process.
     Also update self.p_c with the marginals.
     """
-    if evidence:
-      print "Evidence:"
-      print evidence
-      if evidence in self.cache:
-        print "Fetching cached marginals"
-        marginals = self.cache[evidence]
-        self.p_c = np.array([m[1] for m in marginals[:20]])
-        return marginals
-      self.process.sendline(evidence)
-    self.process.expect('Enter your evidence')
+    try:
+      if evidence:
+        if evidence in self.cache:
+          print "Fetching cached marginals"
+          marginals = self.cache[evidence]
+          self.p_c = np.array([m[1] for m in marginals[:20]])
+          return marginals
+        self.process.sendline(evidence)
+      self.process.expect('Enter your evidence')
+    except:
+      print("something went wrong in fastinf:get_marginals!!!")
+      self.process.close(force=True)
+      self.process = pexpect.spawn(self.cmd)
+      self.get_marginals()
+      self.get_marginals(evidence)
     output = self.process.before
     marginals = FastinfModel.extract_marginals(output)
     # TODO: not caching for fear of ulimit
