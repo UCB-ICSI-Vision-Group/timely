@@ -14,13 +14,13 @@ class GistClassifier(Classifier):
   """
   Compute a likelihood-vector for the classes given a (precomputed) gist detection
   """
-  def __init__(self, cls, train_d, gist_table=None, val_d=None):
+  def __init__(self, cls, train_d, gist_table=None, d_val=None):
     """ 
     Load all gist features right away
     """
     self.train_d = train_d
     dataset_name = self.train_d.name
-    self.val_d = val_d
+    self.val_d = d_val
       
     Classifier.__init__(self)
     
@@ -169,16 +169,29 @@ class GistClassifier(Classifier):
     
 def gist_evaluate_best_svm():
   train_d = Dataset('full_pascal_train')
-  val_d = Dataset('full_pascal_val')
-
+  d_val = Dataset('full_pascal_val')
+  
+  gist_scores = np.zeros((len(d_val.images), len(d_val.classes)))
   gist_table = np.load(config.get_gist_dict_filename(train_d.name))
-  for cls in val_d.classes:  
-    gist = GistClassifier(cls, train_d, gist_table=gist_table, val_d=val_d)
-    gist.train_svm(train_d)
-
-    val_gist_table = np.load(config.get_gist_dict_filename(val_d.name))     
-    gist_score = svm_proba(val_gist_table, clf.svm)
-
+  for cls_idx in range(comm_rank, len(d_val.classes), comm_size):
+    cls = d_val.classes[cls_idx]  
+    gist = GistClassifier(cls, train_d, gist_table=gist_table, d_val=d_val)
+#    gist.train_svm(train_d)
+    val_gist_table = np.load(config.get_gist_dict_filename(d_val.name))     
+    gist_scores[:,cls_idx] = svm_proba(val_gist_table, gist.svm)[:,1] 
+  
+  print '%d at safebarrier'%comm_rank
+  safebarrier(comm)
+  gist_scores = comm.reduce(gist_scores)
+  if comm_rank == 0:
+    print gist_scores
+    val_gt = d_val.get_cls_ground_truth()
+    filename = config.get_gist_classifications_filename(d_val)    
+    cPickle.dump(gist_scores, open(filename,'w'))
+    res = Evaluation.compute_cls_pr(gist_scores, val_gt.arr)
+    print res
+    embed()
+    
   return
   
   clf.train_svm_for_cls(train_d)

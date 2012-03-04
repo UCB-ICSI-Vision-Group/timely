@@ -174,11 +174,6 @@ def get_ext_dets_foldname(dataset):
   dirname = makedirs(join(res_dir,'ext_dets',dataset.name))
   return dirname
 
-def get_ext_dets_vector_foldname(dataset):
-  dirname = makedirs(join(res_dir,'ext_dets',dataset.name,'feat_vect'))
-  return dirname
-
-  
 def get_ext_dets_filename(dataset, suffix):
   if dataset == None:
     # TODO:
@@ -211,6 +206,11 @@ def get_gist_dict_filename(dataset_name):
 def get_gist_svm_filename(for_cls, dataset):
   dirname = makedirs(join(res_dir, 'gist_svm', dataset.name))
   return join(dirname,for_cls)
+
+def get_gist_classifications_filename(dataset):
+  dirname = makedirs(join(res_dir, 'gist_svm', dataset.name))
+  return join(dirname,'table')
+
 
 def get_gist_fastinf_table_name(dataset, cls):
   savedir = join(res_dir, 'gist', dataset)

@@ -54,7 +54,7 @@ def conv(d_train, table_arr):
   return table
   
 if __name__=='__main__':
-  d_train = Dataset('full_pascal_trainl')
+  d_train = Dataset('full_pascal_trainval')
   d_val = Dataset('full_pascal_val')
 
   train_gt = d_train.get_cls_ground_truth()
@@ -79,8 +79,8 @@ if __name__=='__main__':
     safebarrier(comm)
     
     if comm_rank == 0:
-      table = conv(d_train, table_arr)
-      cPickle.dump(table, open(os.path.join(config.get_ext_dets_foldname(d_train),'table'),'w'))
+      table = conv(d_val, table_arr)
+      cPickle.dump(table, open(os.path.join(config.get_ext_dets_foldname(d_val),'table'),'w'))
       
       res = Evaluation.compute_cls_map(table, val_gt)
       res_file = open(filename,'a')
