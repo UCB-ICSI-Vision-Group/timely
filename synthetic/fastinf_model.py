@@ -77,8 +77,8 @@ class FastinfModel(InferenceModel):
       print("something went wrong in fastinf:get_marginals!!!")
       self.process.close(force=True)
       self.process = pexpect.spawn(self.cmd)
-      self.process.get_marginals()
-      self.process.get_marginals(evidence)
+      self.get_marginals()
+      self.get_marginals(evidence)
     output = self.process.before
     marginals = FastinfModel.extract_marginals(output)
     # TODO: not caching for fear of ulimit
