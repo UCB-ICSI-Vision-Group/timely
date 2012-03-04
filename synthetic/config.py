@@ -149,6 +149,16 @@ def get_dp_clses_filename(dp,train=False):
 def get_dp_samples_filename(dp,train=False):
   return join(get_evals_dp_dir(dp,train), 'cached_samples.pickle')
 
+def get_dp_weights_images_dirname(dp):
+  dirname = get_evals_dir(dp.weights_dataset_name)
+  dirname = makedirs(join(dirname, dp.get_config_name()))
+  return makedirs(join(dirname,'weights_images'))
+
+def get_dp_features_images_dirname(dp):
+  dirname = get_evals_dir(dp.weights_dataset_name)
+  dirname = makedirs(join(dirname, dp.get_config_name()))
+  return makedirs(join(dirname,'features_images'))
+
 def get_dp_weights_filename(dp):
   dirname = get_evals_dir(dp.weights_dataset_name)
   dirname = makedirs(join(dirname, dp.get_config_name()))

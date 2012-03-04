@@ -357,11 +357,20 @@ class DatasetPolicy:
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
       self.weights, error = self.regress(all_samples)
-      self.write_weights_image('temp_weights_iter_%d.png'%i)
+
+      # write image of the weights
+      img_filename = opjoin(
+        config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
+      self.write_weights_image(img_filename)
+
+      # write image of the average feature
       all_features = self.construct_X_from_samples(all_samples)
       avg_feature = np.mean(all_features,0).reshape(
         len(self.actions),BeliefState.num_features)
-      self.write_feature_image(avg_feature, 'temp_avg_feat_iter_%d.png'%i)
+      img_filename = opjoin(
+        config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
+      self.write_feature_image(avg_feature, img_filename)
+
       print("""
 After iteration %d, we've trained on %d samples and
 the weights and error are:"""%(i,len(all_samples)))
