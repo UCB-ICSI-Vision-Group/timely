@@ -55,7 +55,6 @@ class Classifier(object):
       svm_file = config.get_classifier_filename(self, self.cls, self.train_dataset)
     else:
       svm_file = filename
-    print svm_file
     if not os.path.exists(svm_file):
       print("Svm %s is not trained"%svm_file)
       return None

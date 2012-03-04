@@ -354,13 +354,14 @@ class DatasetPolicy:
     dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
-    error = threshold = 0.01
+    error = threshold = 0.001
     max_iterations = 8
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
       weights = None
       if comm_rank==0:
         weights, error = self.regress(all_samples, mode)
+        self.weights = weights
 
         # write image of the weights
         img_filename = opjoin(
@@ -379,7 +380,6 @@ class DatasetPolicy:
   After iteration %d, we've trained on %d samples and
   the weights and error are:"""%(i,len(all_samples)))
         np.set_printoptions(precision=2,suppress=True,linewidth=160)
-        self.weights = weights
         print self.get_reshaped_weights()
         print error
 
