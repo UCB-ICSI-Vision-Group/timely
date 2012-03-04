@@ -534,10 +534,12 @@ class Evaluation:
     tp=np.cumsum(tp)
     # NOTE: this will give a warning if dividing by 0, but it's only a warning
     # and the behavior is correct (dividing by 0 gives 0)
-    rec=1.*tp/npos
+    if npos==0:
+      rec = np.zeros(tp.shape)
+    else:
+      rec=1.*tp/npos
     prec=1.*tp/(fp+tp)
-    rec[np.isnan(rec)] = 0
-    prec[np.isnan(prec)] = 0
+    prec = np.nan_to_num(prec)
     ap = cls.compute_ap(rec,prec)
     return (ap,rec,prec)
 
