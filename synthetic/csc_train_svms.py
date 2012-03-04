@@ -1,6 +1,7 @@
 from synthetic.common_imports import *
 from synthetic.common_mpi import *
 
+import synthetic.config as config
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.ext_detector import ExternalDetector
@@ -30,7 +31,8 @@ def test_csc_svm(d_train, d_val):
     # Load the classifier we trained in train_csc_svms
     csc = CSCClassifier('default', cls, d_train, d_val)
     table[:, cls_idx] = csc.eval_cls(ext_detector)
-  print '%d_train is at safebarrier'%comm_rank
+    
+  print '%d is at safebarrier'%comm_rank
   safebarrier(comm)
 
   print 'passed safebarrier'
@@ -57,15 +59,30 @@ if __name__=='__main__':
 
   train_gt = d_train.get_cls_ground_truth()
   val_gt = d_val.get_cls_ground_truth()
-  
-  kernel = 'linear'
-  C = 100
 
-  train_csc_svms(d_train, d_val, kernel, C)
-  table_arr = test_csc_svm(d_train, d_val)
-  
   if comm_rank == 0:
-    #embed()
-    table = conv(d_train, table_arr)
-    res = Evaluation.compute_cls_map(table, val_gt)
-    print res
+    res_file = open(os.path.join(config.get_classifier_dataset_dirname(CSCClassifier('default','dog', d_train, d_val), d_train),'crossval.txt'),'w')
+  
+  kernels =  ['linear','poly']
+  Cs = [1,10,50,100,1000]
+  
+  settings = list(itertools.product(kernels, Cs))
+  
+  for setin in settings:
+    kernel = setin[0]
+    C = setin[1]
+    
+    train_csc_svms(d_train, d_val, kernel, C)
+    safebarrier(comm)
+    table_arr = test_csc_svm(d_train, d_val)
+    
+    safebarrier(comm)
+    if comm_rank == 0:
+      #embed()
+      table = conv(d_train, table_arr)
+      res = Evaluation.compute_cls_map(table, val_gt)
+      res_file.write('%s, C=%d - %f\n'%(kernel, C, res))
+      print res
+
+  if comm_rank == 0:
+    res_file.close()
