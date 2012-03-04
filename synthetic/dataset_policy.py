@@ -487,7 +487,7 @@ class DatasetPolicy:
       alpha_errors.append(np.mean(errors))
     best_ind = np.argmin(alpha_errors)
     best_alpha = alphas[best_ind]
-    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=200,max_iter=20000)
+    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=200)
     clf.fit(X,y)
     print("Best lambda was %.3f"%best_alpha)
     weights = clf.coef_
