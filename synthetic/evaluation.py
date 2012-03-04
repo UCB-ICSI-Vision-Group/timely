@@ -536,6 +536,8 @@ class Evaluation:
     # and the behavior is correct (dividing by 0 gives 0)
     rec=1.*tp/npos
     prec=1.*tp/(fp+tp)
+    rec[np.isnan(rec)] = 0
+    prec[np.isnan(prec)] = 0
     ap = cls.compute_ap(rec,prec)
     return (ap,rec,prec)
 
