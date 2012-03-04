@@ -533,8 +533,8 @@ class Evaluation:
     fp=np.cumsum(fp)
     tp=np.cumsum(tp)
     # TODO: does it make it sense dividing by such a small number?
-    rec=1.*tp/(npos+0.000000001)
-    prec=1.*tp/(fp+tp+0.000000001)
+    rec=1.*tp/npos
+    prec=1.*tp/(fp+tp)
     ap = cls.compute_ap(rec,prec)
     return (ap,rec,prec)
 
