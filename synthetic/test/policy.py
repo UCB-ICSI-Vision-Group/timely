@@ -46,13 +46,13 @@ class TestDatasetPolicy:
   def test_output_det_statistics(self):
     self.dp.output_det_statistics()
 
-  def test_learn_greedy_weights(self):
+  def test_learn_weights(self):
     dataset = Dataset('full_pascal_val')
     train_dataset = Dataset('full_pascal_train')
     dataset.images = dataset.images[:200]
     train_dataset.images = train_dataset.images[:200]
     dp = DatasetPolicy(dataset,train_dataset,self.weights_dataset_name,**self.config)
-    weights = dp.learn_greedy_weights()
+    weights = dp.learn_weights()
 
   def test_regress(self):
     dets,clses,samples = self.dp.run_on_dataset()
@@ -122,4 +122,4 @@ if __name__ == '__main__':
   #tdp.test_output_det_statistics()
   tdp.test_load_weights()
   #tdp.test_regress()
-  #tdp.test_learn_greedy_weights()
+  #tdp.test_learn_weights()

@@ -207,16 +207,8 @@ class DatasetPolicy:
         None # impossible
       weights = weights.flatten()
 
-    elif weights_mode == 'greedy':
-      weights = self.learn_greedy_weights()
-
-    elif weights_mode == 'rl_regression':
-      # TODO
-      None
-
-    elif weights_mode == 'rl_lspi':
-      # TODO
-      None
+    elif weights_mode in ['greedy','rl_regression','rl_lspi']:
+      weights = self.learn_weights(weights_mode)
 
     else:
       raise ValueError("unsupported weights_mode %s"%weights_mode)
@@ -250,6 +242,8 @@ class DatasetPolicy:
     Return dets,clses,samples.
     """
     self.tt.tic('run_on_dataset')
+    print("Beginning run on dataset, with train=%s, sample_size=%s"%
+      (train,sample_size))
 
     dets_table = None
     clses_table = None
@@ -332,73 +326,85 @@ class DatasetPolicy:
         self.policy_mode, len(images), self.tt.qtoc('run_on_dataset')))
     return dets_table,clses_table,final_samples
 
-  def learn_greedy_weights(self):
+  def learn_weights(self,mode='greedy'):
     """
     Runs iterations of generating samples with current weights and training
     new weight vectors based on the collected samples.
+    - mode can be ['greedy','rl_regression','rl_lspi']
     """
     print("Beginning to learn regression weights")
-    self.tt.tic('learn_greedy_weights:all')
+    self.tt.tic('learn_weights:all')
 
     # Need to have weights set here to collect samples, so let's set
     # to manual_1 to get a reasonable execution trace.
     self.weights = self.load_weights(weights_mode='manual_1') 
 
     # Collect samples (parallelized)
-    num_samples = 40 # actually this refers to images
+    num_samples = 4 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(True,num_samples)
     
     # Loop until max_iterations or the error is below threshold
     error = threshold = 0.01
-    max_iterations = 10
+    max_iterations = 8
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
-      self.weights, error = self.regress(all_samples)
+      weights = None
+      if comm_rank==0:
+        weights, error = self.regress(all_samples, mode)
 
-      # write image of the weights
-      img_filename = opjoin(
-        config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
-      self.write_weights_image(img_filename)
+        # write image of the weights
+        img_filename = opjoin(
+          config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
+        self.write_weights_image(img_filename)
 
-      # write image of the average feature
-      all_features = self.construct_X_from_samples(all_samples)
-      avg_feature = np.mean(all_features,0).reshape(
-        len(self.actions),BeliefState.num_features)
-      img_filename = opjoin(
-        config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
-      self.write_feature_image(avg_feature, img_filename)
+        # write image of the average feature
+        all_features = self.construct_X_from_samples(all_samples)
+        avg_feature = np.mean(all_features,0).reshape(
+          len(self.actions),BeliefState.num_features)
+        img_filename = opjoin(
+          config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
+        self.write_feature_image(avg_feature, img_filename)
 
-      print("""
-After iteration %d, we've trained on %d samples and
-the weights and error are:"""%(i,len(all_samples)))
-      np.set_printoptions(precision=2,suppress=True,linewidth=160)
-      print self.get_reshaped_weights()
-      print error
+        print("""
+  After iteration %d, we've trained on %d samples and
+  the weights and error are:"""%(i,len(all_samples)))
+        np.set_printoptions(precision=2,suppress=True,linewidth=160)
+        print self.get_reshaped_weights()
+        print error
 
-      # after the first iteration, check if the error is small
-      if i>0 and error<threshold:
-        break
+        # after the first iteration, check if the error is small
+        if i>0 and error<threshold:
+          break
 
-      print("Now collecting more samples with the updated weights...")
+        print("Now collecting more samples with the updated weights...")
+
+      # collect more samples (parallelized)
+      safebarrier(comm)
+      comm.bcast(weights,root=0)
+      self.weights = weights
       new_dets,new_clses,new_samples = self.run_on_dataset(True,num_samples)
 
-      # We either collect only unique samples or all samples
-      only_unique_samples = False
-      if only_unique_samples:
-        self.tt.tic('learn_greedy_weights:unique_samples')
-        for sample in new_samples:
-          if not (sample in all_samples):
-            all_samples.append(sample)
-        print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_greedy_weights:unique_samples'))
-      else:
-        all_samples += new_samples
+      if comm_rank==0:
+        # We either collect only unique samples or all samples
+        only_unique_samples = False
+        if only_unique_samples:
+          self.tt.tic('learn_weights:unique_samples')
+          for sample in new_samples:
+            if not (sample in all_samples):
+              all_samples.append(sample)
+          print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_weights:unique_samples'))
+        else:
+          all_samples += new_samples
 
-    print("Done training regression weights! Took %.3f s total"%
-      self.tt.qtoc('learn_greedy_weights:all'))
-    # Save the weights
-    filename = config.get_dp_weights_filename(self)
-    np.savetxt(filename, self.weights, fmt='%.6f')
-    return self.weights
+    safebarrier(comm)
+    if comm_rank==0:
+      print("Done training regression weights! Took %.3f s total"%
+        self.tt.qtoc('learn_weights:all'))
+      # Save the weights
+      filename = config.get_dp_weights_filename(self)
+      np.savetxt(filename, self.weights, fmt='%.6f')
+    comm.bcast(weights,root=0)
+    return weights
 
   def construct_X_from_samples(self,samples):
     "Return array of (len(samples), BeliefState.num_features*len(self.actions)."
@@ -408,17 +414,26 @@ the weights and error are:"""%(i,len(all_samples)))
       feats.append(b.block_out_action(sample.state,sample.action_ind))
     return np.array(feats)
 
-  def regress(self,samples,warm_start=False):
+  def compute_reward_from_samples(self,samples,mode='greedy',discount=0.9):
+    """
+    Return vector of rewards for the given samples.
+    - mode=='greedy' just uses the actual_ap of the taken action
+    - mode=='rl' uses discounted sum of actual_aps to the end of the episode
+    """
+    y = np.array([sample.det_actual_ap for sample in samples])
+    if mode=='greedy':
+      return y
+    # we have to figure out the boundaries of the episodes
+    return None
+
+  def regress(self,samples,mode,warm_start=False):
     """
     Take list of samples and regress from the features to the rewards.
     If warm_start, start with the current values of self.weights.
     Return tuple of weights and error.
     """
-    # Construct data and output arrays
     X = self.construct_X_from_samples(samples)
-
-    # TODO: reward function is implictly defined here: maybe move somewhere?
-    y = np.array([sample.det_actual_ap for sample in samples])
+    y = self.compute_reward_from_samples(samples,mode)
     assert(X.shape[0]==y.shape[0])
 
     from sklearn.cross_validation import KFold
@@ -437,8 +452,8 @@ the weights and error are:"""%(i,len(all_samples)))
     clf = sklearn.linear_model.Lasso(alpha=best_alpha)
     clf.fit(X,y)
     weights = clf.coef_
-    error = ut.mean_squared_error(clf.predict(X[val_ind,:]),y[val_ind])
-    return (weights,error)
+    error = ut.mean_squared_error(clf.predict(X),y)
+    return (weights, error)
 
   def get_b(self):
     "Fetch a belief state, and if we don't have one, initialize one."
@@ -552,6 +567,7 @@ the weights and error are:"""%(i,len(all_samples)))
     self.update_actions(b)
     action_ind = self.select_action(b)
     step_ind = 0
+    initial_clses = np.array(b.get_p_c().tolist() + [img_ind,0])
     while True:
       # Populate the sample with stuff we know
       sample = Sample()
@@ -602,7 +618,8 @@ the weights and error are:"""%(i,len(all_samples)))
       b.t += obs['dt']
       sample.dt = obs['dt']
       sample.t = b.t
-      b.taken[action_ind] = 1
+      samples.append(sample)
+      step_ind += 1
       b.update_with_score(action_ind, obs['score'])
 
       # The updated belief state posterior over C is our classification result
@@ -613,12 +630,6 @@ the weights and error are:"""%(i,len(all_samples)))
       self.update_actions(b)
       action_ind = self.select_action(b)
 
-      # store the next state in sample along with action
-      sample.next_state = b.compute_full_feature()
-      sample.next_action_ind = action_ind
-      samples.append(sample)
-      step_ind += 1
-
       # check for stopping conditions
       if action_ind < 0:
         break
@@ -627,19 +638,27 @@ the weights and error are:"""%(i,len(all_samples)))
           break
 
     # in case of 'oracle' mode, re-sort the detections and times in order of AP
-    # contributions
-    times = [s.dt for s in samples]
-    all_clses = np.array(all_clses)
+    # contributions, and actually re-gather p_c's for clses.
+    action_inds = [s.action_ind for s in samples]
     if self.policy_mode=='oracle':
       naive_aps = np.array([s.det_naive_ap for s in samples])
-      sorted_inds = np.argsort(-naive_aps)
+      sorted_inds = np.argsort(-naive_aps,kind='merge') # order-preserving
       all_detections = np.take(all_detections, sorted_inds)
-      times = np.take(times, sorted_inds)
-      all_clses = all_clses[sorted_inds]
-      time_ind = self.get_cls_cols().index('time')
-      all_clses[:,time_ind] = times
+      sorted_action_inds = np.take(action_inds, sorted_inds)
 
-    # now construct the final return array, with correct times
+      # actually go through the whole thing again, getting new p_c's
+      b.reset()
+      all_clses = []
+      for action_ind in sorted_action_inds:
+        action = self.actions[action_ind]
+        obs = action.obj.get_observations(image)
+        b.t += obs['dt']
+        b.update_with_score(action_ind, obs['score'])
+        clses = b.get_p_c().tolist() + [img_ind,b.t]
+        all_clses.append(clses)
+
+    # now construct the final dets array, with correct times
+    times = [s.dt for s in samples]
     assert(len(all_detections)==len(all_clses)==len(times))
     cum_times = np.cumsum(times)
     all_times = []
@@ -662,6 +681,7 @@ the weights and error are:"""%(i,len(all_samples)))
           all_detections = all_detections[:first_overdeadline_ind,:]
     else:
       all_detections = np.array([])
+    all_clses = np.array(all_clses)
 
     if verbose:
       print("DatasetPolicy on image with ind %d took %.3f s"%(
