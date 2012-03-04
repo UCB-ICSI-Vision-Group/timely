@@ -318,6 +318,8 @@ class DatasetPolicy:
       if False and self.inference_mode=='fastinf':
         self.inf_model.cache = dict(all_fm_cache_items)
         self.inf_model.save_cache()
+    else:
+      print("comm_rank %d reached last safebarrier in run_on_dataset"%comm_rank)
     safebarrier(comm)
 
     # Broadcast results to all workers, because Evaluation splits its work as well.
