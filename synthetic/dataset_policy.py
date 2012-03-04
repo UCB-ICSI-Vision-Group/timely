@@ -297,8 +297,8 @@ class DatasetPolicy:
     final_dets = comm.reduce(all_dets, op=MPI.SUM, root=0)
     final_clses = comm.reduce(all_clses, op=MPI.SUM, root=0)
     final_samples = comm.reduce(all_samples, op=MPI.SUM, root=0)
-    if self.inference_mode=='fastinf':
-      all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
+    #if self.inference_mode=='fastinf':
+      # all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
 
     # Save if root
     if comm_rank==0:
@@ -563,7 +563,7 @@ class DatasetPolicy:
     else:
       ff = b.compute_full_feature()
       self.action_values = np.array([\
-        np.dot(self.weights, b.block_out_action(ff,0)) for action_ind in self.actions])
+        np.dot(self.weights, b.block_out_action(ff,action_ind)) for action_ind in range(len(self.actions))])
 
   def select_action(self, b):
     """
