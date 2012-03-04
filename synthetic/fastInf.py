@@ -5,7 +5,7 @@ import synthetic.config as config
 import subprocess as subp
 
 from synthetic.dataset import Dataset
-from synthetic.gist_classifier import cls_for_dataset
+from synthetic.gist_classifier import gist_classify_dataset
 from matplotlib.pylab import *
 import argparse
 from matplotlib.pyplot import hist
@@ -268,12 +268,7 @@ def store_bound(d, suffix, bounds):
   bound_file = config.get_mrf_bound_filename(d, suffix)
   np.savetxt(bound_file, bounds)  
 
-def create_gist_model_for_dataset(d):
-  dataset = d.name
-  return cls_for_dataset(dataset)
-
-def run_fastinf_different_settings(dataset, ms, rs, suffixs):
-  d = Dataset(dataset)
+def run_fastinf_different_settings(d, ms, rs, suffixs):
   num_bins = 5
   settings = list(itertools.product(suffixs, ms, rs))
   table_gt = d.get_cls_ground_truth().arr.astype(int)
@@ -295,7 +290,7 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       table = np.hstack((table_gt, table_gt))
       
     elif suffix == 'GIST':
-      table = create_gist_model_for_dataset(d)      
+      table = gist_classify_dataset(d)   
       bounds, discr_table = discretize_table(table, num_bins)  
       table = np.hstack((table_gt, discr_table))
       
@@ -314,12 +309,14 @@ def run_fastinf_different_settings(dataset, ms, rs, suffixs):
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
       if not os.path.exists(filename_csc):
         raise RuntimeWarning('The csc classification could not be loaded')
-      table = cPickle.load(open(filename_csc,'r'))
-      bounds, discr_table = discretize_table(table, num_bins)      
+      orig_table = cPickle.load(open(filename_csc,'r'))
+      if isinstance(orig_table, ut.Table):
+        orig_table = orig_table.arr[:,:-1]
+      bounds, discr_table = discretize_table(orig_table, num_bins)      
       table = np.hstack((table_gt, discr_table))
       store_bound(d, 'CSC', bounds)
       
-      second_table = create_gist_model_for_dataset(d)      
+      second_table = gist_classify_dataset(d)      
       sec_bounds, second_table = discretize_table(second_table, num_bins)      
       store_bound(d, 'GIST', sec_bounds)  
     
@@ -385,15 +382,15 @@ def run_all_in_3_parts():
 
 def run_fastinf_for_dataset(dataset):
   
-  suffixs = ['CSC']#, 'GIST_CSC', 'perfect', 'GIST']
+  suffixs = [ 'GIST', 'GIST_CSC']
   ms = ['0', '2', '5']
   rs = ['', '0.5', '1']
   
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
 
 if __name__=='__main__':
- 
-  run_fastinf_for_dataset('full_pascal_train')
+  d = Dataset('full_pascal_train')
+  run_fastinf_for_dataset(d)
   #run_all_in_3_parts()
   
 #  dataset = 'full_pascal_trainval'

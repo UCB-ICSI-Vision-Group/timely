@@ -51,8 +51,12 @@ class GistClassifier(Classifier):
     filename = config.get_gist_svm_filename(self.cls,self.train_d)
     if os.path.exists(filename):
       print 'load svm %s'%filename
-      svm = load_svm(filename)
-      self.svm = svm
+      try:
+        svm = load_svm(filename)
+        self.svm = svm
+      except:
+        print 'could not load svm. Probably we are in crossvalidation and there is much going on'
+        svm = None 
     else:
       print 'gist svm for',self.cls,'does not exist'
       svm = None
@@ -63,13 +67,7 @@ class GistClassifier(Classifier):
     index = self.dataset.get_img_ind(image)
     gist = np.array(self.gist_table[index])
     return svm_proba(gist, self.svm)
-     
-  def compute_obj_func(self, gist, truth):
-    diff = gist - truth
-    sqr = np.multiply(diff,diff)
-    sqrsum = np.sum(sqr)
-    return sqrsum
-  
+       
   def get_gists_for_imgs(self, imgs, dataset):
     images = dataset.images
     num = imgs.size
@@ -83,7 +81,7 @@ class GistClassifier(Classifier):
       ind += 1
     return gist
   
-  def train_svm(self, dataset, kernel='linear', C=1.0):
+  def train_svm(self, dataset, kernel='linear', C=1.0, gamma=0.0):
     """
     Train classifiers for class  
     """  
@@ -100,172 +98,80 @@ class GistClassifier(Classifier):
     print '%d compute svm for %s'%(comm_rank, self.cls)
     svm_filename = config.get_gist_svm_filename(self.cls, dataset)
     print svm_filename
-    svm = train_svm(x, y, kernel,C)
-    
-    save_svm(svm, svm_filename)     
-    self.svm = svm
+    self.svm = train_svm(x, y, kernel, C, gamma)
     print '\ttook', time.time()-t,'sec'
-  
-  def scores_for_dataset(self, dataset):
+    print 'the score on train-data is %f'%self.svm.score(x,y)
+    table_t = svm_proba(x, self.svm)
+    y2 = np.array(y)
+    y2 = (y2+1)/2 # switch to 0/1
+    ap,_,_ = Evaluation.compute_cls_pr(table_t[:,1], y2)
+    print 'ap on train: %f'%ap    
+    save_svm(self.svm, svm_filename)      
+    return ap 
+        
+  def classify_dataset(self):     
+    return svm_proba(self.gist_table, self.svm)[:,1]
     
-    None
-
-#  def evaluate_svm(self, cls, dataset, C):
-#    svm = self.svm
-#    print 'evaluate class', cls
-#    t = time.time()
-#    pos = dataset.get_pos_samples_for_class(cls)
-#    num_pos = pos.size 
-#    neg = dataset.get_neg_samples_for_class(cls)
-#    neg = np.random.permutation(neg)[:num_pos]
-#    print '\tload pos gists'
-#    pos_gist = self.get_gists_for_imgs(pos, dataset)
-#    print '\tload neg gists'       
-#    neg_gist = self.get_gists_for_imgs(neg, dataset)
-#    x = np.concatenate((pos_gist, neg_gist))
-#    y = [1]*num_pos + [-1]*num_pos
-#    result = svm_predict(x, svm)
-#    test_classification = np.matrix([1]*pos_gist.shape[0] + [-1]*neg_gist.shape[0]).reshape((result.shape[0],1))  
-#    acc = sum(np.multiply(result,test_classification) > 0)/float(2.*num_pos)
-#    outfile_name = os.path.join(config.gist_dir, cls)
-#    outfile = open(outfile_name,'a')
-#    outfile.writelines(str(C) + ' ' + str(acc[0][0])+'\n') 
-    
-  def cross_val_lambda(self, lam):
-    images = self.dataset.images
-    num_folds = 4
-    loo = KFold(len(images), num_folds)
-    errors = []
-    fold_num = 0
-    for train,val in loo:
-      print 'compute error for fold', fold_num
-      indices = np.arange(len(images))[train]
-      print len(indices)
-      data = np.zeros((indices.size,20))
-      ind = 0
-      for idx in indices:
-        data[ind] = images[idx].get_cls_counts()
-        ind += 1        
-      model = NGramModel(data)
-      priors = model.p_c
-      error = 0
-      indices = np.arange(len(images))[val]
-       
-      for idx in indices:
-        img = images[idx]
-        print 'evaluate img', img.name
-        t = time.time()
-        gist = self.get_priors_lam(img,  priors, lam)
-        t = time.time() - t
-        print 'gist took %f secs'%t
-        error += self.compute_obj_func(gist, img.get_cls_counts()>0)
-      error = error/indices.shape[0]
-      
-      errors.append(error)
-      print 'error:', error
-    avg_error = sum(errors)/4
-    return avg_error
-    
-    
-def gist_evaluate_best_svm():
-  train_d = Dataset('full_pascal_train')
-  d_val = Dataset('full_pascal_val')
+def gist_evaluate_svms(d_train, d_val):
   
   gist_scores = np.zeros((len(d_val.images), len(d_val.classes)))
-  gist_table = np.load(config.get_gist_dict_filename(train_d.name))
-  for cls_idx in range(comm_rank, len(d_val.classes), comm_size):
-    cls = d_val.classes[cls_idx]  
-    gist = GistClassifier(cls, train_d, gist_table=gist_table, d_val=d_val)
-#    gist.train_svm(train_d)
-    val_gist_table = np.load(config.get_gist_dict_filename(d_val.name))     
-    gist_scores[:,cls_idx] = svm_proba(val_gist_table, gist.svm)[:,1] 
+  gist_table = np.load(config.get_gist_dict_filename(d_train.name))
   
+  kernels = ['rbf', 'linear', 'poly']
+  Cs = [1,10,100]
+  gammas = [0,0.3,1]
+  setts = list(itertools.product(kernels, Cs, gammas))
+  val_gt = d_val.get_cls_ground_truth()
+  
+  for cls_idx in range(len(d_val.classes)):
+    cls = d_val.classes[cls_idx]  
+    gist = GistClassifier(cls, d_train, gist_table=gist_table, d_val=d_val)
+    filename = config.get_gist_crossval_filename(d_train, cls) 
+    # doing some crossval right here!!!
+    for set_idx in range(comm_rank, len(setts), comm_size):
+      sett = setts[len(setts)-1-set_idx]
+      kernel = sett[0]
+      C = sett[1]
+      gamma = sett[2]
+      train_ap = gist.train_svm(d_train, kernel, C, gamma)
+          
+      val_gist_table = np.load(config.get_gist_dict_filename(d_val.name))     
+      gist_scores = svm_proba(val_gist_table, gist.svm)[:,1]
+      
+      val_ap,_,_ = Evaluation.compute_cls_pr(gist_scores, val_gt.subset_arr(cls))
+      w = open(filename, 'a')
+      w.write('%s C=%d gamma=%f - train: %f, val: %f\n'%(kernel, C, gamma, train_ap, val_ap))
+      w.close()
+      print 'ap on val: %f'%val_ap
+      
   print '%d at safebarrier'%comm_rank
   safebarrier(comm)
   gist_scores = comm.reduce(gist_scores)
   if comm_rank == 0:
     print gist_scores
-    val_gt = d_val.get_cls_ground_truth()
     filename = config.get_gist_classifications_filename(d_val)    
     cPickle.dump(gist_scores, open(filename,'w'))
     res = Evaluation.compute_cls_pr(gist_scores, val_gt.arr)
     print res
-    embed()
-    
-  return
-  
-  clf.train_svm_for_cls(train_d)
-  for cls in config.pascal_classes:
-    clf.evaluate_svm(cls, val_d)
-    
-def test_gist_one_sample(dataset):    
-  dect = GistClassifier(dataset)
-  d = Dataset(dataset)
-  vect = dect.get_priors(d.images[1])
-  for idx in range(len(vect)):
-    if vect[idx] > 0.5:
-     print config.pascal_classes[idx], vect[idx]
-     
-def save_gist_differently(datasets):
-  gist_dict = cPickle.load(open(join(config.res_dir,'gist_features','features'),'r'))
-  for dataset in datasets:
-    d = Dataset(dataset)
-    print 'converting set', dataset
-    save_file = os.path.join(config.res_dir,'gist_features',dataset)
-    images = d.images
-    gist_tab = np.zeros((len(images), 960))
-    for idx in range(len(images)):
-      img = images[idx]
-      print 'on \t', img.name
-      gist_tab[idx,:] = gist_dict[img.name[:-3]]
-    np.save(save_file, gist_tab)
-    
-def convert_gist_datasets(dataset_origin, datasets_new):
-  data = np.load(config.get_gist_dict_filename(dataset_origin))
-  d_orig = Dataset(dataset_origin)
-  for dataset in datasets_new:
-    savefile = config.get_gist_dict_filename(dataset)
-    d = Dataset(dataset)
-    images = d.images
-    new_data = np.zeros((len(images), data.shape[1]))
-    for img_idx, img in enumerate(images):
-      orig_img = d_orig.get_image_by_filename(img.name)
-      row = d_orig.images.index(orig_img)
-      new_data[img_idx, :] = data[row, :]       
-    np.save(savefile, new_data)
-  
-def crossval():
-  #save_gist_differently()
-  #test_gist_one_sample('full_pascal_test')
-  #gist_evaluate_best_svm()
-  dect = GistClassifier('full_pascal_trainval')
-  lams = np.arange(0,1,0.025)
-  errors = np.zeros((lams.shape[0],1))
-  for idx in range(comm_rank, len(lams),comm_size):
-    lam = lams[idx]
-    err = dect.cross_val_lambda(lam)
-    errors[idx, 0] = err
-  errors = comm.reduce(errors)
-  
-  if comm_rank == 0:
-    result_file = config.res_dir + 'cross_val_lam_gist.txt'
-    outfile = open(result_file,'w')
-    print errors
-    for idx in range(lams.shape[0]):
-      outfile.write(str(lams[idx]) + ' ' + str(errors[idx]) + '\n')    
-    outfile.close() 
-    
-  
-def convert():
-  datasets = ['test_pascal_train_tobi','test_pascal_val_tobi']
-  dataset_origin = 'full_pascal_trainval'
-  convert_gist_datasets(dataset_origin, datasets)
 
-def cls_for_dataset(dataset):
-  d = Dataset(dataset)
+def gist_train_good_svms(all_settings, d_train):
+  
+  gist_table = np.load(config.get_gist_dict_filename(d_train.name))
+  
+  for sett_idx in range(comm_rank, len(all_settings), comm_size):
+    sett = all_settings[sett_idx]    
+    cls = sett[0]
+    C = sett[1]
+    kernel = sett[2]
+    gamma = sett[3]    
+    gist = GistClassifier(cls, d_train, gist_table)
+    filename = config.get_gist_crossval_filename(d_train, cls) 
+    gist.train_svm(d_train, kernel, C, gamma)
+
+def gist_classify_dataset(d):
   classes = d.classes
   table = np.zeros((len(d.images), len(classes)))
-  savefile = config.get_gist_fastinf_table_name(dataset, None)
+  savefile = config.get_gist_fastinf_table_name(d, None)
    
   print savefile
   if os.path.exists(savefile):
@@ -274,20 +180,18 @@ def cls_for_dataset(dataset):
   for cls_idx in range(comm_rank, len(classes), comm_size):
     cls = classes[cls_idx]
     
-    savefile = config.get_gist_fastinf_table_name(dataset, cls)
+    savefile = config.get_gist_fastinf_table_name(d, cls)
     if os.path.exists(savefile):
       table = cPickle.load(open(savefile,'r'))
       continue    
     gist = GistClassifier(cls, d)
-    d = gist.dataset
-    images = d.images
-    table[:, cls_idx] = gist.get_scores_for_image_set(range(len(images)))[:,0]    
+    table[:,cls_idx] = gist.classify_dataset()        
     cPickle.dump(table, open(savefile,'w'))
     
   safebarrier(comm)
   table = comm.allreduce(table)  
   if comm_rank == 0:
-    savefile = config.get_gist_fastinf_table_name(dataset, None)
+    savefile = config.get_gist_fastinf_table_name(d, None)
     cPickle.dump(table, open(savefile,'w'))
   return table
 
@@ -313,5 +217,51 @@ def gist_fastinf():
     write_out_mrf(table, num_bins, filename, data_filename)  
     result = execute_lbp(filename, data_filename, filename_out)
 
+def read_best_svms_from_file(d_train):
+  all_settings = []
+  for cls in config.pascal_classes:
+    filename = config.get_gist_crossval_filename(d_train, cls)
+    lines = open(filename,'r').readlines()
+    best_ap = 0
+    best_line_idx = -1
+    for line_idx, line in enumerate(lines):
+      ap = float(line.split()[-1])
+      if ap > best_ap:
+        best_ap = ap
+        best_line_idx = line_idx
+    
+    #embed()
+    
+    best_line = lines[best_line_idx].split()
+    kernel = best_line[0]
+    C = int(best_line[1].split('=')[1])
+    gamma = float(best_line[2].split('=')[1])
+    all_settings.append([cls, C, kernel, gamma, best_ap])
+       
+  return all_settings
+
+def training(d, evaluate=False):
+  d_train = Dataset('full_pascal_train')
+  d_val = Dataset('full_pascal_val')
+  
+  if evaluate:
+    gist_evaluate_svms(d_train, d_val)
+  all_settings = read_best_svms_from_file(d_train)  
+  gist_train_good_svms(all_settings, d_train)
+  
+  # Now use the best trained values to also train full_pascal_trainval:
+  gist_train_good_svms(all_settings, d)
+  
+  # compute mean AP:
+  sum_ap = 0
+  print '====APs===='
+  for sett in all_settings:
+    sum_ap += sett[-1]
+    print '%s \t- %f'%(sett[0], sett[-1]) 
+  mean_ap = sum_ap/20.
+  print 'mean AP %f'%mean_ap
+  
 if __name__=='__main__':
-  gist_evaluate_best_svm()  
+  d = Dataset('full_pascal_trainval')
+  #training(d)
+  gist_classify_dataset(d)
