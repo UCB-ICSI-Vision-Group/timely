@@ -390,7 +390,7 @@ class DatasetPolicy:
 
       # collect more samples (parallelized)
       safebarrier(comm)
-      comm.bcast(weights,root=0)
+      weights = comm.bcast(weights,root=0)
       self.weights = weights
       new_dets,new_clses,new_samples = self.run_on_dataset(False,num_samples)
 
@@ -413,7 +413,8 @@ class DatasetPolicy:
       # Save the weights
       filename = config.get_dp_weights_filename(self)
       np.savetxt(filename, self.weights, fmt='%.6f')
-    comm.bcast(weights,root=0)
+    weights = comm.bcast(weights,root=0)
+    self.weights = weights
     return weights
 
   def construct_X_from_samples(self,samples):
@@ -542,7 +543,7 @@ class DatasetPolicy:
       with open(filename,'w') as f:
         json.dump(det_configs,f)
     safebarrier(comm)
-    comm.bcast(det_configs,root=0)
+    det_configs = comm.bcast(det_configs,root=0)
     return det_configs
 
   ################
