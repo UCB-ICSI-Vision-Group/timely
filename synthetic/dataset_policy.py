@@ -204,7 +204,8 @@ class DatasetPolicy:
       # OPTION 3: the manual weights are [actual_ap|present actual_ap|absent 0 0]
       elif weights_mode == 'manual_3':
         weights[:,0] = [action.obj.config['actual_ap|present'] for action in self.actions]
-        weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
+        # TODO: get rid of this
+      #  weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
 
       else:
         None # impossible
