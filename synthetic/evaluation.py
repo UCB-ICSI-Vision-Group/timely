@@ -187,7 +187,9 @@ class Evaluation:
 
           img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
           gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
-          ap,_,_ = self.compute_det_pr(dets_to_this_point,gt)
+          # TODO: fuck it!
+          #ap,_,_ = self.compute_det_pr(dets_to_this_point,gt)
+          ap = 0
         det_arr[i,:] = [point,ap]
 
         # go through the per-image classifications and only keep the latest time
