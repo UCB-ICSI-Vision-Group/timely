@@ -354,7 +354,7 @@ class DatasetPolicy:
     dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
-    error = threshold = 0.005
+    error = threshold = 0.001
     max_iterations = 8
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
@@ -627,7 +627,7 @@ class DatasetPolicy:
       if 'dets' in obs:
         det = action.obj
         detections = obs['dets']
-        cls_ind = self.dataset.classes.index(det.cls)
+        cls_ind = dataset.classes.index(det.cls)
         if detections.shape[0]>0:
           c_vector = np.tile(cls_ind,(np.shape(detections)[0],1))
           i_vector = np.tile(img_ind,(np.shape(detections)[0],1))

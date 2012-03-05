@@ -55,6 +55,7 @@ class FastinfModel(InferenceModel):
     except Exception as e:
       print("comm_rank %d: something went wrong in fastinf:get_marginals!!!"%
         comm_rank)
+      print evidence
       # blacklist this evidence and restart process
       self.blacklist.append(evidence)
       try:
