@@ -87,7 +87,8 @@ class Evaluation:
       if dets.is_empty():
         points = np.zeros(self.time_intervals)
       else:
-        points = self.determine_time_points(dets,bounds)
+        all_times = dets.subset_arr('time')
+        points = self.determine_time_points(all_times,bounds)
       num_points = points.shape[0]
       det_arr = np.zeros((num_points,3))
       cls_arr = np.zeros((num_points,3))
@@ -125,10 +126,12 @@ class Evaluation:
     safebarrier(comm)
     return dets_table
 
-  def determine_time_points(self,dets,bounds):
-    "Helper function shared by evaluate_vs_t and evaluate_vs_t_whole."
+  def determine_time_points(self,all_times,bounds):
+    """"
+    Helper function shared by evaluate_vs_t and evaluate_vs_t_whole.
+    all_times is a ndarray of times.
+    """
     # determine time sampling points
-    all_times = dets.subset_arr('time')
     points = ut.importance_sample(all_times,self.time_intervals)
     # make sure bounds are included in the sampling points if given
     if bounds:
@@ -159,9 +162,10 @@ class Evaluation:
       if not dets:
         dets,clses,samples = self.dp.run_on_dataset()
       if dets.is_empty():
-        points = np.zeros(self.time_intervals)
+        all_times = clses.subset_arr('time')
       else:
-        points = self.determine_time_points(dets,bounds)
+        all_times = dets.subset_arr('time')
+      points = self.determine_time_points(all_times,bounds)
       num_points = points.shape[0]
       cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       det_arr = np.zeros((num_points,2))
