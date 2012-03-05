@@ -81,12 +81,13 @@ def load_configs(name):
       configs += load_config_file(filename)
   elif os.path.isfile(filename):
     configs = load_config_file(filename)
-    
   elif os.path.isfile(collectname):
     filenames = open(collectname, 'r').readlines()
     configs = []
     for filename in filenames:
       configs += load_config_file(opjoin(config.config_dir,os.path.dirname(name),filename[:-1]+'.json'))
+  else:
+    raise RuntimeError('NO WEIGHTS FOUND!')
   return configs
 
 def main():
@@ -158,6 +159,7 @@ def main():
 
   plot_infos = [] 
   for config_f in configs:
+    #config_f['blacklist'] = [14,6]
     dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)

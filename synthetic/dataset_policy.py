@@ -36,8 +36,9 @@ class DatasetPolicy:
     'bounds': [0,20], # start and deadline times for the policy
     'weights_mode': 'manual_1',
     # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
-    'rewards_mode': 'det_actual_ap'
+    'rewards_mode': 'det_actual_ap',
     # det_actual_ap, entropy, auc_ap, auc_entropy
+    'blacklist': []
   }
 
   def get_config_name(self):
@@ -271,6 +272,7 @@ class DatasetPolicy:
     cls_filename = config.get_dp_clses_filename(self,train)
     if not force \
         and opexists(det_filename) and opexists(cls_filename):
+      print("Loading cached stuff!")
       dets_table = np.load(det_filename)[()]
       clses_table = np.load(cls_filename)[()]
       samples = None
@@ -355,12 +357,12 @@ class DatasetPolicy:
       print self.get_reshaped_weights()
 
     # Collect samples (parallelized)
-    num_samples = 200 # actually this refers to images
+    num_samples = 350 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
     error = threshold = 0.001
-    max_iterations = 8
+    max_iterations = 12
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
       weights = None
@@ -573,9 +575,12 @@ class DatasetPolicy:
     Return the index of the untaken action with the max value.
     Return -1 if all actions have been taken.
     """
-    if np.all(b.taken):
+    taken = copy.deepcopy(b.taken)
+    for ind in self.blacklist:
+      taken[ind] = 1
+    if np.all(taken):
       return -1
-    untaken_inds = np.flatnonzero(b.taken==0)
+    untaken_inds = np.flatnonzero(taken==0)
     max_untaken_ind = self.action_values[untaken_inds].argmax()
     return untaken_inds[max_untaken_ind]
 
@@ -587,6 +592,9 @@ class DatasetPolicy:
     - list of <s,a,r,s',dt> samples.
     """
     gt = image.get_ground_truth(include_diff=True)
+    for ind in self.blacklist:
+      gt = gt.filter_on_column('cls_ind',ind,op=operator.neq)
+
     self.tt.tic('run_on_image')
 
     all_detections = []
