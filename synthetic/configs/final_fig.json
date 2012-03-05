@@ -1,0 +1,21 @@
+{
+  "suffix": "mar4",
+  "detectors": ["csc_default"],
+  "policy_mode": ["fastinf"],
+  "weights_mode": ["greedy"], 
+  "rewards_mode": ["auc_ap"],
+  "label": "Fastinf dkjfsaldfkj"
+}
+{
+  "suffix": "mar4",
+  "detectors": ["csc_default"],
+  "policy_mode": ["fastinf"],
+  "weights_mode": ["manual_1"]
+}
+{
+  "suffix": "csc_greedy",
+  "detectors": ["csc_default"],
+  "policy_mode": ["fixed_order"],
+  "weights_mode": ["greedy"],
+  "rewards_mode": ["det_actual_ap"]
+}
