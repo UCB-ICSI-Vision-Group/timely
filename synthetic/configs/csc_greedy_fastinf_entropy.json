@@ -1,0 +1,7 @@
+{
+  "suffix": "csc_greedy",
+  "detectors": ["csc_default"],
+  "policy_mode": ["fastinf"],
+  "weights_mode": ["greedy"],
+  "rewards_mode": ["entropy"]
+}

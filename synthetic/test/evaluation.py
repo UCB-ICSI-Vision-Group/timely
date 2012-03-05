@@ -1,17 +1,29 @@
-import numpy as np
+from synthetic.common_imports import *
 
-import synthetic.util as ut
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.evaluation import Evaluation
 from synthetic.sliding_windows import SlidingWindows
+import synthetic.config as config
+import math
+
 
 class TestEvaluationPerfect:
+  def __init__(self):
+    self.csc_trainval = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'csc_trainval'), 'r'))
+    self.csc_test = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'csc_test'), 'r'))
+    self.ext_csc_test = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'ext_csc_test'), 'r'))
+    self.ext_csc_trainval = cPickle.load(open(os.path.join(config.get_ext_test_support_dir(), 'ext_csc_trainval'), 'r'))
+    self.d_train = Dataset('full_pascal_trainval')
+    self.trainval_gt = self.d_train.get_cls_ground_truth()
+    self.d_test = Dataset('full_pascal_test')
+    self.test_gt = self.d_test.get_cls_ground_truth()
+  
   def setup(self):
     train_dataset = Dataset('test_pascal_train',force=True)
     dataset = Dataset('test_pascal_val',force=True)
     self.dp = DatasetPolicy(dataset,train_dataset,detector='perfect')
-    self.evaluation = Evaluation(self.dp)
+    self.evaluation = Evaluation(self.dp)    
 
   def test_compute_pr_multiclass(self):
     cols = ['x','y','w','h','cls_ind','img_ind','diff'] 
@@ -91,3 +103,79 @@ class TestEvaluationPerfect:
     assert(np.all(correct_ap==ap))
     assert(np.all(correct_rec==rec))
     assert(np.all(correct_prec==prec))
+  
+  def test_compute_cls_map(self):
+    res = Evaluation.compute_cls_map(self.csc_trainval, self.trainval_gt)
+    assert(round(res,11) == 0.47206391958)
+    
+  def test_compute_cls_map_half(self):
+    table_csc_half = ut.Table()
+    table_csc_half.cols = list(self.csc_trainval.cols)
+    for _ in range(10):
+      rand_inds = np.random.permutation(range(5011))[:2500]
+      table_csc_half.arr = self.csc_trainval.arr[rand_inds,:]      
+      res = Evaluation.compute_cls_map(table_csc_half, self.trainval_gt)
+      assert(round(res,6) > .45)
+  
+  def test_compute_cls_map_gt(self):
+    res = Evaluation.compute_cls_map(self.trainval_gt, self.trainval_gt)
+    assert(round(res,6) == 1)
+    
+  def test_compute_cls_map_gt_half(self):
+    rand_inds = np.random.permutation(range(5011))[:2500]
+    table_gt_half = ut.Table()
+    table_gt_half.arr = np.hstack((self.trainval_gt.arr,np.array(np.arange(5011), ndmin=2).T))
+    table_gt_half.arr = table_gt_half.arr[rand_inds,:]
+    table_gt_half.cols = list(self.trainval_gt.cols) + ['img_ind']
+    res = Evaluation.compute_cls_map(table_gt_half, self.trainval_gt)
+    assert(round(res,6) == 1)
+  
+  def test_compute_cls_map_random_clf(self):
+    clf_table = ut.Table()
+    num_test = 10
+    ress = np.zeros((num_test,))
+    for idx in range(num_test):
+      clf_table.arr = np.hstack((np.random.rand(5011, 20),np.array(np.arange(5011), ndmin=2).T))
+      clf_table.cols = list(self.trainval_gt.cols) + ['img_ind']
+      res = Evaluation.compute_cls_map(clf_table, self.trainval_gt)
+      ress[idx] = res
+    assert(np.mean(ress) < 0.09)
+  
+  def test_other_scores(self):
+    print 'csc_test', Evaluation.compute_cls_map(self.csc_test, self.test_gt)
+    print 'csc_trainval', Evaluation.compute_cls_map(self.csc_trainval, self.trainval_gt)
+    
+    print 'ext_test', Evaluation.compute_cls_map(self.ext_csc_test, self.test_gt)
+    print 'ext_trainval', Evaluation.compute_cls_map(self.ext_csc_trainval, self.trainval_gt)
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_chi2_20')
+    ext_table_chi2_20 = cPickle.load(open(filename, 'r'))
+    print 'ext_chi2_20_test', Evaluation.compute_cls_map(ext_table_chi2_20, self.test_gt)    
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_chi2_20')
+    ext_table_chi2_20_tv = cPickle.load(open(filename, 'r'))
+    print 'ext_chi2_20_trainval', Evaluation.compute_cls_map(ext_table_chi2_20_tv, self.trainval_gt)
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_rbf_20')
+    ext_table_rbf_20 = cPickle.load(open(filename, 'r'))
+    print 'ext_rbf_20_test', Evaluation.compute_cls_map(ext_table_rbf_20, self.test_gt)    
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_rbf_20')
+    ext_table_rbf_20_tv = cPickle.load(open(filename, 'r'))
+    print 'ext_rbf_20_trainval', Evaluation.compute_cls_map(ext_table_rbf_20_tv, self.trainval_gt)
+       
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_test), 'dp', 'table_linear_20')
+    ext_linear_20_test = cPickle.load(open(filename, 'r'))
+    print 'ext_linear_test', Evaluation.compute_cls_map(ext_linear_20_test, self.test_gt)
+    
+    filename = os.path.join(config.get_ext_dets_foldname(self.d_train), 'dp', 'table_linear_20')
+    ext_table_linear_20 = cPickle.load(open(filename, 'r'))
+    print 'ext_linear_20_trainval', Evaluation.compute_cls_map(ext_table_linear_20, self.trainval_gt)    
+        
+    filename = 'tab_linear_5'
+    ext_tab_lin_5 = cPickle.load(open(filename, 'r'))
+    print 'ext_tab_lin_5_trainval', Evaluation.compute_cls_map(ext_tab_lin_5, self.trainval_gt)    
+        
+if __name__=='__main__':
+  tester = TestEvaluationPerfect()
+  tester.test_other_scores()

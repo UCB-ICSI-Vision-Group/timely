@@ -1,37 +1,22 @@
-""" Train SVMs based on different feature_type types
-@author: Tobias Baumgartner
-@contact: tobi.baum@gmail.com
-@date: 10-27-11
-"""
+from common_imports import *
+from common_mpi import *
+import synthetic.config as config
 
-import sys
-import os
-from time import *
-from mpi4py import MPI
 import scipy.cluster.vq as sp
 from sklearn import cluster
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
 import matplotlib.pyplot as plt
 from collections import Counter
-import pickle
 from string import atoi
-import numpy as np
 from numpy.numarray.numerictypes import Int
 from numpy.ma.core import ceil
 from scipy import io
 
-import synthetic.config as config
 from synthetic.extractor import Extractor
 from synthetic.dataset import Dataset
 from synthetic.pyramid import *
 import synthetic.util as ut
 from synthetic.jumping_windows import *
-
-#import Image, ImageDraw
- 
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
 
 def save_to_mat(filename, X, Y, testX):
   Y = Y.astype('float64')
@@ -56,57 +41,68 @@ def chi_square_kernel(x, y):
   """
   chi_sum = 0  
   for i in range(x.size):
-    if not (x[i] + y[i]) == 0 and not x[i] == y[i]: 
-      chi_sum += 2*(x[i] - y[i])**2/(x[i] + y[i])
+    if not (x[0, i] + y[0, i]) == 0 and not x[0, i] == y[0, i]: 
+      chi_sum += 2*(x[0, i] - y[0, i])**2/(x[0, i] + y[0, i])
+  
   return chi_sum
 
-def train_svm(x, y, kernel='chi2',C=1.0, gamma=0.0, probab=False):
+def train_svm(x, y, kernel='linear', C=100.0, gamma=0.0):
   """
   Train a svm.
   x - n x features data
   y - n x 1 labels
   kernel - kernel to be used in ['linear', 'rbf', 'chi2']
   """
+  probab=True # Never change this value!
   if kernel == 'chi2':
-    clf = SVC(kernel='precomputed',C=C)
+    clf = SVC(kernel='precomputed',C=C, probability=probab)
     gram = np.zeros((x.shape[0],x.shape[0]))
     t_gram = time.time()
+    inner_total = x.shape[0]**2/2
+    inner_act = 0
     for i in range(x.shape[0]):
       for j in range(x.shape[0]-i-1):
         j += i + 1
         kern = chi_square_kernel(x[i,:], x[j,:])
         gram[i,j] = kern
         gram[j,i] = kern
+        inner_act += 1
+        if inner_act%5000 == 0:
+          print '%d is in gram on: %d / %d'%(comm_rank, inner_act, inner_total)
+          print '\t%f seconds passed'%(time.time() - t_gram)
     t_gram = time.time() - t_gram
     print 'computed gram-matrix in',t_gram,'seconds'
     clf.fit(gram, y)
   elif kernel == 'rbf':
     clf = SVC(kernel=kernel, C=C, probability=probab, gamma=gamma)
     clf.fit(x, y)
-  elif kernel == 'linear':
-    clf = SVC(kernel=kernel, C=C, probability=probab)
+  elif kernel == 'poly':
+    clf = SVC(kernel=kernel, C=C, probability=probab, gamma=0, degree=2)
     clf.fit(x, y)
+  elif kernel == 'linear':
+    #clf = LinearSVC(C=C, class_weight='auto')
+    clf = SVC(C=C,probability=probab)
+    clf.fit(x, y, class_weight='auto')
   else:
-    raise RuntimeError("Unknown kernel passed to train_svm")  
+    raise RuntimeError("Unknown kernel passed to train_svm: %s"%kernel)  
   
   return clf
 
 def svm_predict(x, clf):
-  result = clf.decision_function(x)
-  return result
+  x = np.array(x, dtype='float')
+  result = clf.predict(x)
+  return (result+1)/2
 
 def svm_proba(x, clf):
+  # TODO: why is this method needed? Just call directly!
   return clf.predict_proba(x)
 
 def save_svm(model, filename):
-  dump = pickle.dumps(model)
-  f = open(filename, 'w')
-  f.write(dump)
-  f.close()
+  cPickle.dump(model, open(filename, 'w'))
 
 def load_svm(filename, probability=True):
   dump = open(filename).read()
-  model = pickle.loads(dump)
+  model = cPickle.loads(dump)
   return model
 
 def get_hist(assignments, M):
@@ -210,7 +206,7 @@ def train_with_hard_negatives(d, dtest,cbwords, cbsamps, codebook, cls, pos_tabl
     [test_pyrs, test_classification] = get_test_windows(testsize,dtest,e,\
                                           pyr_size,L,codebook,feature_type,cls,\
                                           pos_table.cols, randomize=randomize)
-    print 'node',mpi_rank,'training in round', i, 'with', np.sum(classification==1),'pos and',\
+    print 'node',comm_rank,'training in round', i, 'with', np.sum(classification==1),'pos and',\
       np.sum(classification == -1),'negs'
     print 'testing', test_pyrs.shape[0], 'new samples'
     print time.strftime('%m-%d %H:%M')
@@ -325,12 +321,12 @@ if __name__=='__main__':
 #  testsize = 1
 #  num_pos = 1
 
-  if mpi_rank == 0:
+  if comm_rank == 0:
     ut.makedirs(config.data_dir + 'features/' + feature_type + '/times/')
     ut.makedirs(config.data_dir + 'features/' + feature_type + '/codebooks/times/')
     ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/train_times/')
     
-  for cls_idx in range(mpi_rank, len(classes), mpi_size): 
+  for cls_idx in range(comm_rank, len(classes), comm_size): 
   #for cls in classes:
     cls = classes[cls_idx]
     codebook = e.get_codebook(d, feature_type)

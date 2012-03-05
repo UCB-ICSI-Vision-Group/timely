@@ -1,0 +1,6 @@
+{
+  "suffix": "csc_manual_1",
+  "detectors": ["csc_default"],
+  "policy_mode": ["fastinf"],
+  "weights_mode": ["manual_1"]
+}

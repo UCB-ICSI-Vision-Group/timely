@@ -90,6 +90,12 @@ class Image:
     counts[:bincount.size] = bincount
     return counts 
 
+  def get_cls_ground_truth(self,include_diff=False,include_trun=False):
+    counts = self.get_cls_counts(include_diff,include_trun)
+    z = np.zeros(counts.shape)
+    z[counts>0] = 1
+    return z
+
   def get_ground_truth(self, cls=None, include_diff=False, include_trun=True):
     """
     Return Table of ground truth.

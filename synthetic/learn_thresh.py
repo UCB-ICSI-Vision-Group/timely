@@ -3,18 +3,13 @@ Created on Nov 21, 2011
 
 @author: Tobias Baumgartner
 '''
-
-import numpy as np
-from mpi4py import MPI
-import os
+from common_imports import *
+from common_mpi import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
-import synthetic.config as config
-from synthetic.classifier import Classifier
 
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
+from synthetic.classifier import Classifier
 
 if __name__=='__main__':
   
@@ -29,7 +24,7 @@ if __name__=='__main__':
   csc_train = csc_train.subset(['score', 'cls_ind', 'img_ind'])
   score = csc_train.subset(['score']).arr
   classif = Classifier()
-  csc_train.arr = classif.normalize_scores(csc_train.arr)
+  csc_train.arr = classif.normalize_dpm_scores(csc_train.arr)
 
   numpos = train_dataset.get_ground_truth().shape()[0]
   
@@ -40,7 +35,7 @@ if __name__=='__main__':
   
   result_file = open(result_filename, 'a')
   threshs = np.array([0.15])
-  for thrindex in range(mpi_rank, threshs.shape[0], mpi_size):
+  for thrindex in range(comm_rank, threshs.shape[0], comm_size):
     
     for cls in range(len(classes)):
       

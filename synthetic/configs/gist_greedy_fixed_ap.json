@@ -1,0 +1,7 @@
+{
+  "suffix": "csc_gist_rlreg",
+  "detectors": ["gist"],
+  "policy_mode": ["fixed_order"],
+  "weights_mode": ["rl_regression"],
+  "rewards_mode": ["det_actual_ap"]
+}

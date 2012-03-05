@@ -12,17 +12,12 @@ from sklearn.cross_validation import KFold
 from synthetic.image import Image
 import itertools
 
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
-
 class ClassifierConfig():
   def __init__(self, dataset, L, numfolds=4):
     self.d = Dataset(dataset)
     self.e = Extractor()
     self.dense_codebook = self.e.get_codebook(self.d, 'dsift')
     self.sparse_codebook = self.e.get_codebook(self.d, 'sift')
-    self.tictocer = TicToc()
     self.L = L
     self.numfolds = numfolds
     
@@ -92,7 +87,7 @@ def train_all_svms(cc, Cs, gammas, numfolds=4):
   cc.d.create_folds(numfolds)
   all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
 
-  for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
+  for set_idx in range(comm_rank, len(Cs)*len(gammas), comm_size): # Parallel
     curr_set = all_settings[set_idx]
     C = curr_set[0]
     gamma = curr_set[1]
@@ -104,16 +99,16 @@ def train_all_svms(cc, Cs, gammas, numfolds=4):
     cc.d.create_folds(numfolds)
 
 
-def cross_valid_training(cc, Cs, gammas, numfolds=4):
-  train_all_svms(cc, Cs, gammas, numfolds=numfolds)
+def cross_valid_training(cc, Cs, gammas, numfolds=4, train=True):
+  if train:
+    train_all_svms(cc, Cs, gammas, numfolds=numfolds)
   
-  all_settings = list(itertools.product(Cs, gammas,cc.d.classes))
+  all_settings = list(itertools.product(Cs, gammas))
 
-  for set_idx in range(mpi_rank, len(Cs)*len(gammas), mpi_size): # Parallel
+  for set_idx in range(comm_rank, len(all_settings), comm_size): # Parallel
     curr_set = all_settings[set_idx]
     C = curr_set[0]
     gamma = curr_set[1]
-    cls = curr_set[2]
     class_corr = 0
     overall = 0
         
@@ -226,18 +221,18 @@ def train_image_classify_svm(cc, cls, C=1.0, gamma=0.0, force_new=False):
   else:
     print 'Don\'t compute SVM, no examples given'
   
-  print 'training all classifier SVMs took:', cc.tictocer.toc('overall', quiet=True), 'seconds on', mpi_rank
+  print 'training all classifier SVMs took:', cc.tictocer.toc('overall', quiet=True), 'seconds on', comm_rank
   
-def classify_image(cc, img, C=1.0, gamma=0.0, cls=None):
+def classify_image(cc, img_idx, C=1.0, gamma=0.0, cls=None):
   """
-  Input: ClassifierConfig, img
+  Input: ClassifierConfig, img_idx
   Output: Score for given class; 20list of scores if cls=None
   """
-  feat_vect = get_feature_vector(cc, img)
+  feat_vect = get_feature_vector(cc, img_idx)
   if cls == None:
     score = {}
     for cls_idx, cls in enumerate(cc.d.classes):
-      print '\tclassify %s for %s on %d'%(cc.d.images[img].name, cls, comm_rank)
+      print '\tclassify %s for %s on %d'%(cc.d.images[img_idx].name, cls, comm_rank)
       path = config.get_classifier_svm_name(cls, C, gamma)
       if os.path.exists(path):
         clf = load_svm(path)
@@ -253,8 +248,8 @@ def classify_all_images(cc):
   """
   print 'Classify images'
   images = cc.d.images
-  for img_idx in range(mpi_rank, len(images), mpi_size): # PARALLEL
-    print 'classify image %d/%d at %d'%(img_idx/mpi_size, len(images)/mpi_size, comm_rank)
+  for img_idx in range(comm_rank, len(images), comm_size): # PARALLEL
+    print 'classify image %d/%d at %d'%(img_idx/comm_size, len(images)/comm_size, comm_rank)
     img = images[img_idx]
     scores = classify_image(cc, img_idx)
     savefile = config.get_classifier_score_name(img, cc.L)
@@ -283,8 +278,8 @@ if __name__=='__main__':
   Cs = [1, 2, 5, 10, 50, 100, 200, 500]
   gammas = [0, 0.4, 0.8, 1.2, 2.0, 2.4, 3.0]
   
-  train_all_svms(cc, Cs, gammas, numfolds=4)
-  #cross_valid_training(cc, Cs, gammas, numfolds)
+  #train_all_svms(cc, Cs, gammas, numfolds=4)
+  cross_valid_training(cc, Cs, gammas, numfolds, train=False)
 #  gt = get_gt_classification(cc, [0,1])
 #  classific = -np.ones(gt.shape)
 #  

@@ -2,12 +2,12 @@ from abc import abstractmethod
 from scipy.stats import beta
 
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
-import synthetic.config as config
 from synthetic.sliding_windows import WindowParams
 
-class Detector:
+class Detector(object):
   """
   Detector takes an image and outputs list of bounding boxes and
   confidences for its class.
@@ -18,20 +18,48 @@ class Detector:
 
   DEFAULT_CONFIG = {
     'avg_time': 10 # in seconds, specified w.r.t Detector.AVG_IMAGE_SIZE
-    }
+  }
 
   @classmethod
   def get_cols(cls):
     return ['x','y','w','h','score']
 
-  def __init__(self, dataset, cls, detector_config=None):
+  def __init__(self, dataset, train_dataset, cls, detname='perfect', detector_config=None):
     self.dataset = dataset
+    self.train_dataset = train_dataset
     self.cls = cls
     self.cls_ind = dataset.get_ind(cls)
+    self.detname = detname
+    self.tt = ut.TicToc()
 
-    if not detector_config:
-      detector_config = Detector.DEFAULT_CONFIG
-    self.config = detector_config
+    # Check if configs exist and look up the correct config for this detname and cls
+    # TODO: this is inefficient because this file is re-opened for every class
+    loaded_detector_config = None 
+    fname = opjoin(config.get_dets_configs_dir(train_dataset),detname+'.txt')
+    if opexists(fname):
+      with open(fname) as f:
+        configs = json.load(f)
+      config_name = detname+'_'+cls
+      if config_name in configs:
+        loaded_detector_config = configs[config_name]
+    self.config = loaded_detector_config
+    if not self.config:
+      self.config = Detector.DEFAULT_CONFIG
+    if detector_config:
+      self.config.update(detector_config)
+
+  def get_observations(self,image):
+    """
+    Return a dict of
+    - dets
+    - score
+    """
+    dets, dt_dets = self.detect(image)
+    score, dt_score = self.compute_score(image)
+    dt = dt_dets+dt_score
+    return {'dets': dets, 'dt_dets': dt_dets,
+            'score': score, 'dt_score': dt_score,
+            'dt': dt}
 
   @abstractmethod
   def detect(self, image):
@@ -43,14 +71,15 @@ class Detector:
     """
     # Implement in specific detectors
 
-  def compute_posterior(self, image, dets, oracle=True):
+  def compute_score(self, image, oracle=True):
     """
-    Return the predicted posterior of the class being present in the image,
-    given the detections.
+    Return a tuple of
+    - classification score for the image, which generated the provided dets.
+    - time it took
     This implementation returns the ground truth answer to the question of
     object presence--so it's a 100% accurate classifier.
     """
-    return image.contains_cls_ind(self.cls_ind)
+    return (image.contains_cls_ind(self.cls_ind), 0)
 
   def expected_naive_ap(self):
     """
@@ -134,15 +163,19 @@ class Detector:
     return dets[pick,:]
 
 class SWDetector(Detector):
-  """A detector that must be initialized with a sliding window generator."""
-  def __init__(self, dataset, cls, sw_generator, detector_config=None):
-    Detector.__init__(self,dataset,cls,detector_config)
+  """
+  A detector that must be initialized with a sliding window generator.
+  Perfect classification performance.
+  """
+
+  def __init__(self, dataset, train_dataset, cls, sw_generator, detector_config=None):
+    Detector.__init__(self,dataset,train_dataset,cls,detector_config)
     self.sw = sw_generator
 
 class PerfectDetector(Detector):
   """
-  An idealized detector modeled by its classification accuracy given
-  detections, and predicted reward given prior on class presence.
+  An idealized detector that returns ground truth.
+  Perfect classification performance.
   """
 
   def detect(self, image):
@@ -157,7 +190,10 @@ class PerfectDetectorWithNoise(SWDetector):
   """
   Basically PerfectDetector with additional false positives and false
   negatives, generated randomly according to a couple of parameters.
+  Still perfect classification!
   """
+
+  # TODO: detname in __init__ is wrong here
 
   def detect(self, image):
     """
@@ -185,4 +221,3 @@ class PerfectDetectorWithNoise(SWDetector):
       score = np.random.beta(1,2)
       dets.append(np.hstack((window, score)))
     return (np.array(dets), self.expected_time(image))
-

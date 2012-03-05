@@ -3,26 +3,20 @@ window candidate selection
 @author: Tobias Baumgartner
 @contact: tobibaum@gmail.com
 """
+from common_imports import *
+from common_mpi import *
+import synthetic.config as config
 
-import cPickle
-import numpy as np
 import Image
-import os as os
-import synthetic.util as ut
-from mpi4py import MPI
 from numpy.numarray.numerictypes import Int
 import scipy.io as sio
 from os.path import join
 
 from synthetic.extractor import Extractor
 from synthetic.dataset import Dataset
-import synthetic.config as config
+
 from numpy.ma.core import ceil
 from synthetic.mean_shift import MeanShiftCluster
-
-comm = MPI.COMM_WORLD
-mpi_rank = comm.Get_rank()
-mpi_size = comm.Get_size()
 
 # -------------------------------------------------- RootWindow
 class RootWindow():
@@ -505,7 +499,7 @@ if __name__=='__main__':
     foldname_lookup = join(basedir, 'lookup')
     ut.makedirs(foldname_det)
     
-    print 'start testing on node', mpi_rank
+    print 'start testing on node', comm_rank
     dtest = Dataset('full_pascal_test')
     #for cls_idx, cls in enumerate(all_classes):
     for cls_idx, cls in enumerate([all_classes[0]]):
@@ -526,7 +520,7 @@ if __name__=='__main__':
       #test_imgs = np.unique(test_imgs)
       test_imgs = np.unique(test_imgs)[:1]
           
-      for i in range(mpi_rank, len(test_imgs), mpi_size):
+      for i in range(comm_rank, len(test_imgs), comm_size):
         img_ind = int(test_imgs[i])
         image = dtest.images[img_ind]
         codes = e.get_assignments(np.array([0,0,100000,100000]), 'sift', codebook, image)

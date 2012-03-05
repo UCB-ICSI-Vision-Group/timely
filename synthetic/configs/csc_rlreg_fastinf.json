@@ -1,0 +1,7 @@
+{
+  "suffix": "csc_rlreg",
+  "detectors": ["csc_default"],
+  "policy_mode": ["fastinf"],
+  "weights_mode": ["rl_regression"],
+  "rewards_mode": ["det_actual_ap"]
+}

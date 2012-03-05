@@ -3,10 +3,11 @@ from sklearn.cross_validation import KFold
 
 from common_mpi import *
 from common_imports import *
-
 import synthetic.config as config
+
 from synthetic.image import *
 from synthetic.sliding_windows import SlidingWindows
+from synthetic import config
 
 class Dataset:
   """
@@ -82,7 +83,7 @@ class Dataset:
     tt = ut.TicToc().tic()
     print("Dataset: %s"%name),
     filename = config.get_cached_dataset_filename(name)
-    if opexists(filename):
+    if opexists(filename) and not force:
       with open(filename) as f:
         cached = cPickle.load(f)
         self.classes = cached.classes

@@ -9,12 +9,13 @@ import matplotlib.pyplot as plt
 
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.evaluation import Evaluation
 from synthetic.sliding_windows import SlidingWindows 
-import synthetic.config as config
+
 from synthetic.extractor import Extractor
 from synthetic.training import *
 from synthetic.jumping_windows import JumpingWindowsDetector,LookupTable,RootWindow
@@ -125,7 +126,7 @@ def main():
 #               'boat',  'cow',       'person',    'tvmonitor',\
 #               'bottle','diningtable',  'pottedplant',\
 #               'bus','dog'     ,'sheep']
-    for cls_idx in range(mpi_rank, len(classes), mpi_size):
+    for cls_idx in range(comm_rank, len(classes), comm_size):
     #for cls in dataset.classes:
       cls = classes[cls_idx]
       dirname = config.get_jumping_windows_dir(dataset.get_name())
@@ -165,12 +166,12 @@ def main():
      
     kernel = args.kernel
     
-    if mpi_rank == 0:
+    if comm_rank == 0:
       ut.makedirs(config.data_dir + 'features/' + feature_type + '/times/')
       ut.makedirs(config.data_dir + 'features/' + feature_type + '/codebooks/times/')
       ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/train_times/')
       
-    for cls_idx in range(mpi_rank, len(classes), mpi_size): 
+    for cls_idx in range(comm_rank, len(classes), comm_size): 
     #for cls in classes:
       cls = classes[cls_idx]
       codebook = e.get_codebook(d, feature_type)
@@ -282,7 +283,7 @@ def main():
       codebook = e.get_codebook(d, feature_type)  
       print 'codebook loaded'
       
-      for img_ind in range(mpi_rank,len(d.images),mpi_size):
+      for img_ind in range(comm_rank,len(d.images),comm_size):
         img = d.images[img_ind]
       #for img in d.images:
         e.get_assignments(np.array([0,0,img.size[0],img.size[1]]), feature_type, \

@@ -1,9 +1,9 @@
 from common_imports import *
+import synthetic.config as config
 
 from synthetic.classifier import Classifier
 from synthetic.training import load_svm
 from synthetic.dataset import Dataset
-import synthetic.config as config
 
 class DPMClassifier(Classifier):
   def __init__(self,suffix=''):
@@ -34,7 +34,7 @@ if __name__=='__main__':
   dpm_train = dpm_train[()]  
   dpm_train = dpm_train.subset(['score', 'cls_ind', 'img_ind'])
   dpm_classif = DPMClassifier()
-  dpm_train.arr = dpm_classif.normalize_scores(dpm_train.arr)
+  dpm_train.arr = dpm_classif.normalize_dpm_scores(dpm_train.arr)
   
   val_set = 'full_pascal_val'
   test_dataset = Dataset(val_set)  
@@ -43,7 +43,7 @@ if __name__=='__main__':
   dpm_test = np.load(filename)
   dpm_test = dpm_test[()]  
   dpm_test = dpm_test.subset(['score', 'cls_ind', 'img_ind'])
-  dpm_test.arr = dpm_classif.normalize_scores(dpm_test.arr) 
+  dpm_test.arr = dpm_classif.normalize_dpm_scores(dpm_test.arr) 
   
   lowers = [0.,0.2,0.4]
   uppers = [1.,0.8,0.6]
@@ -63,7 +63,7 @@ if __name__=='__main__':
     intervals = params[3]
     cls_idx = params[4]
     C = params[5]
-    dpm_classif.train_for_all_cls(train_dataset, dpm_train,intervals,kernel, lower, upper, cls_idx, C)
+    dpm_classif.train_for_cls(train_dataset, dpm_train,intervals,kernel, lower, upper, cls_idx, C)
     dpm_classif.test_svm(test_dataset, dpm_test, intervals,kernel, lower, upper, cls_idx, C)
   
   
