@@ -308,7 +308,7 @@ def run_fastinf_different_settings(d, ms, rs, suffixs):
     elif suffix == 'GIST_CSC':
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
       if not os.path.exists(filename_csc):
-        raise RuntimeWarning('The csc classification could not be loaded')
+        raise RuntimeWarning('The csc classification could not be loaded from %s'%filename_csc)
       orig_table = cPickle.load(open(filename_csc,'r'))
       if isinstance(orig_table, ut.Table):
         orig_table = orig_table.arr[:,:-1]
@@ -318,8 +318,10 @@ def run_fastinf_different_settings(d, ms, rs, suffixs):
       
       second_table = gist_classify_dataset(d)      
       sec_bounds, second_table = discretize_table(second_table, num_bins)      
-      store_bound(d, 'GIST', sec_bounds)  
-    
+      store_bound(d, 'GIST', sec_bounds)
+      
+      full_bound = np.hstack((sec_bounds, bounds))
+      store_bound(d, 'GIST_CSC', full_bound)
     if suffix == 'GIST' or suffix == 'CSC':
       store_bound(d, suffix, bounds)
     
@@ -382,7 +384,7 @@ def run_all_in_3_parts():
 
 def run_fastinf_for_dataset(dataset):
   
-  suffixs = [ 'GIST', 'GIST_CSC']
+  suffixs = ['GIST_CSC', 'GIST']
   ms = ['0', '2', '5']
   rs = ['', '0.5', '1']
   

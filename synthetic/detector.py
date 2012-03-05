@@ -30,6 +30,7 @@ class Detector(object):
     self.cls = cls
     self.cls_ind = dataset.get_ind(cls)
     self.detname = detname
+    self.tt = ut.TicToc()
 
     # Check if configs exist and look up the correct config for this detname and cls
     # TODO: this is inefficient because this file is re-opened for every class

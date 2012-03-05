@@ -146,8 +146,8 @@ class DatasetPolicy:
       elif detector=='gist':
         for cls in self.dataset.classes:
           gist_table = np.load(config.get_gist_dict_filename(self.dataset))
-          det = GistClassifier(cls, self.dataset.name,gist_table)
-          self.actions.append(ImageAction('%s_%s'%(detector,cls), det))
+          det = GistClassifier(cls, self.train_dataset,gist_table, self.dataset)
+          actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
       # real detectors, with pre-cached detections
       elif detector in ['dpm','csc_default','csc_half']:
@@ -299,12 +299,12 @@ class DatasetPolicy:
     final_samples = comm.reduce(all_samples, op=MPI.SUM, root=0)
     #if self.inference_mode=='fastinf':
       # all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
-
     # Save if root
     if comm_rank==0:
       dets_table = ut.Table(cols=self.get_det_cols())
       final_dets = [det for det in final_dets if det.shape[0]>0]
-      dets_table.arr = np.vstack(final_dets)
+      if not len(final_dets) == 0:
+        dets_table.arr = np.vstack(final_dets)
       clses_table = ut.Table(cols=self.get_cls_cols())
       clses_table.arr = np.vstack(final_clses)
       print("Found %d dets"%dets_table.shape()[0])
@@ -616,10 +616,10 @@ class DatasetPolicy:
       sample.state = b.compute_full_feature()
       sample.action_ind = action_ind
       
-      # Take the action and get the observations as a dict
-      action = self.actions[action_ind]
+      # Take the action and get the observations as a dict      
+      action = self.actions[action_ind]      
       obs = action.obj.get_observations(image)
-
+      
       # If observations include detections, compute the relevant
       # stuff for the sample collection
       sample.det_naive_ap = 0
@@ -703,7 +703,8 @@ class DatasetPolicy:
 
     # now construct the final dets array, with correct times
     times = [s.dt for s in samples]
-    assert(len(all_detections)==len(all_clses)==len(times))
+    
+    #assert(len(all_detections)==len(all_clses)==len(times))
     cum_times = np.cumsum(times)
     all_times = []
     all_nonempty_detections = []

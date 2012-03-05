@@ -72,7 +72,7 @@ if __name__=='__main__':
     kernel = setin[0]
     C = setin[1]
     
-    train_csc_svms(d_train, d_val, kernel, C)
+    #train_csc_svms(d_train, d_val, kernel, C)
     safebarrier(comm)
     table_arr = test_csc_svm(d_train, d_val)
     

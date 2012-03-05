@@ -199,8 +199,8 @@ def get_ext_test_support_dir():
 gist_dir = makedirs(join(res_dir, 'gist_features'))
 
 # results/gist_features/full_pascal_trainval.npy
-def get_gist_dict_filename(dataset_name):
-  return join(gist_dir, dataset_name + '.npy')
+def get_gist_dict_filename(dataset):
+  return join(gist_dir, dataset.name + '.npy')
 
 def get_gist_svm_dirname(dataset):
   return makedirs(join(res_dir, 'gist_svm', dataset.name))

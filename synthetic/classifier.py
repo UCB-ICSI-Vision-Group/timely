@@ -38,12 +38,11 @@ class Classifier(object):
   def save_svm(self, model, filename):
     save_svm(model, filename)
               
-  def get_observation(self, image):
+  def get_observations(self, image):
     """
     Get the score for given image.
     """
     observation = {}
-    self.tt.tic()
     score = self.get_score(image)
     
     observation['score'] = score

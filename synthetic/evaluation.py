@@ -80,11 +80,16 @@ class Evaluation:
       gt_for_image_list = []
       img_dets_list = []
       gt = self.dataset.get_ground_truth(include_diff=True)
+
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
-        img_dets_list.append(dets.filter_on_column('img_ind',img_ind))
-
-      points = self.determine_time_points(dets,bounds)
+        detections = dets.filter_on_column('img_ind',img_ind)
+        img_dets_list.append(detections)
+      
+      if dets.is_empty():
+        points = np.zeros(self.time_intervals)
+      else:
+        points = self.determine_time_points(dets,bounds)
       num_points = points.shape[0]
       det_arr = np.zeros((num_points,3))
       cls_arr = np.zeros((num_points,3))
@@ -155,8 +160,10 @@ class Evaluation:
     else:
       if not dets:
         dets,clses,samples = self.dp.run_on_dataset()
-
-      points = self.determine_time_points(dets,bounds)
+      if dets.is_empty():
+        points = np.zeros(self.time_intervals)
+      else:
+        points = self.determine_time_points(dets,bounds)
       num_points = points.shape[0]
       cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       det_arr = np.zeros((num_points,2))

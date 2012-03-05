@@ -11,20 +11,19 @@ class GistClassifier(Classifier):
   """
   Compute a likelihood-vector for the classes given a (precomputed) gist detection
   """
-  def __init__(self, cls, train_d, gist_table=None, d_val=None):
+  def __init__(self, cls, train_d, gist_table=None, val_d=None):
     """ 
     Load all gist features right away
     """
     self.train_d = train_d
-    dataset_name = self.train_d.name
-    self.val_d = d_val
+    self.val_d = val_d
       
     Classifier.__init__(self)
     
     self.tt.tic()
     if gist_table == None:
       print("Started loading GIST")
-      self.gist_table = np.load(config.get_gist_dict_filename(dataset_name))
+      self.gist_table = np.load(config.get_gist_dict_filename(train_d))
       print("Time spent loading gist: %.3f"%self.tt.qtoc())
     else:
       self.gist_table = gist_table    
@@ -42,7 +41,11 @@ class GistClassifier(Classifier):
     return scores
     
   def get_score(self, img):
-    return self.get_proba(img)[0][1]
+    image = self.val_d.get_image_by_filename(img.name)
+    index = self.val_d.get_img_ind(image)
+    gist = np.array(self.gist_table[index])
+    score = svm_proba(gist, self.svm)[0,1] 
+    return score
         
   def load_svm(self):
     filename = config.get_gist_svm_filename(self.cls,self.train_d)
@@ -55,16 +58,10 @@ class GistClassifier(Classifier):
         print 'could not load svm. Probably we are in crossvalidation and there is much going on'
         svm = None 
     else:
-      print 'gist svm for',self.cls,'does not exist'
+      print 'gist svm for',self.cls,'does not exist at %s'%filename
       svm = None
     return svm
-    
-  def get_proba(self, img):
-    image = self.dataset.get_image_by_filename(img.name)
-    index = self.dataset.get_img_ind(image)
-    gist = np.array(self.gist_table[index])
-    return svm_proba(gist, self.svm)
-       
+         
   def get_gists_for_imgs(self, imgs, dataset):
     images = dataset.images
     num = imgs.size
@@ -173,14 +170,15 @@ def gist_classify_dataset(d):
   print savefile
   if os.path.exists(savefile):
     return cPickle.load(open(savefile, 'r'))
-  
+    None
+    
   for cls_idx in range(comm_rank, len(classes), comm_size):
     cls = classes[cls_idx]
     
     savefile = config.get_gist_fastinf_table_name(d, cls)
     if os.path.exists(savefile):
       table = cPickle.load(open(savefile,'r'))
-      continue    
+      continue
     gist = GistClassifier(cls, d)
     table[:,cls_idx] = gist.classify_dataset()        
     cPickle.dump(table, open(savefile,'w'))
