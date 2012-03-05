@@ -80,6 +80,7 @@ class Evaluation:
       gt = self.dataset.get_ground_truth(include_diff=True)
       for black in blacklist:
         gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
+      # TODO: SOMETHING IS PROBABLY WRONG HERE
 
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
@@ -177,6 +178,7 @@ class Evaluation:
       num_points = points.shape[0]
       cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       
+      # TODO: WRONG, REMOVE COLS INSTEAD
       for black in blacklist:
         cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.ne)
         
