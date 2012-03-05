@@ -1,16 +1,30 @@
-\section{Evaluation} \label{sec:evaluation}
-
-\todo{Describe random, oracle, and then go through our experimental settings.}
-
 \begin{figure}[h!]
 \centering
-\subfloat[Detection]{\includegraphics[width=0.78\linewidth]
+\subfloat[Detection]{\includegraphics[width=0.68\linewidth]
     {figures/manual_plots_det_avg.png}} \\
-\subfloat[Classification]{\includegraphics[width=0.78\linewidth]
+\subfloat[Classification]{\includegraphics[width=0.68\linewidth]
     {figures/manual_plots_cls_whole.png}}
   \caption{Heuristic value function.}
   \label{fig:results_manual}
 \end{figure}
+
+\section{Evaluation} \label{sec:evaluation}
+
+To summarize, we evaluate our system in the multi-class, multi-label detection and classification regime.
+We evaluate on the PASCAL VOC 2007 dataset: training on the training and validation data and testing on the test set.
+We run our policies on all images in the test set, cutting off execution at $T_d$.
+
+To evaluate performance at a given time, we gather all detections and the classification answers found to this point in all the recognition episodes.
+As described before, we evaluate detection performance by averaging per-image performance in the multi-class regime.
+We evaluate classification performance by pooling the ground truth across the dataset, in standard procedure.
+
+We establish the baseline performance of our system by selecting actions randomly at each step.
+The time setting for our evaluation is $T_s=0$, $T_d=20$ (in seconds).
+As shown in Figure~\ref{fig:results_manual}, the random policy results in a roughly linear gain of performance vs. time.
+
+To establish an upper bound on performance, we also plot the Oracle curve, obtained by re-ordering the actions with the hindsight of the results they produced.
+Note that the curves turn downward in this setting: this is due to the different performance levels of the detectors: as the weaker detectors are inevitably run, they introduce more false positives and false negatives than true positives.
+
 
 \todo{How do the different reward functions affect performance?}
 
