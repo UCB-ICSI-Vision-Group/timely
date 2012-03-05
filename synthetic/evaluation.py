@@ -79,7 +79,7 @@ class Evaluation:
       img_dets_list = []
       gt = self.dataset.get_ground_truth(include_diff=True)
       for black in blacklist:
-        gt = gt.filter_on_column('cls_ind', black, op=operator.neq)
+        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
 
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
@@ -178,7 +178,7 @@ class Evaluation:
       cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       
       for black in blacklist:
-        cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.neq)
+        cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.ne)
         
       det_arr = np.zeros((num_points,2))
       cls_arr = np.zeros((num_points,2))
@@ -354,7 +354,7 @@ class Evaluation:
       cls_dets = dets.filter_on_column('cls_ind',cls_ind)
       cls_gt = self.dataset.get_ground_truth_for_class(cls,include_diff=True)
       for black in blacklist:
-        cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.neq)
+        cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.ne)
       dist_aps[cls_ind] = self.compute_and_plot_pr(cls_dets, cls_gt, cls, force)
     aps = None
     if comm_rank==0:
@@ -367,7 +367,7 @@ class Evaluation:
       # Multi-class
       gt = self.dataset.get_ground_truth(include_diff=True)
       for black in blacklist:
-        gt = gt.filter_on_column('cls_ind', black, op=operator.neq)
+        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
       filename = opjoin(self.results_path, 'pr_whole_multiclass')
       if force or not opexists(filename):
         print("Evaluating %d dets in the multiclass setting..."%dets.shape()[0])

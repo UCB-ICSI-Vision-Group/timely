@@ -596,7 +596,7 @@ class DatasetPolicy:
     """
     gt = image.get_ground_truth(include_diff=True)
     for ind in self.blacklist:
-      gt = gt.filter_on_column('cls_ind',ind,op=operator.neq)
+      gt = gt.filter_on_column('cls_ind',ind,op=operator.ne)
 
     self.tt.tic('run_on_image')
 
