@@ -78,9 +78,9 @@ class Evaluation:
       gt_for_image_list = []
       img_dets_list = []
       gt = self.dataset.get_ground_truth(include_diff=True)
+      
       for black in blacklist:
-        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
-      # TODO: SOMETHING IS PROBABLY WRONG HERE
+        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)   
 
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
@@ -179,9 +179,10 @@ class Evaluation:
       cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
       
       # TODO: WRONG, REMOVE COLS INSTEAD
+      cls_gt_classes = list(cls_gt.cols)
       for black in blacklist:
-        cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.ne)
-        
+        cls_gt = cls_gt.with_column_omitted(cls_gt_classes[black])
+
       det_arr = np.zeros((num_points,2))
       cls_arr = np.zeros((num_points,2))
       for i in range(comm_rank,num_points,comm_size):
@@ -308,14 +309,14 @@ class Evaluation:
           plt.fill_between(times,vals-stdevs,vals+stdevs,color='#4084ff',alpha=0.3)
       else:
         vals = table.subset_arr('ap')
-      auc = Evaluation.compute_auc(times,vals,bounds)
+      auc = Evaluation.compute_auc(times,vals,bounds)/float(bounds[1]-bounds[0])
 
       high_bound_val = vals[-1]
       if bounds != None:
         high_bound_val = vals[times.tolist().index(bounds[1])]
       
       if not plot_infos == None and "label" in plot_infos[i]:
-        label = str(plot_infos[i]["label"])
+        label = '%s: %.2f'%(str(plot_infos[i]["label"]), auc)
       else:
         label = "(%.2f, %.2f) %s"%(auc,high_bound_val,table.name)
       
@@ -355,8 +356,9 @@ class Evaluation:
       cls = self.dataset.classes[cls_ind] 
       cls_dets = dets.filter_on_column('cls_ind',cls_ind)
       cls_gt = self.dataset.get_ground_truth_for_class(cls,include_diff=True)
+      cls_gt_classes = list(cls_gt.cols)
       for black in blacklist:
-        cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.ne)
+        cls_gt = cls_gt.with_column_omitted(cls_gt_classes[black])
       dist_aps[cls_ind] = self.compute_and_plot_pr(cls_dets, cls_gt, cls, force)
     aps = None
     if comm_rank==0:
