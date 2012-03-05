@@ -35,13 +35,13 @@ Our goal is a general recognition policy that outputs both classification and de
   \label{fig:pomdp}
 \end{figure}
 
-Our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs $\{\emph{classify}(1), \dots, \emph{classify}(K)\}$ and a list of multi-class detection results $\emph{detect}(I)$.
+As presented in Figure~\ref{fig:pomdp}, our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs $\{\emph{classify}(1), \dots, \emph{classify}(K)\}$ and a list of multi-class detection results $\emph{detect}(I)$.
 
 The policy repeatedly selects an action $a_i$ from a set of actions $\mathcal{A}$, executes it, potentially receives an observation $o_i$, and selects the next action.
 The set of actions can include classifiers, detectors, or hybrid actions (detector followed by classification of its output).
 
 A dynamic, or ``closed-loop,'' policy bases action selection on observations received from previous actions, exploiting the signal in inter-object and scene context for a maximally efficient path through the actions.
-This is our goal, and what sets our formulation apart from multi-class systems that evaluate in a fixed order, such as simple cascades \cite{Viola2001} or \todo{add another one}.
+This is our goal, and what sets our formulation apart from multi-class systems that evaluate in a fixed order, such as simple cascades \cite{Viola2001} or decision trees.
 
 Let $\mathcal{A}$ consist of $K$ detectors $L^\text{det}_i$.
 We use one-vs-all deformable part-model classifiers on a HOG featurization of the image \cite{Felzenszwalb2010a}, with associated linear classification of the detections.
@@ -59,7 +59,7 @@ We take the empirical approach: every executed action advances $t$, the \emph{ti
 
 As shown in Figure~\ref{fig:evaluation}, the system is given two times: the setup time $T_s$ and deadline $T_d$.
 From the setup time to the deadline, we want to obtain the best possible answer if stopped at any given time.
-This corresponds to the general notion of Anytime algorithms, and is motivated by desired flexibility in the system.
+This corresponds to the general notion of \emph{Anytime} algorithms, and is motivated by desired flexibility in the system.
 
 A single-number metric that corresponds to this objective is simply the ratio of the area captured under the curve to the total area between the start and deadline bounds.
 \comment{Just like the metric of Average Precision itself was motivated by the inadequacy of any single Precision-Recall operating point to describe the performance of a robust system, our proposed metric is motivated by the inadequacy of any single Performance vs. Time operating point.}
@@ -96,10 +96,10 @@ Our notation is summarized in \autoref{tab:notation}.
   $T_s$, $T_d$  & start and deadline times \\ 
   $b^j$         & belief state at step $j$ \\ 
   $\pi$         & policy function, $b \mapsto a \in \mathcal{A}$ \\
-  $\mathcal{A}$ & set of actions $a_i \in \{\mathcal{L} \cup \mathcal{F}\}$\\ 
-  $\mathcal{F}$ & set of featurization actions \\
-  $\mathcal{L}$ & set of classification actions\\
-  $o_i$         & a real-valued observation upon executing $a_i \in \mathcal{L}$\\
+  $\mathcal{A}$ & set of actions $a$\\ 
+  \comment{$\mathcal{F}$ & set of featurization actions \\}
+  \comment{$\mathcal{L}$ & set of classification actions\\}
+  $o_i$         & a real-valued observation upon executing $a_i \in \mathcal{A}$\\
   $\mathcal{O}$ & set of executed actions\\
   $\mathbf{o}$  & set of observations $\{o_i | a_i \in \mathcal{O}\}$\\
   $c(a_i)$        & cost of executing $a_i$, in units of $t$\\
@@ -200,7 +200,7 @@ Accordingly, we formulate per-action rewards such that their addition results in
 
 Specifically, as shown in Figure~\ref{fig:rewards}, we define the reward of an action as
 \begin{equation}\label{eq:advanced}
-R(b^j,a_i) = \frac{\Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)}{(1-\text{ap}_i)t_T^j}
+R(b^j,a_i) = \frac{\Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)}{(1-\text{ap}^j)t_T^j}
 \end{equation}
 where $t_T^j$ is the time left until deadline at state $b^j$, and $\Delta t_i$ and $\Delta \text{ap}_i$ are the time taken and AP change produced by the action $a_i$.
 
