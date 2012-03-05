@@ -684,7 +684,7 @@ class DatasetPolicy:
       entropy_prev = entropy
 
       auc_entropy = time_to_deadline * dh - dh * dt / 2
-      divisor = (time_to_deadline * entropy)
+      divisor = (time_to_deadline * entropy_prev)
       if divisor == 0:
         auc_entropy = 1
       else:
