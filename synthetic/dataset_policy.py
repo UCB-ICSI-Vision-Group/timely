@@ -36,8 +36,9 @@ class DatasetPolicy:
     'bounds': [0,20], # start and deadline times for the policy
     'weights_mode': 'manual_1',
     # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
-    'rewards_mode': 'det_actual_ap'
+    'rewards_mode': 'det_actual_ap',
     # det_actual_ap, entropy, auc_ap, auc_entropy
+    'blacklist': []
   }
 
   def get_config_name(self):
@@ -271,6 +272,7 @@ class DatasetPolicy:
     cls_filename = config.get_dp_clses_filename(self,train)
     if not force \
         and opexists(det_filename) and opexists(cls_filename):
+      print("Loading cached stuff!")
       dets_table = np.load(det_filename)[()]
       clses_table = np.load(cls_filename)[()]
       samples = None
@@ -309,7 +311,10 @@ class DatasetPolicy:
         dets_table.arr = np.vstack(final_dets)
       clses_table = ut.Table(cols=self.get_cls_cols())
       clses_table.arr = np.vstack(final_clses)
-      print("Found %d dets"%dets_table.shape()[0])
+      if dets_table.arr == None:
+        print("Found 0 dets")
+      else:
+        print("Found %d dets"%dets_table.shape()[0])
 
       # Only save results if we are not collecting samples
       if not sample_size > 0:
@@ -352,11 +357,11 @@ class DatasetPolicy:
       print self.get_reshaped_weights()
 
     # Collect samples (parallelized)
-    num_samples = 200 # actually this refers to images
+    num_samples = 300 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
-    error = threshold = 0.001
+    error = threshold = 0.002
     max_iterations = 8
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
@@ -381,15 +386,25 @@ class DatasetPolicy:
         except:
           print("Couldn't plot, no big deal.")
 
+        # Compute the det AP of stuff so far
+        img_inds = np.unique(dets.subset_arr('img_ind'))
+        gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
+        ap,rec,prec = self.ev.compute_det_pr(dets, gt)
+
+        log_filename = opjoin(
+            config.get_dp_weights_images_dirname(self),'iter_%d.txt'%i)
         print("""
   After iteration %d, we've trained on %d samples and
-  the weights and error are:"""%(i,len(all_samples)))
+  the error and ap %.3f and %.3f:"""%(i,len(all_samples),error,ap))
         np.set_printoptions(precision=2,suppress=True,linewidth=160)
         print self.get_reshaped_weights()
-        print error
+        with open(log_filename,'w') as f:
+          f.write("""
+  After iteration %d, we've trained on %d samples and
+  the error and ap are %.3f and %.3f:"""%(i,len(all_samples),error,ap))
 
         # after the first iteration, check if the error is small
-        if i>0 and error<threshold:
+        if i>0 and error<=threshold:
           break
 
         print("Now collecting more samples with the updated weights...")
@@ -398,7 +413,7 @@ class DatasetPolicy:
       safebarrier(comm)
       weights = comm.bcast(weights,root=0)
       self.weights = weights
-      new_dets,new_clses,new_samples = self.run_on_dataset(False,num_samples)
+      dets,clses,new_samples = self.run_on_dataset(False,num_samples)
 
       if comm_rank==0:
         # We either collect only unique samples or all samples
@@ -433,7 +448,7 @@ class DatasetPolicy:
     return np.array(feats)
 
   def compute_reward_from_samples(self, samples, mode='greedy',
-    discount=0.9, attr=None):
+    discount=0.4, attr=None):
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action
@@ -491,7 +506,7 @@ class DatasetPolicy:
     best_alpha = alphas[best_ind]
     clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=200)
     clf.fit(X,y)
-    print("Best lambda was %.3f"%best_alpha)
+    print("Best lambda was %.4f"%best_alpha)
     weights = clf.coef_
     error = ut.mean_squared_error(clf.predict(X),y)
     return (weights, error)
@@ -560,8 +575,6 @@ class DatasetPolicy:
     "Update the values of actions according to the current belief state."
     if self.policy_mode=='random' or self.policy_mode=='oracle':
       self.action_values = np.random.rand(len(self.actions))
-    elif self.policy_mode=='fixed_order':
-      self.action_values = b.get_p_c()
     else:
       ff = b.compute_full_feature()
       self.action_values = np.array([\
@@ -572,9 +585,15 @@ class DatasetPolicy:
     Return the index of the untaken action with the max value.
     Return -1 if all actions have been taken.
     """
-    if np.all(b.taken):
+    taken = copy.deepcopy(b.taken)
+    for ind in self.blacklist:
+      # What if there are more than 20 actions!?
+      for i in range(int(len(taken)/len(self.dataset.classes))):
+        taken[i*ind] = 1
+        
+    if np.all(taken):
       return -1
-    untaken_inds = np.flatnonzero(b.taken==0)
+    untaken_inds = np.flatnonzero(taken==0)
     max_untaken_ind = self.action_values[untaken_inds].argmax()
     return untaken_inds[max_untaken_ind]
 
@@ -586,6 +605,9 @@ class DatasetPolicy:
     - list of <s,a,r,s',dt> samples.
     """
     gt = image.get_ground_truth(include_diff=True)
+    for ind in self.blacklist:
+      gt = gt.filter_on_column('cls_ind',ind,op=operator.ne)
+
     self.tt.tic('run_on_image')
 
     all_detections = []

@@ -54,7 +54,7 @@ class Evaluation:
   ##############
   # AP vs. Time
   ##############
-  def evaluate_vs_t(self,dets=None,clses=None,plot=True,force=False):
+  def evaluate_vs_t(self,dets=None,clses=None,plot=True,force=False,blacklist=[]):
     """
     Evaluate detections and classifications in the AP vs Time regime,
     and write out plots to canonical places.
@@ -78,13 +78,19 @@ class Evaluation:
       gt_for_image_list = []
       img_dets_list = []
       gt = self.dataset.get_ground_truth(include_diff=True)
+      for black in blacklist:
+        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
+      # TODO: SOMETHING IS PROBABLY WRONG HERE
 
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
-        detections = dets.filter_on_column('img_ind',img_ind)
+        if dets.arr == None:
+          detections = ut.Table() 
+        else:
+          detections = dets.filter_on_column('img_ind',img_ind)
         img_dets_list.append(detections)
       
-      if dets.is_empty():
+      if dets.arr == None:
         points = np.zeros(self.time_intervals)
       else:
         all_times = dets.subset_arr('time')
@@ -100,11 +106,14 @@ class Evaluation:
         num_dets = 0
         for img_ind,image in enumerate(self.dataset.images):
           gt_for_image = gt_for_image_list[img_ind]
-          img_dets = img_dets_list[img_ind]
-          dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)
-
-          num_dets += dets_to_this_point.shape()[0]
-          det_ap,rec,prec = self.compute_det_pr(dets_to_this_point, gt_for_image)
+          img_dets = img_dets_list[img_ind] 
+          if img_dets.cols == None:
+            dets_to_this_point= img_dets
+            det_ap = 0
+          else:
+            dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
+            num_dets += dets_to_this_point.shape()[0]
+            det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
           det_aps.append(det_ap)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
@@ -141,7 +150,7 @@ class Evaluation:
       points = np.hstack((0,points))
     return points
 
-  def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False):
+  def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False,blacklist=[]):
     """
     Evaluate detections in the AP vs Time regime and write out plots to
     canonical places.
@@ -161,23 +170,34 @@ class Evaluation:
     else:
       if not dets:
         dets,clses,samples = self.dp.run_on_dataset()
-      if dets.is_empty():
+      if None == dets.arr:
         all_times = clses.subset_arr('time')
       else:
         all_times = dets.subset_arr('time')
       points = self.determine_time_points(all_times,bounds)
       num_points = points.shape[0]
       cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
+      
+      # TODO: WRONG, REMOVE COLS INSTEAD
+      for black in blacklist:
+        cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.ne)
+        
       det_arr = np.zeros((num_points,2))
       cls_arr = np.zeros((num_points,2))
       for i in range(comm_rank,num_points,comm_size):
         tt = ut.TicToc().tic()
         point = points[i]
-        dets_to_this_point = dets.filter_on_column('time',point,operator.le)
+        if not dets.cols == None:
+          dets_to_this_point = dets
+          ap = 0
+        else:
+          dets_to_this_point = dets.filter_on_column('time',point,operator.le)
 
-        img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
-        gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
-        ap,rec,prec = self.compute_det_pr(dets_to_this_point,gt)
+          #img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
+          #gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
+          # TODO: fuck it!
+          #ap,_,_ = self.compute_det_pr(dets_to_this_point,gt)
+          ap = 0
         det_arr[i,:] = [point,ap]
 
         # go through the per-image classifications and only keep the latest time
@@ -196,9 +216,12 @@ class Evaluation:
           arr=np.array(clses_to_this_point_all_imgs), cols=clses.cols)
         cls_arr[i,:] = \
           [point, self.compute_cls_map(clses_to_this_point_all_imgs, cls_gt)]
-
-        print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
-          det_arr[i,1],dets_to_this_point.shape()[0],point,tt.qtoc()))
+        
+        if not dets_to_this_point.arr == None and not det_arr==None:
+          print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
+            det_arr[i,1],dets_to_this_point.shape()[0],point,tt.qtoc()))
+        else:
+          print("We are in gist, calculating AP of detection makes no sense.")
       det_arr_all = None
       cls_arr_all = None
       if comm_rank == 0:
@@ -234,7 +257,7 @@ class Evaluation:
     return auc
 
   @classmethod
-  def plot_ap_vs_t(cls, tables, filename, all_bounds=None, with_legend=True, force=False):
+  def plot_ap_vs_t(cls, tables, filename, all_bounds=None, with_legend=True, force=False, plot_infos=None):
     """
     Take list of Tables containing AP vs. Time information.
     Bounds are given as a list of the same length as tables, or not at all.
@@ -254,6 +277,7 @@ class Evaluation:
     styles = ['-','--','-.','-..']
     prod = [x for x in itertools.product(colors,styles)]
     none_bounds = [None for table in tables]
+    
     # TODO: oooh that's messy
     if np.all(all_bounds==none_bounds):
       None
@@ -267,8 +291,15 @@ class Evaluation:
     for i,table in enumerate(tables):
       print("Plotting %s"%table.name)
       bounds = all_bounds[i]
-      style = prod[i][1]
-      color = prod[i][0]
+      
+      if not plot_infos == None and "line" in plot_infos[i]:
+        style = str(plot_infos[i]["line"])
+      else:
+        style = prod[i][1]
+      if not plot_infos == None and "color" in plot_infos[i]:
+        color = str(plot_infos[i]["color"])
+      else:
+        color = prod[i][0]
       times = table.subset_arr('time')
       if 'ap_mean' in table.cols and 'ap_std' in table.cols:
         vals = table.subset_arr('ap_mean')
@@ -282,8 +313,12 @@ class Evaluation:
       high_bound_val = vals[-1]
       if bounds != None:
         high_bound_val = vals[times.tolist().index(bounds[1])]
-
-      label = "(%.2f, %.2f) %s"%(auc,high_bound_val,table.name)
+      
+      if not plot_infos == None and "label" in plot_infos[i]:
+        label = str(plot_infos[i]["label"])
+      else:
+        label = "(%.2f, %.2f) %s"%(auc,high_bound_val,table.name)
+      
       plt.plot(times, vals, style,
           linewidth=2,color=color,label=label)
 
@@ -303,7 +338,7 @@ class Evaluation:
     plt.grid(True)
     plt.savefig(filename)
 
-  def evaluate_detections_whole(self,dets=None,force=False):
+  def evaluate_detections_whole(self,dets=None,force=False,blacklist=[]):
     """
     Output detection evaluations over the whole dataset in all formats:
     - multi-class (one PR plot)
@@ -320,6 +355,8 @@ class Evaluation:
       cls = self.dataset.classes[cls_ind] 
       cls_dets = dets.filter_on_column('cls_ind',cls_ind)
       cls_gt = self.dataset.get_ground_truth_for_class(cls,include_diff=True)
+      for black in blacklist:
+        cls_gt = cls_gt.filter_on_column('cls_ind', black, op=operator.ne)
       dist_aps[cls_ind] = self.compute_and_plot_pr(cls_dets, cls_gt, cls, force)
     aps = None
     if comm_rank==0:
@@ -331,6 +368,8 @@ class Evaluation:
     if comm_rank == 0:
       # Multi-class
       gt = self.dataset.get_ground_truth(include_diff=True)
+      for black in blacklist:
+        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
       filename = opjoin(self.results_path, 'pr_whole_multiclass')
       if force or not opexists(filename):
         print("Evaluating %d dets in the multiclass setting..."%dets.shape()[0])

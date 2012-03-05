@@ -72,13 +72,22 @@ def load_configs(name):
 
   dirname = opjoin(config.config_dir,name)
   filename = opjoin(config.config_dir,name+'.json')
+  collectname = opjoin(config.config_dir,name+'.txt')
+  
   if os.path.isdir(dirname):
     filenames = glob.glob(dirname+'/*.json')
     configs = []
     for filename in filenames:
       configs += load_config_file(filename)
-  else:
+  elif os.path.isfile(filename):
     configs = load_config_file(filename)
+  elif os.path.isfile(collectname):
+    filenames = open(collectname, 'r').readlines()
+    configs = []
+    for filename in filenames:
+      configs += load_config_file(opjoin(config.config_dir,os.path.dirname(name),filename[:-1]+'.json'))
+  else:
+    raise RuntimeError('NO WEIGHTS FOUND!')
   return configs
 
 def main():
@@ -86,10 +95,10 @@ def main():
     description="Run experiments with the timely detection system.")
 
   parser.add_argument('--test_dataset',
-    choices=['val','test'],
+    choices=['val','test','trainval'],
     default='val',
     help="""Dataset to use for testing. Run on val until final runs.
-    The training dataset is inferred (val->train; test->trainval).""")
+    The training dataset is inferred (val->train; test->trainval; trainval->trainval).""")
 
   parser.add_argument('--first_n', type=int,
     help='only take the first N images in the test dataset')
@@ -101,6 +110,15 @@ def main():
     help="""Config file name that specifies the experiments to run.
     Give name such that the file is configs/#{name}.json or configs/#{name}/
     In the latter case, all files within the directory will be loaded.""")
+  
+  parser.add_argument('--blacklist',type=str,default='',
+    help="""Ignore these indices from the class list. Format: --blacklist=14,6""")  
+
+  parser.add_argument('--suffix',
+    help="Overwrites the suffix in the config(s).")
+
+  parser.add_argument('--bounds10', action='store_true', 
+    default=False, help='set bounds to [0,10]')
 
   parser.add_argument('--force', action='store_true', 
     default=False, help='force overwrite')
@@ -133,6 +151,8 @@ def main():
     train_dataset = Dataset('full_pascal_trainval')
   elif args.test_dataset=='val':
     train_dataset = Dataset('full_pascal_train')
+  elif args.test_dataset=='trainval':
+    train_dataset = Dataset('full_pascal_trainval')
   else:
     None # impossible by argparse settings
   
@@ -147,20 +167,33 @@ def main():
   dets_tables_whole = []
   clses_tables_whole = []
   all_bounds = []
-
+  
+  if len(args.blacklist) > 0:
+    blacklist = [int(i) for i in args.blacklist.split(',')]
+  else:
+    blacklist = []
+      
+  plot_infos = [] 
   for config_f in configs:
+    if args.suffix:
+      config_f['suffix'] = args.suffix
+    if args.bounds10:
+      config_f['bounds'] = [0,10]
+      
+    config_f['blacklist'] = blacklist 
+      
     dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)
-
+    plot_infos.append(dict((k,config_f[k]) for k in ('label','line','color') if k in config_f))
     # output the det configs first
     if args.det_configs:
       dp.output_det_statistics()
 
     # evaluate in the AP vs. Time regime, unless told not to
     if not args.no_apvst:
-      dets_table = ev.evaluate_vs_t(None,None,force=args.force)
-      dets_table_whole,clses_table_whole = ev.evaluate_vs_t_whole(None,None,force=args.force)
+      dets_table = ev.evaluate_vs_t(None,None,force=args.force, blacklist=blacklist)
+      dets_table_whole,clses_table_whole = ev.evaluate_vs_t_whole(None,None,force=args.force, blacklist=blacklist)
       if comm_rank==0:
         dets_tables.append(dets_table)
         dets_tables_whole.append(dets_table_whole)
@@ -168,7 +201,7 @@ def main():
 
     # optionally, evaluate in the standard PR regime
     if args.wholeset_prs:
-      ev.evaluate_detections_whole(None,force=args.force)
+      ev.evaluate_detections_whole(None,force=args.force,blacklist=blacklist)
 
   # and plot the comparison if multiple config files were given
   if not args.no_apvst and len(configs)>1 and comm_rank==0:
@@ -179,20 +212,21 @@ def main():
     # det avg
     ff = opjoin(dirname, '%s_det_avg.png'%filename)
     ff_nl = opjoin(dirname, '%s_det_avg_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True, force=True)
-    Evaluation.plot_ap_vs_t(dets_tables, ff_nl, all_bounds, with_legend=False, force=True)
+    
+    Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True, force=True, plot_infos=plot_infos)
+    Evaluation.plot_ap_vs_t(dets_tables, ff_nl, all_bounds, with_legend=False, force=True, plot_infos=plot_infos)
 
     # det whole
     ff = opjoin(dirname, '%s_det_whole.png'%filename)
     ff_nl = opjoin(dirname, '%s_det_whole_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(dets_tables_whole, ff, all_bounds, with_legend=True, force=True)
-    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_nl, all_bounds, with_legend=False, force=True)
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff, all_bounds, with_legend=True, force=True, plot_infos=plot_infos)
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_nl, all_bounds, with_legend=False, force=True, plot_infos=plot_infos)
 
     # cls whole
     ff = opjoin(dirname, '%s_cls_whole.png'%filename)
     ff_nl = opjoin(dirname, '%s_cls_whole_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(clses_tables_whole, ff, all_bounds, with_legend=True, force=True)
-    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_nl, all_bounds, with_legend=False, force=True)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff, all_bounds, with_legend=True, force=True, plot_infos=plot_infos)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_nl, all_bounds, with_legend=False, force=True, plot_infos=plot_infos)
     
 if __name__ == '__main__':
   main()

@@ -7,7 +7,7 @@ class Table:
   ###################
   # Init/Copy/Repr
   ###################
-  def __init__(self,arr=np.array([]),cols=[],name=None):
+  def __init__(self,arr=None,cols=None,name=None):
     """
     If arr and cols are passed in, initialize with them by reference. 
     If nothing is passed in, set them to None.
@@ -44,9 +44,6 @@ Table name: %(name)s | size: %(shape)s
 
   def ind(self,col_name):
     return self.cols.index(col_name)
-  
-  def is_empty(self):
-    return self.arr.shape[0] == 0
 
   ###################
   # Save/Load
@@ -106,8 +103,6 @@ Table name: %(name)s | size: %(shape)s
 
   def row_subset_arr(self,row_inds):
     "Return self.arr with only the specified rows."
-    if self.is_empty():
-      return self.arr
     if isinstance(row_inds,np.ndarray):
       row_inds = row_inds.tolist()
     return self.arr[row_inds,:]
@@ -118,8 +113,6 @@ Table name: %(name)s | size: %(shape)s
 
   def subset_arr(self,col_names):
     "Return self.arr for only the columns that are specified."
-    if self.is_empty():
-      return self.arr
     if not isinstance(col_names, types.ListType):
       inds = self.cols.index(col_names)
     else:
@@ -142,8 +135,6 @@ Table name: %(name)s | size: %(shape)s
     Take name of column to index by and value to filter by.
     By providing an operator, more than just equality filtering can be done.
     """
-    if self.is_empty:
-      return self
     if ind_name not in self.cols:
       return self
     table = Table(cols=self.cols,arr=self.arr)
@@ -176,7 +167,11 @@ def filter_on_column(arr, ind, val, op=operator.eq, omit=False):
   Returns the rows of arr where arr[:,ind]==val,
   optionally omitting the ind column.
   """
-  arr = arr[op(arr[:,ind], val),:]
+  try:
+    arr = arr[op(arr[:,ind], val),:]
+  except:
+    return arr
+  # TODO: fix this mess
   if omit:
     final_ind = range(np.shape(arr)[1])
     final_ind = np.delete(final_ind, ind)
