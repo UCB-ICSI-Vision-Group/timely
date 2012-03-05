@@ -335,7 +335,7 @@ class Evaluation:
       plt.setp(ltext, fontsize='small')
     plt.xlabel('Time',size=14)
     plt.ylabel('AP',size=14)
-    plt.ylim(0,1)
+    plt.ylim(0,.8)
     plt.grid(True)
     plt.savefig(filename)
 

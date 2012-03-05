@@ -2,5 +2,8 @@
   "suffix": "mar4",
   "detectors": ["csc_default"],
   "policy_mode": ["fastinf"],
-  "weights_mode": ["manual_1"]
+  "weights_mode": ["manual_1"],
+  "label": "Manual Fastinf",
+  "line": "-",
+  "color": "orange"
 }

@@ -2,5 +2,6 @@
   "suffix": "mar4",
   "detectors": ["csc_default"],
   "policy_mode": ["oracle"],
-  "weights_mode": ["manual_1"]
+  "weights_mode": ["manual_1"],
+  "label": "Manual Oracle"
 }
