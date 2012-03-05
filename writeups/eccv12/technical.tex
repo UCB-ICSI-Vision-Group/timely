@@ -120,31 +120,15 @@ V(b,a_i) = \mathbb{E}_{b' \sim P(b'|b,a_i)}[R(b')] - \lambda c(a_i|b)
 We can be more explicit and split $b$ into its constitutents, such as the current set of observations $\mathbf{o}$ and the posterior distribution $P(\mathbf{C}|\mathbf{o})$.
 Accordingly, we have considerable flexibility in definining the ``reward'' function $R(b)$.
 
-We consider a formulation of $R(b)$ based on information gain, as is common in problems of this type \todo{cite}.
-The corresponding $R: P \mapsto \mathbb{R}$ is a function on the distribution over $\mathbf{C}$.
-We note that as our goal is to reduce uncertainty of $P(\mathbf{C})$, it is natural to define $R$ as the negative entropy of the distribution given the observations.
-\begin{align}
-V(b,a_i)
-&= \mathbb{E}_{o_i \sim P(O_i|\mathbf{C},\mathbf{o})}[R(P(\mathbf{C}|\mathbf{o} \cup o_i)] - \lambda c(a_i|\mathcal{O}) \\
-&= \mathbb{E}_{o_i \sim P(O_i|\mathbf{C},\mathbf{o})}[-H(\mathbf{C}|\mathbf{o} \cup o_i)] - \lambda c(a_i|\mathcal{O})
-\end{align}
-
-Keeping in mind that $ H(\mathbf{C}|\mathcal{O}) = -\sum_{\mathbf{c}} P(\mathbf{c}|\mathcal{O}) \log P(\mathbf{c}|\mathcal{O}) $ is constant w.r.t $a_i$, it is easy to show that the policy consists of picking the action that maximizes information gain of $P(\mathbf{C})$, balanced with the cost of the action:
-\begin{align}
-\pi(b)
-&= \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} \, \mathbb{E}_{o_i \sim P(O_i|\mathbf{C},\mathbf{o})}[-H(\mathbf{C}|\mathbf{o} \cup o_i)] + H(\mathbf{C}|\mathbf{o}) - H(\mathbf{C}|\mathbf{o}) - \lambda c(a_i|\mathcal{O}) \\
-&= \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} \, I(\mathbf{C};O_i|\mathbf{o}) - H(\mathbf{C}|\mathbf{o}) - \lambda c(a_i|\mathcal{O}) \\
-&= \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} \, I(\mathbf{C};O_i|\mathbf{o}) - \lambda c(a_i|\mathcal{O})
-\end{align}
 
 \subsection{The model of the belief state}
 \begin{figure}[h!]
 \centering
-% \subfloat[MRF]{
 \includegraphics[width=0.56\linewidth]{figures/inf_model_mrf.pdf}
-% }
-% \subfloat[Local]{\includegraphics[width=0.46\linewidth]{figures/inf_model_loc.pdf}}
-\caption{We present a point in the middle of the decision process, when some classifiers have already been observed.}
+\caption{
+We present a point in the middle of the decision process for 3 classes.
+Some classifiers have already been observed.
+}
 \label{fig:model}
 \end{figure}
 
@@ -154,24 +138,6 @@ The parameters are trained on fully-observed data.
 Exact inference is of course intractable in a general model of this type, and quite slow for a model of our size.
 Instead, we use Loopy Belief Propagation, which provides no general convergence guarantees but has been shown to work well empirically \todo{cite}.
 The implementations details are given further in \autoref{sec:implementation}.
-
-\subsection{Submodularity} \label{sec:submodularity}
-A natural question regarding our exposition so far is, why should we assume that a greedy policy would work well at all?
-In fact, the problem as described has properties that here allow us to show that the greedy solution is near-optimal.
-
-We first introduce the notion of submodularity.
-A set function $f$ is submodular if, whenever $A \subseteq B \subseteq E$ and $e \in E \setminus B$ it holds that
-\begin{equation}
-f(A \cup {e}) - f(A) \geq f(B \cup {e}) - f(B)
-\end{equation}
-
-Additionally, $f$ is called monotone if whenever $A \subseteq B$ it holds that $f(A) \leq f(B)$.
-Nemhauser~\cite{Nemhauser1978} famously showed that a greedy algorithm applied to maximizing submodular monotone functions with $f(\emptyset)=0$ will obtain at least a $(1-1/e)$ fraction of the optimal solution.
-
-Krause and Guestrin~\cite{Krause2005a} showed that the result applies to the problem of selecting a set of observations, such as in a sensor network, which maximally reduces uncertainty.
-Specifically, they showed that if the function to be maximized by selecting observations $S$ is information gain of latent variables $U$ in a graphical model such that variables in $S$ are independent given $U$, the greedy selection algorithm gives the same near-optimal bound as  ~\cite{Nemhauser1978}, and that no polynomial-time algorithm can be guaranteed to give a better bound, unless $P \neq NP$.
-
-\todo{adaptive submodularity \cite{Golovin2011}}
 
 \subsection{Policy parametrization and more reward functions}
 \todo{here introduce the view of learning parameters given the observed rewards}
