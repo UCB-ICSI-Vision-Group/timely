@@ -1,9 +1,27 @@
 \section{Evaluation} \label{sec:evaluation}
-- show that the greedy policy works better than random and better than fixed-order
 
-- show that the reinforcement learning policy works better than greedy, at least for the non-infogain rewards.
+\todo{Describe random, oracle, and then go through our experimental settings.}
 
-\subsection{Classification}
+\begin{figure}[h!]
+\centering
+\subfloat[Detection]{\includegraphics[width=0.78\linewidth]
+    {figures/manual_plots_det_avg.png}} \\
+\subfloat[Classification]{\includegraphics[width=0.78\linewidth]
+    {figures/manual_plots_cls_whole.png}}
+  \caption{Heuristic value function.}
+  \label{fig:results_manual}
+\end{figure}
 
-\subsection{Detection}
-We also evaluate using the task of detection (see \autoref{sec:problem}).
+\todo{How do the different reward functions affect performance?}
+
+\begin{figure}[h!]
+\centering
+\subfloat[Detection]{\includegraphics[width=0.48\linewidth]
+    {figures/entropy_plots_det_avg.png}} \hfill
+\subfloat[Classification]{\includegraphics[width=0.48\linewidth]
+    {figures/entropy_plots_cls_whole.png}}
+  \caption{Entropy reward function.}
+  \label{fig:results_entropy}
+\end{figure}
+
+\todo{Mention how fixedorder and fastinf learn totally different weights.}
