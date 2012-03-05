@@ -72,13 +72,21 @@ def load_configs(name):
 
   dirname = opjoin(config.config_dir,name)
   filename = opjoin(config.config_dir,name+'.json')
+  collectname = opjoin(config.config_dir,name+'.txt')
+  
   if os.path.isdir(dirname):
     filenames = glob.glob(dirname+'/*.json')
     configs = []
     for filename in filenames:
       configs += load_config_file(filename)
-  else:
+  elif os.path.isfile(filename):
     configs = load_config_file(filename)
+    
+  elif os.path.isfile(collectname):
+    filenames = open(collectname, 'r').readlines()
+    configs = []
+    for filename in filenames:
+      configs += load_config_file(opjoin(config.config_dir,os.path.dirname(name),filename[:-1]+'.json'))
   return configs
 
 def main():
@@ -148,11 +156,12 @@ def main():
   clses_tables_whole = []
   all_bounds = []
 
+  plot_infos = [] 
   for config_f in configs:
     dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)
-
+    plot_infos.append(dict((k,config_f[k]) for k in ('label','line','color') if k in config_f))
     # output the det configs first
     if args.det_configs:
       dp.output_det_statistics()
@@ -179,20 +188,21 @@ def main():
     # det avg
     ff = opjoin(dirname, '%s_det_avg.png'%filename)
     ff_nl = opjoin(dirname, '%s_det_avg_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True, force=True)
-    Evaluation.plot_ap_vs_t(dets_tables, ff_nl, all_bounds, with_legend=False, force=True)
+    
+    Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True, force=True, plot_infos=plot_infos)
+    Evaluation.plot_ap_vs_t(dets_tables, ff_nl, all_bounds, with_legend=False, force=True, plot_infos=plot_infos)
 
     # det whole
     ff = opjoin(dirname, '%s_det_whole.png'%filename)
     ff_nl = opjoin(dirname, '%s_det_whole_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(dets_tables_whole, ff, all_bounds, with_legend=True, force=True)
-    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_nl, all_bounds, with_legend=False, force=True)
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff, all_bounds, with_legend=True, force=True, plot_infos=plot_infos)
+    Evaluation.plot_ap_vs_t(dets_tables_whole, ff_nl, all_bounds, with_legend=False, force=True, plot_infos=plot_infos)
 
     # cls whole
     ff = opjoin(dirname, '%s_cls_whole.png'%filename)
     ff_nl = opjoin(dirname, '%s_cls_whole_nl.png'%filename)
-    Evaluation.plot_ap_vs_t(clses_tables_whole, ff, all_bounds, with_legend=True, force=True)
-    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_nl, all_bounds, with_legend=False, force=True)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff, all_bounds, with_legend=True, force=True, plot_infos=plot_infos)
+    Evaluation.plot_ap_vs_t(clses_tables_whole, ff_nl, all_bounds, with_legend=False, force=True, plot_infos=plot_infos)
     
 if __name__ == '__main__':
   main()

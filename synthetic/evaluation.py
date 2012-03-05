@@ -236,7 +236,7 @@ class Evaluation:
     return auc
 
   @classmethod
-  def plot_ap_vs_t(cls, tables, filename, all_bounds=None, with_legend=True, force=False):
+  def plot_ap_vs_t(cls, tables, filename, all_bounds=None, with_legend=True, force=False, plot_infos=None):
     """
     Take list of Tables containing AP vs. Time information.
     Bounds are given as a list of the same length as tables, or not at all.
@@ -256,6 +256,7 @@ class Evaluation:
     styles = ['-','--','-.','-..']
     prod = [x for x in itertools.product(colors,styles)]
     none_bounds = [None for table in tables]
+    
     # TODO: oooh that's messy
     if np.all(all_bounds==none_bounds):
       None
@@ -269,8 +270,15 @@ class Evaluation:
     for i,table in enumerate(tables):
       print("Plotting %s"%table.name)
       bounds = all_bounds[i]
-      style = prod[i][1]
-      color = prod[i][0]
+      
+      if not plot_infos == None and "line" in plot_infos[i]:
+        style = str(plot_infos[i]["line"])
+      else:
+        style = prod[i][1]
+      if not plot_infos == None and "color" in plot_infos[i]:
+        color = str(plot_infos[i]["color"])
+      else:
+        color = prod[i][0]
       times = table.subset_arr('time')
       if 'ap_mean' in table.cols and 'ap_std' in table.cols:
         vals = table.subset_arr('ap_mean')
@@ -284,8 +292,12 @@ class Evaluation:
       high_bound_val = vals[-1]
       if bounds != None:
         high_bound_val = vals[times.tolist().index(bounds[1])]
-
-      label = "(%.2f, %.2f) %s"%(auc,high_bound_val,table.name)
+      
+      if not plot_infos == None and "label" in plot_infos[i]:
+        label = str(plot_infos[i]["label"])
+      else:
+        label = "(%.2f, %.2f) %s"%(auc,high_bound_val,table.name)
+      
       plt.plot(times, vals, style,
           linewidth=2,color=color,label=label)
 
