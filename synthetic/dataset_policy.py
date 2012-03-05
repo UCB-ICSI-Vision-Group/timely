@@ -681,7 +681,6 @@ class DatasetPolicy:
       entropy = np.mean(b.get_entropies())
       dh = entropy_prev-entropy # this is actually -dh :)
       sample.entropy = dh
-      entropy_prev = entropy
 
       auc_entropy = time_to_deadline * dh - dh * dt / 2
       divisor = (time_to_deadline * entropy_prev)
@@ -693,6 +692,8 @@ class DatasetPolicy:
         auc_entropy = 0
       assert(auc_entropy>=-1 and auc_entropy<=1)
       sample.auc_entropy = auc_entropy
+
+      entropy_prev = entropy
 
       b.t += dt
       sample.dt = dt
