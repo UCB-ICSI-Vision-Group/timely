@@ -9,13 +9,11 @@ import synthetic.config as config
 from synthetic.dataset import Dataset
 from synthetic.image import BoundingBox
 
-
 class Evaluation:
   """
   Class to output evaluations of detections.
   Has to be initialized with a DatasetPolicy to correctly set the paths.
   """
-
   MIN_OVERLAP = 0.5
   TIME_INTERVALS = 12
 
@@ -121,7 +119,7 @@ class Evaluation:
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_fname, bounds, force)
+        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_fname, bounds, True, force)
       except:
         print("Could not plot")
     safebarrier(comm)
@@ -213,8 +211,8 @@ class Evaluation:
     # Plot the table
     if plot and comm_rank==0:
       try:
-        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_whole_fname, bounds, force)
-        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_whole_fname, bounds, force)
+        Evaluation.plot_ap_vs_t([dets_table],self.det_apvst_png_whole_fname, bounds, True, force)
+        Evaluation.plot_ap_vs_t([clses_table],self.cls_apvst_png_whole_fname, bounds, True, force)
       except:
         print("Could not plot")
     return (dets_table,clses_table)
@@ -249,7 +247,7 @@ class Evaluation:
       return
     plt.clf()
     colors = ['black','orange','#4084ff','purple']
-    styles = ['-','--','-..','-.']
+    styles = ['-','--','-.','-..']
     prod = [x for x in itertools.product(colors,styles)]
     none_bounds = [None for table in tables]
     # TODO: oooh that's messy
