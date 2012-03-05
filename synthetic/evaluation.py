@@ -82,7 +82,7 @@ class Evaluation:
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
         if dets.arr == None:
-          detections = ut.Table(arr=np.arange([]),cols=[]) 
+          detections = ut.Table() 
         else:
           detections = dets.filter_on_column('img_ind',img_ind)
         img_dets_list.append(detections)
@@ -104,9 +104,13 @@ class Evaluation:
         for img_ind,image in enumerate(self.dataset.images):
           gt_for_image = gt_for_image_list[img_ind]
           img_dets = img_dets_list[img_ind] 
-          dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
-          num_dets += dets_to_this_point.shape()[0]
-          det_ap,rec,prec = self.compute_det_pr(dets_to_this_point, gt_for_image)
+          if img_dets.cols == None:
+            dets_to_this_point= img_dets
+            det_ap = 0
+          else:
+            dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
+            num_dets += dets_to_this_point.shape()[0]
+            det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
           det_aps.append(det_ap)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
@@ -175,11 +179,15 @@ class Evaluation:
       for i in range(comm_rank,num_points,comm_size):
         tt = ut.TicToc().tic()
         point = points[i]
-        dets_to_this_point = dets.filter_on_column('time',point,operator.le)
+        if not dets.cols == None:
+          dets_to_this_point = dets
+          ap = 0
+        else:
+          dets_to_this_point = dets.filter_on_column('time',point,operator.le)
 
-        img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
-        gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
-        ap,rec,prec = self.compute_det_pr(dets_to_this_point,gt)
+          img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
+          gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
+          ap,_,_ = self.compute_det_pr(dets_to_this_point,gt)
         det_arr[i,:] = [point,ap]
 
         # go through the per-image classifications and only keep the latest time
@@ -198,9 +206,12 @@ class Evaluation:
           arr=np.array(clses_to_this_point_all_imgs), cols=clses.cols)
         cls_arr[i,:] = \
           [point, self.compute_cls_map(clses_to_this_point_all_imgs, cls_gt)]
-
-        print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
-          det_arr[i,1],dets_to_this_point.shape()[0],point,tt.qtoc()))
+        
+        if not dets_to_this_point.arr == None and not det_arr==None:
+          print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
+            det_arr[i,1],dets_to_this_point.shape()[0],point,tt.qtoc()))
+        else:
+          print("We are in gist, calculating AP of detection makes no sense.")
       det_arr_all = None
       cls_arr_all = None
       if comm_rank == 0:
