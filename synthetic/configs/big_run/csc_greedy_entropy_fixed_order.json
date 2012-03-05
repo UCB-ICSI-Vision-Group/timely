@@ -3,5 +3,8 @@
   "detectors": ["csc_default"],
   "policy_mode": ["fixed_order"],
   "weights_mode": ["greedy"],	
-  "rewards_mode": ["auc_entropy"]
+  "rewards_mode": ["auc_entropy"],
+  "label": "Fixed Greedy Entropy",
+  "color": "#4084ff",
+  "line": "-"
 }

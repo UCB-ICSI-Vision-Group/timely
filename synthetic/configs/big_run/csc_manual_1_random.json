@@ -2,5 +2,7 @@
   "suffix": "mar4",
   "detectors": ["csc_default"],
   "policy_mode": ["random"],
-  "weights_mode": ["manual_1"]
+  "weights_mode": ["manual_1"],
+  "label": "Manual Random",
+  "line": "--"
 }

@@ -357,7 +357,7 @@ class DatasetPolicy:
       print self.get_reshaped_weights()
 
     # Collect samples (parallelized)
-    num_samples = 300 # actually this refers to images
+    num_samples = 350 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
@@ -386,22 +386,12 @@ class DatasetPolicy:
         except:
           print("Couldn't plot, no big deal.")
 
-        # Compute the det AP of stuff so far
-        img_inds = np.unique(dets.subset_arr('img_ind'))
-        gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
-        ap,rec,prec = self.ev.compute_det_pr(dets, gt)
-
-        log_filename = opjoin(
-            config.get_dp_weights_images_dirname(self),'iter_%d.txt'%i)
         print("""
   After iteration %d, we've trained on %d samples and
-  the error and ap %.3f and %.3f:"""%(i,len(all_samples),error,ap))
+  the weights and error are:"""%(i,len(all_samples)))
         np.set_printoptions(precision=2,suppress=True,linewidth=160)
         print self.get_reshaped_weights()
-        with open(log_filename,'w') as f:
-          f.write("""
-  After iteration %d, we've trained on %d samples and
-  the error and ap are %.3f and %.3f:"""%(i,len(all_samples),error,ap))
+        print error
 
         # after the first iteration, check if the error is small
         if i>0 and error<=threshold:
@@ -413,7 +403,7 @@ class DatasetPolicy:
       safebarrier(comm)
       weights = comm.bcast(weights,root=0)
       self.weights = weights
-      dets,clses,new_samples = self.run_on_dataset(False,num_samples)
+      new_dets,new_clses,new_samples = self.run_on_dataset(False,num_samples)
 
       if comm_rank==0:
         # We either collect only unique samples or all samples
@@ -449,6 +439,7 @@ class DatasetPolicy:
 
   def compute_reward_from_samples(self, samples, mode='greedy',
     discount=0.4, attr=None):
+
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action
@@ -506,7 +497,7 @@ class DatasetPolicy:
     best_alpha = alphas[best_ind]
     clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=200)
     clf.fit(X,y)
-    print("Best lambda was %.4f"%best_alpha)
+    print("Best lambda was %.3f"%best_alpha)
     weights = clf.coef_
     error = ut.mean_squared_error(clf.predict(X),y)
     return (weights, error)
@@ -587,10 +578,7 @@ class DatasetPolicy:
     """
     taken = copy.deepcopy(b.taken)
     for ind in self.blacklist:
-      # What if there are more than 20 actions!?
-      for i in range(int(len(taken)/len(self.dataset.classes))):
-        taken[i*ind] = 1
-        
+      taken[ind] = 1
     if np.all(taken):
       return -1
     untaken_inds = np.flatnonzero(taken==0)
@@ -729,7 +717,6 @@ class DatasetPolicy:
       # The updated belief state posterior over C is our classification result
       clses = b.get_p_c().tolist() + [img_ind,b.t]
       all_clses.append(clses)
-
       # Update action values and pick the next action
       self.update_actions(b)
       action_ind = self.select_action(b)
