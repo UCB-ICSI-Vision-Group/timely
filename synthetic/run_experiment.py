@@ -95,10 +95,10 @@ def main():
     description="Run experiments with the timely detection system.")
 
   parser.add_argument('--test_dataset',
-    choices=['val','test'],
+    choices=['val','test','trainval'],
     default='val',
     help="""Dataset to use for testing. Run on val until final runs.
-    The training dataset is inferred (val->train; test->trainval).""")
+    The training dataset is inferred (val->train; test->trainval; trainval->trainval).""")
 
   parser.add_argument('--first_n', type=int,
     help='only take the first N images in the test dataset')
@@ -113,6 +113,9 @@ def main():
   
   parser.add_argument('--blacklist',type=str,default='',
     help="""Ignore these indices from the class list. Format: --blacklist=14,6""")  
+
+  parser.add_argument('--suffix',
+    help="Overwrites the suffix in the config(s).")
 
   parser.add_argument('--force', action='store_true', 
     default=False, help='force overwrite')
@@ -145,6 +148,8 @@ def main():
     train_dataset = Dataset('full_pascal_trainval')
   elif args.test_dataset=='val':
     train_dataset = Dataset('full_pascal_train')
+  elif args.test_dataset=='trainval':
+    train_dataset = Dataset('full_pascal_trainval')
   else:
     None # impossible by argparse settings
   
@@ -166,7 +171,10 @@ def main():
     blacklist = []
       
   plot_infos = [] 
-  for config_f in configs:    
+  for config_f in configs:
+    if args.suffix:
+      config_f['suffix'] = args.suffix
+      
     config_f['blacklist'] = blacklist 
       
     dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
