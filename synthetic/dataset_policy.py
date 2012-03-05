@@ -33,11 +33,11 @@ class DatasetPolicy:
     'policy_mode': 'random',
       # policy mode can be one of random, oracle, fixed_order,
       # no_smooth, backoff, fastinf
-    'bounds': None, # start and deadline times for the policy
+    'bounds': [0,25], # start and deadline times for the policy
     'weights_mode': 'manual_1',
     # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
     'rewards_mode': 'det_actual_ap'
-    # det_actual_ap, entropy 
+    # det_actual_ap, entropy, auc_ap, auc_entropy
   }
 
   def get_config_name(self):
@@ -437,7 +437,7 @@ class DatasetPolicy:
     - mode=='greedy' just uses the actual_ap of the taken action
     - mode=='rl_regression' or 'rl_lspi' uses discounted sum
     of actual_aps to the end of the episode
-    - attr can be ['det_actual_ap', 'entropy']
+    - attr can be ['det_actual_ap', 'entropy', 'auc_ap', 'auc_entropy']
     """ 
     if not attr:
       attr = self.rewards_mode
@@ -615,10 +615,16 @@ class DatasetPolicy:
       sample.img_ind = img_ind
       sample.state = b.compute_full_feature()
       sample.action_ind = action_ind
-      
+      sample.t = b.t
+
+      # prepare for AUC reward stuff
+      time_to_deadline = max(0,self.bounds[1]-b.t)
+      sample.auc_ap = 0
+
       # Take the action and get the observations as a dict
       action = self.actions[action_ind]
       obs = action.obj.get_observations(image)
+      dt = obs['dt']
 
       # If observations include detections, compute the relevant
       # stuff for the sample collection
@@ -651,20 +657,40 @@ class DatasetPolicy:
         ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
         ap_diff = ap-prev_ap
         sample.det_actual_ap = ap_diff
+
+        # detector AUC reward: this was tricky to get right :)
+        auc_ap = time_to_deadline * ap_diff - ap_diff * dt / 2
+        divisor = (time_to_deadline*(1-prev_ap))
+        if divisor == 0:
+          auc_ap = 1
+        else:
+          auc_ap /= divisor
+        assert(auc_ap>=-1 and auc_ap<=1)
+        sample.auc_ap = auc_ap
         prev_ap = ap
 
-      # Observations always include the following stuff, which can be used
-      # to update the belief state, and mark it as taken
-      b.t += obs['dt']
-      sample.dt = obs['dt']
-      sample.t = b.t
+      b.update_with_score(action_ind, obs['score'])
+
+      # mean entropy
       entropy = np.mean(b.get_entropies())
-      sample.entropy = entropy_prev-entropy
+      dh = entropy_prev-entropy # this is actually -dh :)
+      sample.entropy = dh
       entropy_prev = entropy
 
+      auc_entropy = time_to_deadline * dh - dh * dt / 2
+      divisor = (time_to_deadline * entropy)
+      if divisor == 0:
+        auc_entropy = 1
+      else:
+        auc_entropy /= divisor
+      assert(auc_entropy>=-1 and auc_entropy<=1)
+      sample.auc_entropy = auc_entropy
+
+      b.t += dt
+      sample.dt = dt
       samples.append(sample)
       step_ind += 1
-      b.update_with_score(action_ind, obs['score'])
+
 
       # The updated belief state posterior over C is our classification result
       clses = b.get_p_c().tolist() + [img_ind,b.t]

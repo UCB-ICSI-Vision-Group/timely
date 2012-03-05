@@ -243,7 +243,7 @@ class Evaluation:
     plt.clf()
     colors = ['black','orange','#4084ff','purple']
     styles = ['-','--','-.','-..']
-    prod = [x for x in itertools.product(styles,colors)]
+    prod = [x for x in itertools.product(colors,styles)]
     none_bounds = [None for table in tables]
     # TODO: oooh that's messy
     if np.all(all_bounds==none_bounds):
