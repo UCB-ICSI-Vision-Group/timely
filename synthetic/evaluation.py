@@ -81,10 +81,13 @@ class Evaluation:
 
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
-        detections = dets.filter_on_column('img_ind',img_ind)
+        if dets.arr == None:
+          detections = ut.Table(arr=np.arange([]),cols=[]) 
+        else:
+          detections = dets.filter_on_column('img_ind',img_ind)
         img_dets_list.append(detections)
       
-      if dets.is_empty():
+      if dets.arr == None:
         points = np.zeros(self.time_intervals)
       else:
         all_times = dets.subset_arr('time')
@@ -100,9 +103,8 @@ class Evaluation:
         num_dets = 0
         for img_ind,image in enumerate(self.dataset.images):
           gt_for_image = gt_for_image_list[img_ind]
-          img_dets = img_dets_list[img_ind]
-          dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)
-
+          img_dets = img_dets_list[img_ind] 
+          dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
           num_dets += dets_to_this_point.shape()[0]
           det_ap,rec,prec = self.compute_det_pr(dets_to_this_point, gt_for_image)
           det_aps.append(det_ap)
@@ -161,7 +163,7 @@ class Evaluation:
     else:
       if not dets:
         dets,clses,samples = self.dp.run_on_dataset()
-      if dets.is_empty():
+      if None == dets.arr:
         all_times = clses.subset_arr('time')
       else:
         all_times = dets.subset_arr('time')
