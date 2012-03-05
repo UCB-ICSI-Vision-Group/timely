@@ -442,7 +442,7 @@ class DatasetPolicy:
     return np.array(feats)
 
   def compute_reward_from_samples(self, samples, mode='greedy',
-    discount=0.9, attr=None):
+    discount=0.8, attr=None):
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action
