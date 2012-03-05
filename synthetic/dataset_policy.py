@@ -361,8 +361,8 @@ class DatasetPolicy:
     dets,clses,all_samples = self.run_on_dataset(False,num_samples)
     
     # Loop until max_iterations or the error is below threshold
-    error = threshold = 0.001
-    max_iterations = 12
+    error = threshold = 0.002
+    max_iterations = 8
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
       weights = None
@@ -394,7 +394,7 @@ class DatasetPolicy:
         print error
 
         # after the first iteration, check if the error is small
-        if i>0 and error<threshold:
+        if i>0 and error<=threshold:
           break
 
         print("Now collecting more samples with the updated weights...")
@@ -438,7 +438,8 @@ class DatasetPolicy:
     return np.array(feats)
 
   def compute_reward_from_samples(self, samples, mode='greedy',
-    discount=0.9, attr=None):
+    discount=0.4, attr=None):
+
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action

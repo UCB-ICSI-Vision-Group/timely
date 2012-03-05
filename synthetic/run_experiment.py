@@ -117,6 +117,9 @@ def main():
   parser.add_argument('--suffix',
     help="Overwrites the suffix in the config(s).")
 
+  parser.add_argument('--bounds10', action='store_true', 
+    default=False, help='set bounds to [0,10]')
+
   parser.add_argument('--force', action='store_true', 
     default=False, help='force overwrite')
 
@@ -174,6 +177,8 @@ def main():
   for config_f in configs:
     if args.suffix:
       config_f['suffix'] = args.suffix
+    if args.bounds10:
+      config_f['bounds'] = [0,10]
       
     config_f['blacklist'] = blacklist 
       
