@@ -35,7 +35,7 @@ Our goal is a general recognition policy that outputs both classification and de
   \label{fig:pomdp}
 \end{figure}
 
-As presented in Figure~\ref{fig:pomdp}, our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs $\{\emph{classify}(1), \dots, \emph{classify}(K)\}$ and a list of multi-class detection results $\emph{detect}(I)$.
+As presented in Figure~\ref{fig:pomdp}, our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and then outputs $\{\emph{classify}(1), \dots, \emph{classify}(K)\}$ and a list of multi-class detection results $\emph{detect}(I)$.
 
 The policy repeatedly selects an action $a_i$ from a set of actions $\mathcal{A}$, executes it, potentially receives an observation $o_i$, and selects the next action.
 The set of actions can include classifiers, detectors, or hybrid actions (detector followed by classification of its output).
@@ -156,7 +156,7 @@ Instead, we use Loopy Belief Propagation, which does not provide general converg
 Remember that our heuristic value function consisted of picking the action corresponding to the class presence variable with the highest probability $P(C_k)$.
 We can formulate such a policy as a scalar product:
 \begin{align}
-\pi(b) = \argmax_{a_i \in \mathcal{A}} \theta^\top \phi(b,a_i)
+\pi(b) = \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} \theta^\top \phi(b,a_i)
 \end{align}
 where $\phi(b,a_i)$ is a feature vector representation of the belief state.
 This approach is known as function approximation in reinforcement learning \cite{Sutton1998}.
@@ -182,7 +182,7 @@ One feature we want the reward function to have is additivity.
 Let's say that given deadline $T_d$ and some image, the policy had time to take $J$ actions.
 The total reward of a policy $\pi$ starting at state $b^j$ is then defined as the sum of rewards
 \begin{equation}
-R(h^j) = \sum_{j'=j}^J R(b_j')
+R(h^j) = \sum_{j'=j}^J R(b_j',a^{j'})
 \end{equation}
 
 We formulate two reward definitions: one strives to match the final AP evaluation of the detections, and one is motivated by lowering uncertainty of $P(\mathbf{C})$.
@@ -216,7 +216,7 @@ The goal of a policy that maximizes these rewards is to take actions that reduce
 
 The feature representation of the belief state for a given action $a_i$ that corresponds to class $k$ is defined to be
 \begin{align}
-[P(C_k), \, H(C_k), \, 1]
+\phi_k(b) = [P(C_k), \, H(C_k), \, 1]
 \end{align}
 
 Our procedure for learning the weights is standard generalized policy iteration \cite{Sutton1998}.
@@ -224,8 +224,15 @@ We first initialize the weights $\theta$ to the heuristic value function of simp
 
 With this policy, we run $N$ recognition episodes.
 From the state-action samples gathered in running the episodes, we formulate a matrix $\Phi$ from the featurizations $\phi(b^j,a_i)$, and a vector $y$ consisting of the individual rewards $R(b^j,a_i)$.
-We then solve the system $\Phi \theta = y$.
 
-\todo{more}
+The rewards are computed as the sum of discounted rewards to the end of the episode:
+\begin{align}
+R(b^j,a_i) = \sum_{i=0}^{J-j} \lambda^i R(b_{j+i},a^{j+i})
+\end{align}
+Note that with $\lambda=0$, the reward is determined entirely by the actual action taken; with $\lambda=1$, the reward is the sum of all rewards until the end of the episode.
 
+We then solve the system $\Phi \theta = y$ for $\theta$ with Lasso regression.
+With the updated weights $\theta$, we run $N$ more episodes and repeat the procedure until convergence.
 
+The parameters of this training procedure are the $\alpha$ weight on the regularization term in the regression and the $\lambda$ discount weight.
+We cross-validate for both values.
