@@ -391,11 +391,17 @@ class DatasetPolicy:
         gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
         ap,rec,prec = self.ev.compute_det_pr(dets, gt)
 
+        log_filename = opjoin(
+            config.get_dp_weights_images_dirname(self),'iter_%d.txt'%i)
         print("""
   After iteration %d, we've trained on %d samples and
   the error and ap %.3f and %.3f:"""%(i,len(all_samples),error,ap))
         np.set_printoptions(precision=2,suppress=True,linewidth=160)
         print self.get_reshaped_weights()
+        with open(log_filename,'w') as f:
+          f.write("""
+  After iteration %d, we've trained on %d samples and
+  the error and ap are %.3f and %.3f:"""%(i,len(all_samples),error,ap))
 
         # after the first iteration, check if the error is small
         if i>0 and error<threshold:
