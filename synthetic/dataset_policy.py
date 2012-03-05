@@ -309,7 +309,10 @@ class DatasetPolicy:
         dets_table.arr = np.vstack(final_dets)
       clses_table = ut.Table(cols=self.get_cls_cols())
       clses_table.arr = np.vstack(final_clses)
-      print("Found %d dets"%dets_table.shape()[0])
+      if dets_table.arr == None:
+        print("Found 0 dets")
+      else:
+        print("Found %d dets"%dets_table.shape()[0])
 
       # Only save results if we are not collecting samples
       if not sample_size > 0:
