@@ -167,7 +167,11 @@ def filter_on_column(arr, ind, val, op=operator.eq, omit=False):
   Returns the rows of arr where arr[:,ind]==val,
   optionally omitting the ind column.
   """
-  arr = arr[op(arr[:,ind], val),:]
+  try:
+    arr = arr[op(arr[:,ind], val),:]
+  except:
+    return arr
+  # TODO: fix this mess
   if omit:
     final_ind = range(np.shape(arr)[1])
     final_ind = np.delete(final_ind, ind)
