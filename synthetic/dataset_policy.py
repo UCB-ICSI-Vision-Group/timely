@@ -671,7 +671,9 @@ class DatasetPolicy:
           auc_ap /= divisor
         if dt > time_to_deadline:
           auc_ap = 0
-        assert(auc_ap>=-1 and auc_ap<=1)
+        if not (auc_ap>=-1 and auc_ap<=1):
+          auc_ap = 0
+        #assert(auc_ap>=-1 and auc_ap<=1)
         sample.auc_ap = auc_ap
         prev_ap = ap
 
@@ -690,7 +692,8 @@ class DatasetPolicy:
         auc_entropy /= divisor
       if dt > time_to_deadline:
         auc_entropy = 0
-      assert(auc_entropy>=-1 and auc_entropy<=1)
+      if not (auc_entropy>=-1 and auc_entropy<=1):
+        auc_entropy = 0
       sample.auc_entropy = auc_entropy
 
       entropy_prev = entropy
