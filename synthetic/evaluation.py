@@ -9,13 +9,11 @@ import synthetic.config as config
 from synthetic.dataset import Dataset
 from synthetic.image import BoundingBox
 
-
 class Evaluation:
   """
   Class to output evaluations of detections.
   Has to be initialized with a DatasetPolicy to correctly set the paths.
   """
-
   MIN_OVERLAP = 0.5
   TIME_INTERVALS = 12
 

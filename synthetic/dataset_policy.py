@@ -33,7 +33,7 @@ class DatasetPolicy:
     'policy_mode': 'random',
       # policy mode can be one of random, oracle, fixed_order,
       # no_smooth, backoff, fastinf
-    'bounds': [0,25], # start and deadline times for the policy
+    'bounds': [0,20], # start and deadline times for the policy
     'weights_mode': 'manual_1',
     # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
     'rewards_mode': 'det_actual_ap'
@@ -618,7 +618,9 @@ class DatasetPolicy:
       sample.t = b.t
 
       # prepare for AUC reward stuff
-      time_to_deadline = max(0,self.bounds[1]-b.t)
+      time_to_deadline = 0
+      if self.bounds:
+        time_to_deadline = max(0,self.bounds[1]-b.t)
       sample.auc_ap = 0
 
       # Take the action and get the observations as a dict
@@ -665,6 +667,8 @@ class DatasetPolicy:
           auc_ap = 1
         else:
           auc_ap /= divisor
+        if dt > time_to_deadline:
+          auc_ap = 0
         assert(auc_ap>=-1 and auc_ap<=1)
         sample.auc_ap = auc_ap
         prev_ap = ap
@@ -683,6 +687,8 @@ class DatasetPolicy:
         auc_entropy = 1
       else:
         auc_entropy /= divisor
+      if dt > time_to_deadline:
+        auc_entropy = 0
       assert(auc_entropy>=-1 and auc_entropy<=1)
       sample.auc_entropy = auc_entropy
 
@@ -690,7 +696,6 @@ class DatasetPolicy:
       sample.dt = dt
       samples.append(sample)
       step_ind += 1
-
 
       # The updated belief state posterior over C is our classification result
       clses = b.get_p_c().tolist() + [img_ind,b.t]

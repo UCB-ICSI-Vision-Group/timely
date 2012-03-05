@@ -64,6 +64,10 @@ class FastinfModel(InferenceModel):
         print("comm_rank %d: can't close process!"%comm_rank)
       self.process = pexpect.spawn(self.cmd)
       self.get_marginals()
+    # TODO: hack to set the actual classifier score here!
+    # TODO: this assumes that there's only one action per class!!
+    inds = np.flatnonzero(taken)
+    self.p_c[inds] = observations[inds]
     #print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
 
   def reset(self):
@@ -93,7 +97,7 @@ class FastinfModel(InferenceModel):
     self.process.expect('Enter your evidence')
     output = self.process.before
     marginals = FastinfModel.extract_marginals(output)
-    # DOn't cache anything!
+    # Don't cache anything!
     #self.cache[evidence] = marginals
     self.p_c = np.array([m[1] for m in marginals[:20]])
     return marginals
