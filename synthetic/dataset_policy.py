@@ -563,8 +563,6 @@ class DatasetPolicy:
     "Update the values of actions according to the current belief state."
     if self.policy_mode=='random' or self.policy_mode=='oracle':
       self.action_values = np.random.rand(len(self.actions))
-    elif self.policy_mode=='fixed_order':
-      self.action_values = b.get_p_c()
     else:
       ff = b.compute_full_feature()
       self.action_values = np.array([\
