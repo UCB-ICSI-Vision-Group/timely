@@ -22,7 +22,7 @@
 \newcommand{\comment}[1]{}
 
 \mainmatter
-\def\ECCV12SubNumber{***}  % Insert your submission number here
+\def\ECCV12SubNumber{1617}  % Insert your submission number here
 
 \title{Timely Object Detection}
 
@@ -36,7 +36,12 @@
 \maketitle
 
 \begin{abstract}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras imperdiet, orci sagittis consequat vehicula, metus tellus pulvinar metus, eget cursus tortor quam sit amet ligula. Donec vel leo ac sem blandit vulputate. Etiam pellentesque, quam non condimentum posuere, dolor augue mollis velit, posuere auctor lectus neque in nulla. Aenean in risus sit amet nisl lacinia eleifend et non velit. Aliquam mi magna, faucibus sed venenatis vitae, commodo ac nisi. Pellentesque tristique dictum mauris, et sollicitudin eros sollicitudin id. Cras elit mi, luctus quis vestibulum in, sagittis vel elit. Sed ligula dolor, ultrices eget gravida sit amet, dictum vel nisl.
+In a large, multi-class detection system, the problem of timeliness of results is crucial.
+We are motivated by situations where running all detectors would take an unacceptably long time, and the best answer must be given by some deadline.
+Our system for multi-class detection aims to give the best possible results at any single point after a start time; it is terminated at a deadline time.
+Toward this goal, we formulate a dynamic policy to decide which detector to deploy next.
+The policy is guided by an estimate of the contents of the image, and is sensitive to the time deadline and the ``value'' of different classes.
+We evaluate parametrizations of the policy with respect to performance in the novel AP vs. Time evaluation on the PASCAL VOC dataset.
 \end{abstract}
 
 \input{introduction.tex} % includes Evaluation section

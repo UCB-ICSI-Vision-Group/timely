@@ -197,20 +197,32 @@ We formulate two reward definitions: one strives to match the final AP evaluatio
 
 The final evaluation of a policy consists of the area under the performance vs. time curve.
 Accordingly, we formulate per-action rewards such that their addition results in precisely this quantity.
+
 Specifically, as shown in Figure~\ref{fig:rewards}, we define the reward of an action as
 \begin{equation}\label{eq:advanced}
 R(b^j,a_i) = \frac{\Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)}{(1-\text{ap}_i)t_T^j}
 \end{equation}
 where $t_T^j$ is the time left until deadline at state $b^j$, and $\Delta t_i$ and $\Delta \text{ap}_i$ are the time taken and AP change produced by the action $a_i$.
 
+\todo{explain the behavior}
+
 \subsubsection{Reward: decrease in mean entropy}
-We also consider a similar additive reward function based on the mean entropy of the variables $P(C_k)$.
-As with the above policy, the decrease in entropy is considered with regard to the time of the action.
+We also consider a similar additive reward function based on the mean entropy of the variables $P(C_k)$: $\frac{1}{K}\sum_{k=1}^K H(C_k)$, where $H(C_k) = - \sum_{c_k \in {0,1}} P(c_k) \log P(c_k)$.
+We follow the same setup as above, but strive to maximize the area \emph{above} the curve of mean entropy vs. time.
 
 The goal of a policy that maximizes these rewards is to take actions that reduce uncertainty of the most uncertain variables most quickly.
 
 \subsection{Learning the weights}
 
-\todo{Describe the greedy thing and the generalized policy iteration that we do.}
+The feature representation of the belief state for a given action $a_i$ that corresponds to class $k$ is defined to be $[P(C_k), \, H(C_k), \, 1]$.
+
+Our procedure for learning the weights is standard generalized policy iteration \cite{Sutton1998}.
+We first initialize the weights $\theta$ to the heuristic value function of simply picking the maximum $P(C_k)$: $\theta_i = [1, \,0, \,0]$.
+
+With this policy, we gather $N$ recognition episodes.
+We formulate a matrix $\Phi$ from the featurizations $\phi(b^j,a_i)$ that were seen in the gathered episodes, and a vector $y$ consisting of the individual rewards.
+We then solve the system $\Phi \theta = y$.
+
+\todo{more}
 
 
