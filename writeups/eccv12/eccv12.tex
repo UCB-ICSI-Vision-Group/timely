@@ -36,12 +36,10 @@
 \maketitle
 
 \begin{abstract}
-\todo{put the word visual somewhere}
-In a large, multi-class detection system, the problem of timeliness of results is crucial.
+In a large visual multi-class detection system, the problem of timeliness of results is crucial.
 We are motivated by situations where running all detectors would take an unacceptably long time, and that the best answer must be given by some deadline.
 Our system for multi-class detection aims to give the best possible results at any single point after a start time; it is terminated at a deadline time.
-Toward this goal, we formulate a dynamic policy to decide which detector to deploy next.
-The policy is guided by an estimate of the contents of the image, and is sensitive to the time deadline and the ``value'' of different classes.
+Toward this goal, we formulate a dynamic policy, guided by inference of the contents of the image, to decide which detector to deploy next.
 We evaluate parametrizations of the policy with respect to performance in the novel AP vs. Time evaluation on the PASCAL VOC dataset.
 \end{abstract}
 

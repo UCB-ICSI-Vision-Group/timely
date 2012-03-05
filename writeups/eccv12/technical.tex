@@ -80,8 +80,6 @@ The policy's performance at time $t$ is determined by the detection and classifi
 For classification of unobserved classes, we treat the corresponding values of $P(\mathbf{C})$ as the set of confidence scores $\{\emph{classify}(k)\}$.
 Detection results of unobserved classes are an empty set.
 
-\todo{Is the above sufficiently clear?}
-
 Our notation is summarized in \autoref{tab:notation}.
 
 \begin{table}[h!]
@@ -147,9 +145,7 @@ The responses are discretized per variable based on the distribution of the scor
 The MRF is implemented with an open-source graphical model package \cite{Jaimovich2010}.
 The parameters of the model are trained on fully-observed data.
 Exact inference is generally intractable in this model.
-Instead, we use Loopy Belief Propagation, which does not provide general convergence guarantees but has been shown to work well empirically on similar tasks \todo{cite}.
-
-\todo{what to say about cost of inference? realistically it's 0.5 seconds while the detection action + classification is about 2 seconds.}
+Instead, we use Loopy Belief Propagation, which does not provide general convergence guarantees but has been shown to work well empirically on similar tasks \cite{Desai2009}.
 
 \subsection{Learning the Value Function}
 

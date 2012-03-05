@@ -1,8 +1,8 @@
 \begin{figure}[h!]
 \centering
-\subfloat[Detection]{\includegraphics[width=0.68\linewidth]
+\subfloat[Detection]{\includegraphics[width=0.78\linewidth]
     {figures/manual_plots_det_avg.png}} \\
-\subfloat[Classification]{\includegraphics[width=0.68\linewidth]
+\subfloat[Classification]{\includegraphics[width=0.78\linewidth]
     {figures/manual_plots_cls_whole.png}}
   \caption{Heuristic value function.}
   \label{fig:results_manual}
@@ -25,8 +25,7 @@ As shown in Figure~\ref{fig:results_manual}, the random policy results in a roug
 To establish an upper bound on performance, we also plot the Oracle curve, obtained by re-ordering the actions with the hindsight of the results they produced.
 Note that the curves turn downward in this setting: this is due to the different performance levels of the detectors: as the weaker detectors are inevitably run, they introduce more false positives and false negatives than true positives.
 
-
-\todo{How do the different reward functions affect performance?}
+Figure~\ref{fig:results_manual} also shows the performance of our policy with the heuristic value function and two inference models: the MRF model and a simple fixed-order model that follows the priors.
 
 \begin{figure}[h!]
 \centering
@@ -38,4 +37,6 @@ Note that the curves turn downward in this setting: this is due to the different
   \label{fig:results_entropy}
 \end{figure}
 
-\todo{Mention how fixedorder and fastinf learn totally different weights.}
+Figure~\ref{fig:results_entropy} shows the performance of the polices with learned weights.
+A notable difference between the MRF inference model and the fixed-order model was in the weights learned: while the fixed-order model learned weights onto the bias feature only, the MRF inference model learned weights onto a mix of the entropy and probability features.
+
