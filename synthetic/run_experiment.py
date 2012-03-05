@@ -110,6 +110,9 @@ def main():
     help="""Config file name that specifies the experiments to run.
     Give name such that the file is configs/#{name}.json or configs/#{name}/
     In the latter case, all files within the directory will be loaded.""")
+  
+  parser.add_argument('--blacklist',type=str,default='',
+    help="""Ignore these indices from the class list. Format: --blacklist=14,6""")  
 
   parser.add_argument('--suffix',
     help="Overwrites the suffix in the config(s).")
@@ -161,12 +164,19 @@ def main():
   dets_tables_whole = []
   clses_tables_whole = []
   all_bounds = []
-
+  
+  if len(args.blacklist) > 0:
+    blacklist = [int(i) for i in args.blacklist.split(',')]
+  else:
+    blacklist = []
+      
   plot_infos = [] 
   for config_f in configs:
     if args.suffix:
       config_f['suffix'] = args.suffix
-    #config_f['blacklist'] = [14,6]
+      
+    config_f['blacklist'] = blacklist 
+      
     dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)
@@ -177,8 +187,8 @@ def main():
 
     # evaluate in the AP vs. Time regime, unless told not to
     if not args.no_apvst:
-      dets_table = ev.evaluate_vs_t(None,None,force=args.force)
-      dets_table_whole,clses_table_whole = ev.evaluate_vs_t_whole(None,None,force=args.force)
+      dets_table = ev.evaluate_vs_t(None,None,force=args.force, blacklist=blacklist)
+      dets_table_whole,clses_table_whole = ev.evaluate_vs_t_whole(None,None,force=args.force, blacklist=blacklist)
       if comm_rank==0:
         dets_tables.append(dets_table)
         dets_tables_whole.append(dets_table_whole)
@@ -186,7 +196,7 @@ def main():
 
     # optionally, evaluate in the standard PR regime
     if args.wholeset_prs:
-      ev.evaluate_detections_whole(None,force=args.force)
+      ev.evaluate_detections_whole(None,force=args.force,blacklist=blacklist)
 
   # and plot the comparison if multiple config files were given
   if not args.no_apvst and len(configs)>1 and comm_rank==0:
