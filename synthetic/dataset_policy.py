@@ -577,7 +577,10 @@ class DatasetPolicy:
     """
     taken = copy.deepcopy(b.taken)
     for ind in self.blacklist:
-      taken[ind] = 1
+      # What if there are more than 20 actions!?
+      for i in range(int(len(taken)/len(self.dataset.classes))):
+        taken[i*ind] = 1
+        
     if np.all(taken):
       return -1
     untaken_inds = np.flatnonzero(taken==0)
