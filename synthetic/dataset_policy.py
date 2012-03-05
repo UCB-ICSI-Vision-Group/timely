@@ -213,6 +213,8 @@ class DatasetPolicy:
 
     elif weights_mode in ['greedy','rl_regression','rl_lspi']:
       weights = self.learn_weights(weights_mode)
+      print("DONE LEARNING WEIGHTS PLZ RUN ON TEST GODDAMNIT!!!!")
+      sys.exit()
 
     else:
       raise ValueError("unsupported weights_mode %s"%weights_mode)
