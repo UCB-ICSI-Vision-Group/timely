@@ -27,7 +27,7 @@ To highlight the hierarchical structure of these problems, we note that (1) the 
 
 Our goal is a general recognition policy that outputs both classification and detection results; we evaluate on both tasks.
 
-\section{Multi-class Recognition Policy}
+\section{Multi-class Recognition Policy} \label{sec:tech}
 \begin{figure}[h!]
 \center{\includegraphics[width=0.66\linewidth]
     {figures/pomdp.pdf}}
@@ -122,10 +122,10 @@ Before we discuss how to set $V(b,a_i)$ such that our policy obtains best perfor
 \subsection{The model of the belief state}
 \begin{figure}[h!]
 \centering
-\includegraphics[width=0.56\linewidth]{figures/inf_model_mrf.pdf}
+\includegraphics[width=0.56\linewidth]{figures/inf_model_mrf_1.pdf}
 \caption{
-We present a point in the middle of the decision process for 3 classes.
-Some classifiers have already been observed.
+We present a point in the middle of the decision process for 3 classes; one action has already been taken.
+\comment{Some classifiers have already been observed.}
 }
 \label{fig:model}
 \end{figure}
@@ -135,10 +135,17 @@ These allow us to look for the most probable classes given the observations.
 When the policy starts, the model should present the prior distributions $P(C_k)$; as observations are accrued, the model should present the updated conditionals $P(C_k|\mathbf{o})$.
 
 We employ a fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:model}.
-The parameters are trained on fully-observed data.
-Exact inference is of course intractable in a general model of this type, and quite slow for a model of our size.
-Instead, we use Loopy Belief Propagation, which provides no general convergence guarantees but has been shown to work well empirically \todo{cite}.
-The implementations details are given further in \autoref{sec:implementation}.
+The $L_i$ variables are discretized from real-valued responses of a classifier on the detections output by the deformable part-model detector we employ (see Section~\ref{sec:tech}).
+
+The classifier is a linear kernel SVM on the top two max detection scores in the list of detections.
+The responses are discretized per variable based on the distribution of the scores on the training dataset.
+
+The MRF is implemented with an open-source graphical model package \cite{Jaimovich2010}.
+The parameters of the model are trained on fully-observed data.
+Exact inference is generally intractable in this model.
+Instead, we use Loopy Belief Propagation, which does not provide general convergence guarantees but has been shown to work well empirically on similar tasks \todo{cite}.
+
+\todo{what to say about cost of inference? realistically it's 0.5 seconds while the detection action + classification is about 2 seconds.}
 
 \subsection{Policy parametrization and more reward functions}
 
@@ -194,28 +201,6 @@ First, we seek to maximize the expected next-stage reward, and manually construc
 Next, we note that the manually constructed value function can be represented as a scalar product of a parameter vector with a featurization of the belief state; we learn the weights by regression to the actual next-stage reward from running many episodes.
 Lastly, we use a reinforcement learning technique to learn the weights such that the expected rewards over the whole episode are maximized.
 
-\subsubsection{Learning the greedy policy}
+\subsubsection{Learning the weights}
 We note that we can represent the one-step greedy policy value function as a scalar product 
 
-\subsubsection{Learning the proper policy}
-\note{I'm considering two options here: (1) log-linear representation and policy gradient algorithm; (2) least-squares policy iteration.}
-
-\paragraph{Policy gradient algorithm}
-We redefine our policy as picking the mode of a log-linear parametrized distribution:
-\begin{equation}
-P(a|b;\theta) = \frac{\exp(\theta^T \phi(b,a))}{\sum_{a' \in \mathcal{A}} \exp(\theta^T \phi(b,a')}
-\end{equation}
-
-Basically stochastic gradient ascent on the estimate of the reward accrued by an episode.
-
-This approach has been shown to scale to large problems in \cite{Branavan2009}, although it has been proven to converge only to local maxima and only for MDPs \cite{Sutton2000}.
-
-\note{Does the constraint that no action is taken more than once affect this algorithm?}
-
-\paragraph{Least-squares Policy Iteration}
-An efficient form of temporal-difference learning used in \cite{Kwok2004}.
-Policy remains parameterized as it was.
-
-\section{Implementation Details and Evaluation} \label{sec:implementation}
-We use FastInf \cite{Jaimovich2010} for learning and inference in our MRF model.
-The real-valued classifier responses $o_i$ are discretized into data-dependent bins for efficiency.
