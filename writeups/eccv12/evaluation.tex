@@ -26,6 +26,7 @@ To establish an upper bound on performance, we also plot the Oracle curve, obtai
 Note that the curves turn downward in this setting: this is due to the different performance levels of the detectors: as the weaker detectors are inevitably run, they introduce more false positives and false negatives than true positives.
 
 Figure~\ref{fig:results_manual} also shows the performance of our policy with the heuristic value function and two inference models: the MRF model and a simple fixed-order model that follows the priors.
+We can see that due to the dataset bias, the fixed-order policy performs well at first (the person class is disproportionately likely to be in the image), but is overtaken by the proper inference model as execution goes on.
 
 \begin{figure}[h!]
 \centering
@@ -37,6 +38,7 @@ Figure~\ref{fig:results_manual} also shows the performance of our policy with th
   \label{fig:results_entropy}
 \end{figure}
 
-Figure~\ref{fig:results_entropy} shows the performance of the polices with learned weights.
-A notable difference between the MRF inference model and the fixed-order model was in the weights learned: while the fixed-order model learned weights onto the bias feature only, the MRF inference model learned weights onto a mix of the entropy and probability features.
+Figure~\ref{fig:results_entropy} shows the performance of the polices with learned weights, comparing our two reward functions.
+We found the entropy-based reward to work better than the AP-based reward.
 
+A notable difference between the MRF inference model and the fixed-order model was in the weights learned: while the fixed-order model learned weights onto the bias feature only, the MRF inference model learned weights onto a mix of the entropy and probability features.
