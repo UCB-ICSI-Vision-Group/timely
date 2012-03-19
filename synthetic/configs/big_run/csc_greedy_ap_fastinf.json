@@ -3,5 +3,8 @@
   "detectors": ["csc_default"],
   "policy_mode": ["fastinf"],
   "weights_mode": ["greedy"],	
-  "rewards_mode": ["auc_ap"]
+  "rewards_mode": ["auc_ap"],
+  "color": "#4084ff",
+  "line": "-",
+  "label": "Fastinf - Learned Weights on AP" 
 }

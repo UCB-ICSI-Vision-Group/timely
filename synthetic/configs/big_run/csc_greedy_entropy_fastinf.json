@@ -4,7 +4,7 @@
   "policy_mode": ["fastinf"],
   "weights_mode": ["greedy"],	
   "rewards_mode": ["auc_entropy"],
-  "label": "Fastinf Greedy Entropy",
+  "label": "Fastinf - Learned Weights on Entropy",
   "color": "orange",
   "line": "-"
 }
