@@ -1,8 +1,3 @@
-""" Implementation of Viajayanarasimhan and Graumann's Jumping Windows for
-window candidate selection
-@author: Tobias Baumgartner
-@contact: tobibaum@gmail.com
-"""
 from common_imports import *
 from common_mpi import *
 import synthetic.config as config
@@ -183,7 +178,7 @@ def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
   return np.asarray(positions[:, 2], dtype='int32')
 
 def sub2ind(A, x, y):
-  return y*A[0] + x
+  return (y-1)*A[0] + x
 
 def ind2sub(width, ind):
   y = ind/width
@@ -247,7 +242,7 @@ def get_idx(inds, codes, c_shape, feats, binidx):
   
   idx = sub2ind(c_shape, words, binidx[ind])
 
-  idx = np.unique(np.asarray(idx))
+  #idx = np.unique(np.asarray(idx))
   idx = idx.astype('int32')
   
   return idx
@@ -256,16 +251,17 @@ def get_idx(inds, codes, c_shape, feats, binidx):
 ###############################################################
 ######################### Training ############################
 ###############################################################
-def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, feature='sift'):
+def train_jumping_windows(d, codebook, trun=False, diff=False, feature='sift'):
   tocer = ut.TicToc()
-  llc_dir = '../../research/jumping_windows/llc/'
-  featdir = '../../research/jumping_windows/sift/'
-  
+  jw_test_dir = join(config.test_support_dir, 'jumping_windows') 
+  llc_dir = join(jw_test_dir, 'llc')
+  featdir = join(jw_test_dir, 'sift')
+ 
   if feature == 'sift':
-    trainfile = join(config.VOC_dir, 'ImageSets','Main','trainval.txt')
+    trainfile = join(config.VOC_dir, 'ImageSets','Main', d.name.split('_')[-1]+'.txt')
     trainfiles = open(trainfile,'r').readlines()
   elif feature == 'llc':
-    trainfiles = os.listdir(featdir)
+    trainfiles = os.listdir(llc_dir)
     
   grids = 4
   if feature == 'sift':
@@ -298,7 +294,6 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
       
     bg = np.ones((pts.shape[0], 1))        
     
-          
     image = d.get_image_by_filename(filename[:-4]+'.jpg')
     im_ind = d.get_img_ind(image)
     gt = d.get_ground_truth_for_img_inds([im_ind])
@@ -306,23 +301,39 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
     for row in gt.arr:
     #for row in gt.arr[0,:]:
       cls = row[gt.cols.index('cls_ind')]
+      #print d.classes[int(cls)]
       bbox = row[0:4]
-      inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
+      #print bbox[0], bbox[0]+bbox[2]-1, bbox[1], bbox[1]+bbox[3]-1
+      inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2]-1, bbox[1], bbox[1]+bbox[3]-1)
       bg[inds] = 0
       
       selbins = get_selbins(grids, inds, pts, bbox)
       binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
           + cls*grids*grids);
+#      print cls*grids*grids
+#      print sub2ind([4,4],1,1)
       if feature == 'sift':
         binidx -= np.tile(grids, binidx.shape)
-            
-            
-      idx = get_idx(inds, codes, ccmat.shape, feature, binidx)  
       
+#      if filename == '000753.mat':
+#        print 'inds', len(inds)
+#        print 'sel', len(selbins)
+#        print 'bindx', len(binidx)      
+            
+      idx = get_idx(inds, codes, ccmat.shape, feature, binidx)
+            
       for i in idx:        
         [x, y] = ind2sub(ccmat.shape[0], i)  
         #print x, y      
-        ccmat[x, y] = ccmat[x, y] + 1      
+        ccmat[x, y] = ccmat[x, y] + 1
+#      print inds[:9]
+#      print selbins[:9]
+#      sio.savemat('selbins', {'selbins2':selbins})
+#      sio.savemat('binidx', {'binidx2':binidx})
+#      print binidx[:-9]
+#      print idx[:9]
+#      sio.savemat('idx', {'idx2':idx})
+    #return      
     
     # Now record background features
     cls = len(d.classes)*grids*grids
@@ -337,8 +348,13 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
     
     for w in words:
       ccmat[w, cls] = ccmat[w, cls] + 1
-    #sio.savemat('ccmat', {'ccmat2': ccmat})
-    #break
+  
+  if feature == 'llc':
+    ccmat_orig = sio.loadmat(join(jw_test_dir,'cooccurrence.mat'))['ccmat']
+    # ========= ASSSERT
+    np.testing.assert_equal(ccmat, ccmat_orig)
+                             
+  return
   
   print 'features counted'
   tocer.toc()
@@ -395,25 +411,22 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
         x = feaSet['x'][0][0]
         y = feaSet['y'][0][0]    
         pts = np.hstack((x,y))
-        bg = np.ones((pts.shape[0], 1))    
+        bg = np.ones((pts.shape[0], 1))
         codes = sio.loadmat(join(llc_dir,filename))['codes']
         last_filename = filename
       bbox = row[0:4]
       
       inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
             
-      # Compute grid that each point falls into
+      # Compute grid that each point falls into      
+      selbins = get_selbins(grids, inds, pts, bbox)
+      binidx = np.transpose(sub2ind([grids, grids], selbins[:,0]-1, selbins[:,1]-1))          
+      selbins = get_selbins(grids, inds, pts, bbox)-1 
       
-      selbins = get_selbins(grids, inds, pts, bbox)      
-      
-      binidx = np.transpose(sub2ind([grids, grids], selbins[:,0]-1, selbins[:,1]-1));
-          
-      selbins = get_selbins(grids, inds, pts, bbox) 
       binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
-          + cls*grids*grids);
-      
+          + cls_idx*grids*grids);      
       idx = get_idx(inds, codes, ccmat.shape, feature, binidx)
-      
+            
       if feature == 'llc':
         ind = np.where(codes[:,inds].data > 0)[0]
         ind = codes.nonzero()[1][ind]
@@ -470,28 +483,25 @@ def mpi_get_sublist(rank, size, all_classes):
 
 if __name__=='__main__':
   all_classes = config.pascal_classes
-  val_set = 'full_pascal_test'
   train_set = 'full_pascal_trainval'
+  val_set = 'full_pascal_test'
   K = 3000
   num_pos = 'max'
 
-  use_scale = False
-
   e = Extractor()
   d = Dataset(train_set)
-  train = False
+  train = True
   if train:
     # this is the codebook size
     # This is just for that it broke down during the night
     # MPI this
-    feature = 'sift'        
+#    feature = 'sift'
+    feature = 'llc'
     codebook = e.get_codebook(d, 'sift')
     ut.makedirs(join(config.data_dir, 'jumping_window','lookup'))
-    train_jumping_windows(d, codebook, use_scale=use_scale,trun=True,diff=False, feature=feature)
+    train_jumping_windows(d, codebook, trun=True,diff=False, feature=feature)
 
-  
-  debug = True
-  just_eval = True
+  just_eval = False
 
   if just_eval:
     basedir = join(config.data_dir, 'jumping_window')
@@ -500,14 +510,14 @@ if __name__=='__main__':
     ut.makedirs(foldname_det)
     
     print 'start testing on node', comm_rank
-    dtest = Dataset('full_pascal_test')
+    d_val = Dataset('full_pascal_val')
     #for cls_idx, cls in enumerate(all_classes):
     for cls_idx, cls in enumerate([all_classes[0]]):
       #cls=all_classes
-      gt_t = dtest.get_ground_truth_for_class(cls, include_diff=False,
+      gt_t = d_val.get_ground_truth_for_class(cls, include_diff=False,
           include_trun=True)
       e = Extractor()
-      codebook = e.get_codebook(dtest, 'sift')
+      codebook = e.get_codebook(d_val, 'sift')
             
       filename_lookup = join(foldname_lookup,cls)
       store_file = open(filename_lookup, 'r')
@@ -522,7 +532,7 @@ if __name__=='__main__':
           
       for i in range(comm_rank, len(test_imgs), comm_size):
         img_ind = int(test_imgs[i])
-        image = dtest.images[img_ind]
+        image = d_val.images[img_ind]
         codes = e.get_assignments(np.array([0,0,100000,100000]), 'sift', codebook, image)
         dets = generate_jwin(bbinfo, image, cls, codes, codes[:,0:2])
       
