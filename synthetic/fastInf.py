@@ -10,10 +10,6 @@ from matplotlib.pylab import *
 import argparse
 from matplotlib.pyplot import hist
 
-# TODO: why are these two needed?
-def plausible_assignments(assignments):
-  return np.absolute(assignments - np.random.random(assignments.shape)/3.)
-
 class FastinfDiscretizer(object):
   def __init__(self,d,suffix):
     # For a given setting return bounds as num_bins x num_cols
@@ -384,9 +380,9 @@ def run_all_in_3_parts():
 
 def run_fastinf_for_dataset(dataset):
   
-  suffixs = ['GIST_CSC', 'GIST']
-  ms = ['0', '2', '5']
-  rs = ['', '0.5', '1']
+  suffixs = ['perfect']
+  ms = ['0']
+  rs = ['1']
   
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
 

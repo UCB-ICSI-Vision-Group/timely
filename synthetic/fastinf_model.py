@@ -31,8 +31,9 @@ class FastinfModel(InferenceModel):
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
     self.blacklist = []
+  
     marginals = self.get_marginals()
-    #print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
+    print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
 
   def save_cache(self):
     "Write cache out to file with cPickle."
