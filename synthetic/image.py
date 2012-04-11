@@ -7,12 +7,25 @@ from synthetic.bounding_box import BoundingBox
 class Image:
   """An image has a size and a list of objects."""
   
-  def __init__(self,name=None,size=None,objects=None,dataset=None):
+  def __init__(self,name=None,size=None,objects=None,dataset=None,synthetic=False):
     self.name = name          # just a string identifier 
     self.size = size          # (width,height)
     if not objects:
       self.objects = []
     self.dataset = dataset
+    self.synthetic = synthetic
+    if synthetic:
+      self.cls_ground_truth = self.gen_cls_ground_truth()
+
+  def gen_cls_ground_truth(self):
+    "Hard-coded right now"
+    choices = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]
+    probs = np.array([0,8,3,1,6,1,8,3])
+    cum_probs = np.cumsum(1.*probs/np.sum(probs))
+    choice = np.where(cum_probs>np.random.rand())[0][0]
+    # to check that this is right (it is):
+    # hist(choices,bins=arange(0,9),normed=True,align='left'); plot(1.*probs/sum(probs))
+    self.cls_ground_truth = np.array(choices[choice])
 
   def get_whole_image_bbox(self):
     """Returns a BoundingBox with (0,0,width,height) of the image."""
@@ -91,6 +104,9 @@ class Image:
     return counts 
 
   def get_cls_ground_truth(self,include_diff=False,include_trun=False):
+    # TODO: hack
+    if self.synthetic:
+      return self.cls_ground_truth
     counts = self.get_cls_counts(include_diff,include_trun)
     z = np.zeros(counts.shape)
     z[counts>0] = 1
