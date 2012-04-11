@@ -8,7 +8,7 @@ from synthetic.ngram_model import InferenceModel
 from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,model_name,num_actions,m='0',r2='1'):
+  def __init__(self,dataset,model_name,num_actions,m='0',r2='1', lbp_time=2):
     # TODO: experiment with different values of fastinf
 
     self.dataset = dataset
@@ -17,7 +17,7 @@ class FastinfModel(InferenceModel):
 
     # TODO: experiment with different amounts of smoothing
     # amount of smoothing is correlated with fastinf slowness, values [0,1)
-    self.smoothing = 0
+    self.smoothing = 0.5
     self.cache_fname = config.get_fastinf_cache_file(dataset,model_name,m,r2,self.smoothing)
 
     if opexists(self.cache_fname):
@@ -26,7 +26,7 @@ class FastinfModel(InferenceModel):
         self.cache = cPickle.load(f)
     else:
       self.cache = {}
-    self.cmd = config.fastinf_bin+" -i %s -m 0 -Is %f"%(self.res_fname, self.smoothing)
+    self.cmd = config.fastinf_bin+" -i %s -m 0 -Is %f -Ims %d"%(self.res_fname, self.smoothing, lbp_time)
     self.num_actions = num_actions
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
