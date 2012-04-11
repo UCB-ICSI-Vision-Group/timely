@@ -1,7 +1,7 @@
 Timely Object Detection
 ===
 
-Repository for upcoming ECCV 2012 submission(s) on Timely Object Detection.
+Repository for upcoming NIPS 2012 submission on Timely Object Detection.
 
 Files
 ---
@@ -50,54 +50,3 @@ Ideas
 - general philosophy of particle filtering/coarse-to-fine vs. cascade: instead of rejecting regions a priori, look only in a few regions and let that guide the next places you look
 - evaluate the "valley" of detectors: what's the minimal overlap required to successfully get the detection?
   : in terms of pascal overlap, for example
-
-Tasks
----
-### misc
-- rename 'synthetic' to 'timely' everywhere
-- check code with pylint
-- write tests for all classes @sergey @tobi
-
-### policy
-- include values for object classes (reference some paper by Ashish if can find) @sergey
-- learn regression on policy samples, and replace the weight vectors of action with the results. @sergey
-- code up LSPI and try to improve on the 1-step policy @sergey
-- code up 'ranking svm policy'
-- include scene context action
-
-### classification
-- evaluate classification performance
-- train classifier for the whole image (SIFT+SPM)
-
-### belief state model
-- refactor the validation method to use MPI instead of IPython.Parallel
-- MRF model
-
-### on the backburner
-#### window proposals
-- speed up: profile code to see where the speed bottlenecks are. how can they be resolved?
-- try using x_scaled instead of x_frac for window proposal statistics
-#### window classifier
-- port sub's code into scikits-learn
-#### jumping windows
-- ensure performance at published levels
-- is VQ performance adequate? should be pretty fast
-
-Schedule
----
-Fri Feb 24 - 7 days left
-- MRF model trained with GIST and detection classifiers
-- Regression to next-step rewards from featurization of the state, for both value functions
-- Plot of old value function with new inference
-- Plot of using the information gain reward function-derived manual value function with new inference
-- have draft with full set of results, distribute to group
-- make sure that the belief states we are collecting in the samples all preseve the correct state (does deepcopy work?) @sergey
-
-Mon Feb 27 - 5 days left
-
-Wed Feb 29 - 2 days left
-
-Fri Mar 2 - 0 days left
-
-Mon Mar 5 - -3 days left
-- final paper submitted

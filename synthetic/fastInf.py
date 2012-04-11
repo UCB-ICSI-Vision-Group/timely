@@ -387,7 +387,7 @@ def run_fastinf_for_dataset(dataset):
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
 
 if __name__=='__main__':
-  d = Dataset('full_pascal_trainval')
+  d = Dataset('synthetic')
   run_fastinf_for_dataset(d)
   #run_all_in_3_parts()
   
