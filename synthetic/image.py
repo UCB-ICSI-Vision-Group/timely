@@ -15,7 +15,7 @@ class Image:
     self.dataset = dataset
     self.synthetic = synthetic
     if synthetic:
-      self.cls_ground_truth = self.gen_cls_ground_truth()
+      self.gen_cls_ground_truth()
 
   def gen_cls_ground_truth(self):
     "Hard-coded right now"

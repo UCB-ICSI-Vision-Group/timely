@@ -384,14 +384,14 @@ def run_all_in_3_parts():
 
 def run_fastinf_for_dataset(dataset):
   
-  suffixs = ['GIST_CSC', 'GIST']
-  ms = ['0', '2', '5']
-  rs = ['', '0.5', '1']
+  suffixs = ['perfect']
+  ms = ['0']
+  rs = ['1']
   
   run_fastinf_different_settings(dataset, ms, rs, suffixs)
 
 if __name__=='__main__':
-  d = Dataset('full_pascal_trainval')
+  d = Dataset('synthetic')
   run_fastinf_for_dataset(d)
   #run_all_in_3_parts()
   

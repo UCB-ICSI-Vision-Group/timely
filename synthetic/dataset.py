@@ -72,7 +72,7 @@ class Dataset:
       self.classes = ['A','B','C']
       num_images = 1000
       for i in range(0,num_images):
-        images.append(Image(name="whatever",size=(100,100),dataset=self,synthetic=True))
+        self.images.append(Image(name="whatever",size=(100,100),dataset=self,synthetic=True))
     else:
       print("WARNING: Unknown dataset initialization string, not loading images.")
 
