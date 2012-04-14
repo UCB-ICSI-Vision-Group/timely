@@ -1,17 +1,17 @@
 Schedule (all Fridays)
 ---
 
-6 Apr
+18 Apr (wed)
+- refactor from ut.Table to pandas
+- understand the inference behavior: why linear? @tobi @sergey
 - plots for inference error vs. time @tobi
 - results for current system with modified class values @sergey
-- progress on implementation of "active classification" model @sergey
-
-13 Apr
-- optimized inference of marginals, with controlled caching and potentially regression approximation @tobi @sergey
-- results with the GIST action @tobi
 - finished implementation of "active classification" model @sergey
 
 20 Apr
+- rename 'synthetic' to 'timely' everywhere
+- results with the GIST action @tobi
+- optimized inference of marginals, with controlled caching and potentially regression approximation @tobi @sergey
 - more results, whatever we need @tobi
 - finished implementation of inverse RL to learn policy @sergey
 
@@ -35,21 +35,19 @@ We will probably need to keep introducing features and improving the reinforceme
 Further improvements if the results are otherwise good:
 - separating actions into regions as well
 
-
 11 May
 
 18 May
+- done
 
 25 May
 
 1 Jun
-- done
 
 
 Tasks
 ---
 ### assorted
-- rename 'synthetic' to 'timely' everywhere
 - check code with pylint and pyflakes
 - write tests for all classes @sergey @tobi
 - include values for object classes (reference some paper by Ashish if can find) @sergey
