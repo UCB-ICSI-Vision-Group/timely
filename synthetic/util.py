@@ -17,6 +17,10 @@ class Table:
     self.cols = cols
     self.name = name
 
+  def set_arr(self,arr):
+    "Make sure that arr is at least 2d and set self.arr to it."
+    self.arr = np.atleast_2d(arr)
+
   def __deepcopy__(self):
     "Make a deep copy of the Table and return it."
     ret = Table()
@@ -25,11 +29,11 @@ class Table:
     return ret
 
   def __repr__(self):
-    return \
-      "Table (%s):\n" % self.name +\
-      "%s\n"          % self.cols +\
-      "%s"            % str(self.arr.shape) +\
-      "\n%s"          % self.arr
+    return """
+Table name: %(name)s | size: %(shape)s
+%(cols)s
+%(arr)s
+"""%dict(self.__dict__.items()+{'shape':self.shape()}.items())
 
   def __eq__(self,other):
     "Two Tables are equal if all columns and their names are equal, in order."
@@ -37,6 +41,9 @@ class Table:
 
   def shape(self):
     return self.arr.shape
+
+  def ind(self,col_name):
+    return self.cols.index(col_name)
 
   ###################
   # Save/Load
@@ -90,6 +97,16 @@ class Table:
   ###################
   # Filtering
   ###################
+  def row_subset(self,row_inds):
+    "Return Table with only the specified rows."
+    return Table(arr=self.row_subset_arr(row_inds), cols=self.cols)
+
+  def row_subset_arr(self,row_inds):
+    "Return self.arr with only the specified rows."
+    if isinstance(row_inds,np.ndarray):
+      row_inds = row_inds.tolist()
+    return self.arr[row_inds,:]
+
   def subset(self,col_names):
     "Return Table with only the specified col_names, in order."
     return Table(arr=self.subset_arr(col_names), cols=col_names)
@@ -103,18 +120,23 @@ class Table:
     return self.arr[:,inds]
 
   def sort_by_column(self,ind_name,descending=False):
-    "Modifies self to sort arr by column."
+    """
+    Modify self to sort arr by column. Return self.
+    """
     if descending:
       sorted_inds = np.argsort(-self.arr[:,self.cols.index(ind_name)])
     else:
       sorted_inds = np.argsort(self.arr[:,self.cols.index(ind_name)])
     self.arr = self.arr[sorted_inds,:]
+    return self
 
   def filter_on_column(self,ind_name,val,op=operator.eq,omit=False):
     """
     Take name of column to index by and value to filter by.
     By providing an operator, more than just equality filtering can be done.
     """
+    if ind_name not in self.cols:
+      return self
     table = Table(cols=self.cols,arr=self.arr)
     table.arr = filter_on_column(table.arr,table.cols.index(ind_name),val,op,omit)
     if omit:
@@ -142,40 +164,46 @@ def append_index_column(arr, index):
 
 def filter_on_column(arr, ind, val, op=operator.eq, omit=False):
   """
-  Returns the rows of arr where (arr(:,ind)==val), optionally omitting the ind column.
+  Returns the rows of arr where arr[:,ind]==val,
+  optionally omitting the ind column.
   """
-  arr = arr[op(arr[:,ind], val),:]
+  try:
+    arr = arr[op(arr[:,ind], val),:]
+  except:
+    return arr
+  # TODO: fix this mess
   if omit:
     final_ind = range(np.shape(arr)[1])
     final_ind = np.delete(final_ind, ind)
     arr = arr[:,final_ind]
   return arr
 
-# TODO: allow arbitrary arguments to be passed to func
-def collect(seq,func,cols=None,with_index=False):
+def collect(seq, func, kwargs=None, with_index=False):
   """
   Take a sequence seq of arguments to function func.
     - func should return an np.array.
-    - cols are passed to func if given
+    - kwargs is a dictionary of arguments that will be passed to func if given
   Return the outputs of func concatenated vertically into an np.array
   (thereby making copies of the collected data).
   If with_index is True, append index column to the outputs.
   """
   all_results = []
   for index,image in enumerate(seq):
-    results = func(image, cols) if cols else func(image)
+    results = func(image, **kwargs) if kwargs else func(image)
     if results != None and max(results.shape)>0:
       if with_index:
         all_results.append(append_index_column(results,index))
       else:
         all_results.append(results)
+  if len(all_results)<1:
+    return np.array([])
   return np.vstack(all_results)
 
-def collect_with_index_column(seq, func, cols=None):
+def collect_with_index(seq, func, kwargs=None):
   """See collect()."""
-  return collect(seq,func,cols,with_index=True)
+  return collect(seq,func,kwargs,with_index=True)
 
-def sort_by_column(arr,ind,mode='ascend'):
+def sort_by_column(arr, ind, mode='ascend'):
   """Return the array row-sorted by column at ind."""
   if mode == 'descend':
     arr = arr[np.argsort(-arr[:,ind]),:]
@@ -250,6 +278,16 @@ def fequal(a,b,tol=.0000001):
   """
   return abs(a-b)<tol
 
+def log2(x):
+  "Base-2 log that returns 0 if x==0."
+  y = np.atleast_1d(np.copy(x))
+  y[y==0]=1
+  return np.log2(y)
+
+def mean_squared_error(y_true,y_pred):
+  "Because sklearn.metrics is fucking wrong."
+  return np.mean((y_pred - y_true) ** 2)
+
 def cartesian(arrays, out=None):
     """
     from http://stackoverflow.com/questions/1208118/using-numpy-to-build-an-array-of-all-combinations-of-two-arrays
@@ -300,25 +338,59 @@ def cartesian(arrays, out=None):
         for j in xrange(1, arrays[0].size):
             out[j*m:(j+1)*m,1:] = out[0:m,1:]
     return out
+  
 
-"""From http://vjethava.blogspot.com/2010/11/matlabs-keyboard-command-in-python.html"""
-import code
-import sys
-def keyboard(banner=None):
-    ''' Function that mimics the matlab keyboard command '''
-    # use exception trick to pick up the current frame
-    try:
-        raise None
-    except:
-        frame = sys.exc_info()[2].tb_frame.f_back
-    print "# Use quit() to exit :) Happy debugging!"
-    # evaluate commands in current namespace
-    namespace = frame.f_globals.copy()
-    namespace.update(frame.f_locals)
-    try:
-        code.interact(banner=banner, local=namespace)
-    except SystemExit:
-        return
+from collections import Counter
+def determine_bin(data, bounds, asInt=True):
+  """ 
+  For data and given bounds, determine in which bin each point falls.
+  asInt=True: return number of bin each val falls in
+  asInt=False: return representative value for each val (center between bounds)
+  """
+  num_bins = bounds.shape[0]-1
+  ret_tab = np.zeros((data.shape[0],1))
+  col_bin = np.zeros((data.shape[0],1))
+  bin_values = np.zeros(bounds.shape)
+  last_val = 0.
+  
+  for bidx, b in enumerate(bounds):
+    bin_values[bidx] = (last_val + b)/2.
+    if bidx == 0:
+      continue
+    last_val = b
+    col_bin += np.matrix(data < b, dtype=int).T
+  
+  bin_values = bin_values[1:]    
+  col_bin[col_bin == 0] = 1  
+  
+  if asInt:
+    a = num_bins - col_bin
+    ret_tab = a[:,0]     
+  else:    
+    for rowdex in range(data.shape[0]):
+      ret_tab[rowdex, 0] = bin_values[int(col_bin[rowdex]-1)]
+  return ret_tab
+
+def histogram(x, num_bins, normalize=False):
+  """
+  compute a histogram for x = np.array and num_bins bins
+  assumpt: x is already binned up 
+  """
+  bounds = np.linspace(np.min(x), np.max(x), num_bins+1)
+  x = determine_bin(x, bounds)
+  return histogram_just_count(x, num_bins, normalize)
+
+def histogram_just_count(x, num_bins, normalize=False):
+  if hasattr(x, 'shape'):
+    # This is a np object
+    if x.ndim > 1:
+      x = np.hstack(x)
+  counts = Counter(x)
+  histogram = [counts.get(x,0) for x in range(num_bins)]
+  histogram = np.matrix(histogram, dtype = 'float64')
+  if normalize:
+    histogram = histogram/np.sum(histogram)
+  return histogram
 
 ##############################################
 # Tic/Toc

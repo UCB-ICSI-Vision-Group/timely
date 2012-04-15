@@ -4,9 +4,9 @@ from sklearn.cross_validation import KFold
 
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 from synthetic.bounding_box import BoundingBox
-import synthetic.config as config
 
 class WindowParams:
   """

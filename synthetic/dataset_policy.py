@@ -1,18 +1,21 @@
-import copy
 import datetime
 import scipy.io
+import sklearn
 
 from common_mpi import *
 from common_imports import *
-
 import synthetic.config as config
-from synthetic.class_priors import ClassPriors
+
 from synthetic.dataset import Dataset
+from synthetic.sample import Sample
 from synthetic.evaluation import Evaluation
-from synthetic.gist_detector import GistPriors
+from synthetic.gist_classifier import GistClassifier
 from synthetic.detector import *
 from synthetic.ext_detector import ExternalDetector
 from synthetic.bounding_box import BoundingBox
+from synthetic.belief_state import BeliefState
+from synthetic.fastinf_model import FastinfModel
+import matplotlib.pyplot as plt
 
 class ImageAction:
   def __init__(self, name, obj):
@@ -25,204 +28,498 @@ class ImageAction:
 class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
-    'suffix': 'jan30', # use this to re-run on same params after changing code
-    'detector': 'ext', # perfect,perfect_with_noise,ext
-    'class_priors_mode': 'random', # random,oracle,fixed_order,no_smooth,backoff
-    'dets_suffixes': ['csc_default'], # further specifies which detector to use
-    'bounds': None, # start and deadline times for the policy
-    'gist': 0, # use the GIST action? 0/1
-    'with_entropy': 0, # use the entropy feature in belief state featurization?
-    'with_times': 0, # use the time-related features in belief state featurization?
-    'learn_policy': 'manual' # can be manual,advanced,advanced_pair,greedy,lspi
+    'suffix': 'default', # use this to re-run on same params after changing code
+    'detectors': ['perfect'], # perfect,perfect_with_noise,dpm,csc_default,csc_half
+    'policy_mode': 'random',
+      # policy mode can be one of random, oracle, fixed_order,
+      # no_smooth, backoff, fastinf
+    'bounds': [0,20], # start and deadline times for the policy
+    'weights_mode': 'manual_1',
+    # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
+    'rewards_mode': 'det_actual_ap',
+    # det_actual_ap, entropy, auc_ap, auc_entropy
+    'blacklist': []
   }
 
-  def get_name(self):
-    return "%s_%s"%(self.dataset.get_name(), self.get_config_name()) 
-
   def get_config_name(self):
-    """All params except for dataset."""
-    middle = ""
+    "All params except for dataset."
+    bounds = ''
     if self.bounds:
-      middle += '-'.join((str(x) for x in self.bounds))
-    if self.gist:
-      middle += "with_gist"
-    if self.with_entropy:
-      middle += "with_entropy"
-    if self.with_times:
-      middle += "with_times"
-    dets_suffixes = '-'.join(self.dets_suffixes)
+      bounds = '-'.join((str(x) for x in self.bounds))
+    detectors = '-'.join(self.detectors)
     name = '_'.join(
-        (self.class_priors_mode,
-        dets_suffixes,
-        middle,
-        self.learn_policy,
-        self.suffix))
+        [self.policy_mode,
+        detectors,
+        bounds,
+        self.weights_mode,
+        self.rewards_mode,
+        self.suffix])
     return name
 
   @classmethod
-  def get_cols(cls):
+  def get_det_cols(cls):
     return Detector.get_cols() + ['cls_ind','img_ind','time']
 
-  def __init__(self, dataset, train_dataset, sw, **kwargs):
-    "**kwargs update the default config"
+  def get_cls_cols(self):
+    return self.dataset.classes + ['img_ind','time']
+
+  def __init__(self, test_dataset, train_dataset, weights_dataset_name=None, **kwargs):
+    """
+    Initialize the DatasetPolicy, getting it ready to run on the whole dataset
+    or a single image.
+    - test, train, weights datasets should be:
+      - val,  train,    val:    for training the weights
+      - test, trainval, val:    for final run
+    - **kwargs update the default config
+    """
     config = copy.copy(DatasetPolicy.default_config)
     config.update(kwargs)
 
-    self.dataset = dataset
+    self.dataset = test_dataset
     self.train_dataset = train_dataset
-    self.sw = sw
+    if not weights_dataset_name:
+      weights_dataset_name = self.dataset.name
+    self.weights_dataset_name = weights_dataset_name
 
     self.__dict__.update(config)
-    print("DatasetPolicy running with config:")
+    print("DatasetPolicy running with:")
     pprint(self.__dict__)
-    self.priors = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
     self.ev = Evaluation(self)
+    self.tt = ut.TicToc()
 
-    # Construct the actions list
-    self.actions = []
-    
-    # GIST, if it is to be added, is the first action
-    if self.gist:
-      gist_obj = GistPriors(self.dataset.name)
-      self.actions.append(ImageAction('gist', gist_obj))
+    # Determine inference mode:
+    # fixed_order, random, oracle policy modes get fixed_order inference mode
+    if re.search('fastinf',self.policy_mode):
+      self.inference_mode = 'fastinf'
+    elif self.policy_mode == 'random':
+      self.inference_mode = 'random'
+    elif self.policy_mode in ['no_smooth','backoff']:
+      self.inference_mode = self.policy_mode
+    else:
+      self.inference_mode = 'fixed_order'
 
-    # synthetic perfect detector
-    if self.detector=='perfect':
-      for cls in self.dataset.classes:
-        det = PerfectDetector(self.dataset, cls, self.sw)
-        self.actions.append(ImageAction('perfect_%s'%cls,det))
-    # synthetic perfect detector with noise in the detections
-    elif self.detector=='perfect_with_noise':
-      for cls in self.dataset.classes:
-        det = PerfectDetectorWithNoise(self.dataset, cls, self.sw)
-        self.actions.append(ImageAction('perfect_noise_%s'%cls,det))
-    # real detectors, with pre-cached detections
-    elif self.detector=='ext':
-      for suffix in self.dets_suffixes:
-        # load the dets from cache file
-        # TODO: move this regexp matching into load_ext_detections
-        if re.search('dpm',suffix):
-          self.all_dets = self.load_ext_detections(self.dataset, 'dpm', suffix)
-        elif re.search('ctf',suffix):
-          self.all_dets = self.load_ext_detections(self.dataset, 'ctf', suffix)
-        elif re.search('csc',suffix):
-          self.all_dets = self.load_ext_detections(self.dataset, 'csc', suffix)
-        else:
-          print(suffix)
-          raise RuntimeError('Unknown detector type in suffix')
-        # now we have all_dets; parcel them out to classes
+    # Determine fastinf model name
+    self.fastinf_model_name='this_is_empty'
+    if self.inference_mode=='fastinf':
+      if self.detectors == ['csc_default']:
+        self.fastinf_model_name='CSC'
+      elif self.detectors == ['perfect']:
+        self.fastinf_model_name='perfect'
+      elif self.detectors == ['gist']:
+        self.fastinf_model_name='GIST'
+      elif self.detectors == ['gist','csc_default']:
+        self.fastinf_model_name='GIST_CSC'
+      else:
+        raise RuntimeError("""
+          We don't have Fastinf models for the detector combination you
+          are running with: %s"""%self.detectors)
+
+    # load the actions and the corresponding weights and we're ready to go
+    self.test_actions = self.init_actions()
+    self.actions = self.test_actions
+    self.load_weights()
+
+  def init_actions(self,train=False):
+    """
+    Return list of actions, which involves initializing the detectors.
+    If train==True, the external detectors will load trainset detections.
+    """
+    dataset = self.dataset
+    if train:
+      dataset = self.train_dataset
+
+    actions = []
+    for detector in self.detectors:
+      # synthetic perfect detector
+      if detector=='perfect':
+        for cls in dataset.classes:
+          det = PerfectDetector(dataset, self.train_dataset, cls)
+          actions.append(ImageAction('%s_%s'%(detector,cls), det))
+
+      # synthetic perfect detector with noise in the detections
+      elif detector=='perfect_with_noise':
+        sw = SlidingWindows(self.train_dataset,dataset)
+        for cls in dataset.classes:
+          det = PerfectDetectorWithNoise(dataset, self.train_dataset, cls, sw)
+          actions.append(ImageAction('%s_%s'%(detector,cls), det))
+
+      # GIST classifier
+      elif detector=='gist':
         for cls in self.dataset.classes:
-          cls_ind = self.dataset.get_ind(cls)
-          all_dets_for_cls = self.all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
-          det = ExternalDetector(self.dataset, cls, self.sw, all_dets_for_cls, suffix)
-          self.actions.append(ImageAction('%s_%s'%(suffix,cls), det))
-    else:
-      raise RuntimeError("Unknown mode for detectors")
+          gist_table = np.load(config.get_gist_dict_filename(self.dataset))
+          det = GistClassifier(cls, self.train_dataset,gist_table, self.dataset)
+          actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
-    # oh baby we're starting soon
-    self.time_elapsed = 0
+      # real detectors, with pre-cached detections
+      elif detector in ['dpm','csc_default','csc_half']:
+        # load the dets from cache file and parcel out to classes
+        all_dets = self.load_ext_detections(dataset, detector)
+        for cls in dataset.classes:
+          cls_ind = dataset.get_ind(cls)
+          all_dets_for_cls = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
+          det = ExternalDetector(
+            dataset, self.train_dataset, cls, all_dets_for_cls, detector)
+          actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
-    # The default weights are just identity weights on the corresponding class
-    # priors
-    # TODO: load from something: filename constructed from config_name
-    if self.learn_policy == 'manual':
-      self.weights = np.zeros((len(self.actions),len(self.get_feature_vec())))
-      # The gist action is first, so offset the weights
-      if self.gist:
-        np.fill_diagonal(self.weights[1:,:],1)
       else:
-        if 'naive_ap|present' in self.actions[0].obj.config:
-          naive_aps = [action.obj.config['naive_ap|present'] for action in self.actions]
-        else:
-          # TODO: this isn't right, but just to get the test to pass with perfectdetector
-          naive_aps = [1 for action in self.actions]
-        np.fill_diagonal(self.weights,naive_aps)
-      self.write_out_weights()
-    elif self.learn_policy == 'greedy':
-      self.weights = np.zeros((len(self.actions),len(self.get_feature_vec())))
-      # The gist action is first, so offset the weights
-      if self.gist:
-        np.fill_diagonal(self.weights[1:,:],1)
-      else:
-        naive_aps = [action.obj.config['naive_ap|present'] for action in self.actions]
-        np.fill_diagonal(self.weights,naive_aps)
-      self.learn_weights()
-      self.write_out_weights()
-    elif self.learn_policy == 'advanced' or self.learn_policy == 'advanced_pair' or self.learn_policy=='slope' or self.learn_policy=='slope_pair':
-      None
-    else:
-      raise RuntimeError('Not yet implemented')
-    
-    # And now we're ready to start
-    self.reset_actions()
-  
-  def get_ext_dets(self):
-    "Return external detections straight from their cache."
-    return self.all_dets
+        raise RuntimeError("Unknown mode in detectors: %s"%self.detectors)
+      return actions
 
-  def detect_in_dataset(self,force=False):
+  def load_weights(self,weights_mode=None,force=False):
     """
-    Return list of detections for the whole dataset.
-    Check for cached file first.
+    Set self.weights to weights loaded from file or constructed from scratch
+    according to weights_mode and self.weights_dataset_name.
     """
-    # check for cached detections
-    filename = config.get_dp_detections_filename(self)
+    if not weights_mode:
+      weights_mode = self.weights_mode
+
+    filename = config.get_dp_weights_filename(self)
+    if not force and opexists(filename):
+      self.weights = np.loadtxt(filename)
+      return self.weights
+
+    # Construct the weight vector by concatenating per-action vectors
+    # The features are [P(C) P(not C) H(C) 1]
+    weights = np.zeros((len(self.actions), BeliefState.num_features))
+
+    # OPTION 1: the corresponding manual weights are [1 0 0 0]
+    if weights_mode == 'manual_1':
+      weights[:,0] = 1
+      weights = weights.flatten()
+
+    elif weights_mode in ['manual_2','manual_3']:
+      # Figure out the statistics if they aren't there
+      if 'naive_ap|present' not in self.actions[0].obj.config or \
+         'actual_ap|present' not in self.actions[0].obj.config or \
+         'actual_ap|absent' not in self.actions[0].obj.config:
+        det_configs = self.output_det_statistics()
+        self.test_actions = self.init_actions()
+        self.actions = self.test_actions
+
+      # OPTION 2: the manual weights are [naive_ap|present 0 0 0]
+      if weights_mode == 'manual_2':
+        for action in self.actions:
+          print action.obj.config
+        weights[:,0] = [action.obj.config['naive_ap|present'] for action in self.actions]
+
+      # OPTION 3: the manual weights are [actual_ap|present actual_ap|absent 0 0]
+      elif weights_mode == 'manual_3':
+        weights[:,0] = [action.obj.config['actual_ap|present'] for action in self.actions]
+        # TODO: get rid of this
+      #  weights[:,1] = [action.obj.config['actual_ap|absent'] for action in self.actions]
+
+      else:
+        None # impossible
+      weights = weights.flatten()
+
+    elif weights_mode in ['greedy','rl_regression','rl_lspi']:
+      weights = self.learn_weights(weights_mode)
+      print("DONE LEARNING WEIGHTS PLZ RUN ON TEST GODDAMNIT!!!!")
+      sys.exit()
+
+    else:
+      raise ValueError("unsupported weights_mode %s"%weights_mode)
+    self.weights = weights
+    return weights
+
+  def get_reshaped_weights(self):
+    "Return weights vector reshaped to (num_actions, num_features)."
+    return self.weights.reshape((len(self.actions),BeliefState.num_features))
+
+  def write_weights_image(self,filename):
+    "Output plot of current weights to filename."
+    self.write_feature_image(self.get_reshaped_weights(),filename)
+
+  def write_feature_image(self,feature,filename):
+    "Output plot of feature to filename."
+    plt.clf()
+    p = plt.pcolor(feature)
+    p.axes.invert_yaxis()
+    plt.colorbar()
+    plt.savefig(filename)
+
+  def run_on_dataset(self,train=False,sample_size=-1,force=False):
+    """
+    Run MPI-parallelized over the images of the dataset (or a random subset).
+    Return list of detections and classifications for the whole dataset.
+    If test is True, runs on test dataset, otherwise train dataset.
+    If sample_size != -1, does not check for cached files, as the objective
+    is to collect samples, not the actual dets and clses.
+    Otherwise, check for cached files first, unless force is True.
+    Return dets,clses,samples.
+    """
+    self.tt.tic('run_on_dataset')
+    print("Beginning run on dataset, with train=%s, sample_size=%s"%
+      (train,sample_size))
+
     dets_table = None
-    if not force and os.path.exists(filename):
-      dets_table = np.load(filename)[()]
-      print("DatasetPolicy: Loaded whole-set dets from cache.")
-      return dets_table
-    images = self.dataset.images
-    results = []
-    for i in range(comm_rank,len(images),comm_size):
-      dets = self.detect_in_image(images[i])
-      results.append(dets)
-    all_results = None
-    if comm_rank == 0:
-      all_results = []
-    safebarrier(comm)
-    all_results = comm.reduce(results, op=MPI.SUM, root=0)
-    if comm_rank==0:
-      dets_table = ut.Table(cols=self.get_cols())
-      dets_table.arr = np.vstack(all_results)
-      np.save(filename,dets_table)
-      print("Found %d dets"%dets_table.shape()[0])
-    safebarrier(comm)
-    dets_table = comm.bcast(dets_table,root=0)
-    return dets_table
+    clses_table = None
 
-  def learn_weights(self):
+    dataset = self.dataset
+    self.actions = self.test_actions
+    if train:
+      dataset = self.train_dataset
+      if not hasattr(self,'train_actions'):
+        self.train_actions = self.init_actions(train)
+      self.actions = self.train_actions
+
+    # If we are collecting samples, we don't care about caches
+    if sample_size > 0:
+      force = True
+
+    # Check for cached results
+    det_filename = config.get_dp_dets_filename(self,train)
+    cls_filename = config.get_dp_clses_filename(self,train)
+    if not force \
+        and opexists(det_filename) and opexists(cls_filename):
+      print("Loading cached stuff!")
+      dets_table = np.load(det_filename)[()]
+      clses_table = np.load(cls_filename)[()]
+      samples = None
+      print("DatasetPolicy: Loaded dets and clses from cache.")
+      return dets_table,clses_table,samples
+
+    images = dataset.images
+    if sample_size>0:
+      images = ut.random_subset(dataset.images, sample_size)
+
+    # Collect the results distributedly
+    all_dets = []
+    all_clses = []
+    all_samples = []
+    for i in range(comm_rank,len(images),comm_size):
+      dets,clses,samples = self.run_on_image(images[i],dataset)
+      all_dets.append(dets)
+      all_clses.append(clses)
+      all_samples += samples
+    safebarrier(comm)
+
+    # Aggregate the results
+    final_dets = [] if comm_rank == 0 else None
+    final_clses = [] if comm_rank == 0 else None
+    final_samples = [] if comm_rank == 0 else None
+    final_dets = comm.reduce(all_dets, op=MPI.SUM, root=0)
+    final_clses = comm.reduce(all_clses, op=MPI.SUM, root=0)
+    final_samples = comm.reduce(all_samples, op=MPI.SUM, root=0)
+    #if self.inference_mode=='fastinf':
+      # all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
+    # Save if root
+    if comm_rank==0:
+      dets_table = ut.Table(cols=self.get_det_cols())
+      final_dets = [det for det in final_dets if det.shape[0]>0]
+      if not len(final_dets) == 0:
+        dets_table.arr = np.vstack(final_dets)
+      clses_table = ut.Table(cols=self.get_cls_cols())
+      clses_table.arr = np.vstack(final_clses)
+      if dets_table.arr == None:
+        print("Found 0 dets")
+      else:
+        print("Found %d dets"%dets_table.shape()[0])
+
+      # Only save results if we are not collecting samples
+      if not sample_size > 0:
+        np.save(det_filename,dets_table)
+        np.save(cls_filename,clses_table)
+
+      # Save the fastinf cache
+      # TODO: turning this off for now
+      if False and self.inference_mode=='fastinf':
+        self.inf_model.cache = dict(all_fm_cache_items)
+        self.inf_model.save_cache()
+    else:
+      print("comm_rank %d reached last safebarrier in run_on_dataset"%comm_rank)
+    safebarrier(comm)
+
+    # Broadcast results to all workers, because Evaluation splits its work as well.
+    dets_table = comm.bcast(dets_table,root=0)
+    clses_table = comm.bcast(clses_table,root=0)
+    final_samples = comm.bcast(final_samples,root=0)
+    if comm_rank==0:
+      print("Running the %s policy on %d images took %.3f s"%(
+        self.policy_mode, len(images), self.tt.qtoc('run_on_dataset')))
+    return dets_table,clses_table,final_samples
+
+  def learn_weights(self,mode='greedy'):
     """
-    Runs iterations of generating samples with current weights and training new
-    weight vectors based on the collected samples.
-    What it does depends on self.learn_policy setting.
+    Runs iterations of generating samples with current weights and training
+    new weight vectors based on the collected samples.
+    - mode can be ['greedy','rl_regression','rl_lspi']
     """
-    # check for file containing the relevant statistics. if it does not exist,
-    # collect samples and write it out.
-    # NOTE: the filename depends only on the detector type
-    None
+    print("Beginning to learn regression weights")
+    self.tt.tic('learn_weights:all')
+
+    # Need to have weights set here to collect samples, so let's set
+    # to manual_1 to get a reasonable execution trace.
+    self.weights = self.load_weights(weights_mode='manual_1') 
+    if comm_rank==0:
+      print("Initial weights:")
+      np.set_printoptions(precision=2,suppress=True,linewidth=160)
+      print self.get_reshaped_weights()
+
+    # Collect samples (parallelized)
+    num_samples = 350 # actually this refers to images
+    dets,clses,all_samples = self.run_on_dataset(False,num_samples)
+    
+    # Loop until max_iterations or the error is below threshold
+    error = threshold = 0.002
+    max_iterations = 8
+    for i in range(0,max_iterations):
+      # do regression with cross-validated parameters (parallelized)
+      weights = None
+      if comm_rank==0:
+        weights, error = self.regress(all_samples, mode)
+        self.weights = weights
+
+        try:
+          # write image of the weights
+          img_filename = opjoin(
+            config.get_dp_weights_images_dirname(self),'iter_%d.png'%i)
+          self.write_weights_image(img_filename)
+
+          # write image of the average feature
+          all_features = self.construct_X_from_samples(all_samples)
+          avg_feature = np.mean(all_features,0).reshape(
+            len(self.actions),BeliefState.num_features)
+          img_filename = opjoin(
+            config.get_dp_features_images_dirname(self),'iter_%d.png'%i)
+          self.write_feature_image(avg_feature, img_filename)
+        except:
+          print("Couldn't plot, no big deal.")
+
+        print("""
+  After iteration %d, we've trained on %d samples and
+  the weights and error are:"""%(i,len(all_samples)))
+        np.set_printoptions(precision=2,suppress=True,linewidth=160)
+        print self.get_reshaped_weights()
+        print error
+
+        # after the first iteration, check if the error is small
+        if i>0 and error<=threshold:
+          break
+
+        print("Now collecting more samples with the updated weights...")
+
+      # collect more samples (parallelized)
+      safebarrier(comm)
+      weights = comm.bcast(weights,root=0)
+      self.weights = weights
+      new_dets,new_clses,new_samples = self.run_on_dataset(False,num_samples)
+
+      if comm_rank==0:
+        # We either collect only unique samples or all samples
+        only_unique_samples = False
+        if only_unique_samples:
+          self.tt.tic('learn_weights:unique_samples')
+          for sample in new_samples:
+            if not (sample in all_samples):
+              all_samples.append(sample)
+          print("Only adding unique samples to all_samples took %.3f s"%self.tt.qtoc('learn_weights:unique_samples'))
+        else:
+          all_samples += new_samples
+
+    if comm_rank==0:
+      print("Done training regression weights! Took %.3f s total"%
+        self.tt.qtoc('learn_weights:all'))
+      # Save the weights
+      filename = config.get_dp_weights_filename(self)
+      np.savetxt(filename, self.weights, fmt='%.6f')
+
+    safebarrier(comm)
+    weights = comm.bcast(weights,root=0)
+    self.weights = weights
+    return weights
+
+  def construct_X_from_samples(self,samples):
+    "Return array of (len(samples), BeliefState.num_features*len(self.actions)."
+    b = self.get_b()
+    feats = []
+    for sample in samples:
+      feats.append(b.block_out_action(sample.state,sample.action_ind))
+    return np.array(feats)
+
+  def compute_reward_from_samples(self, samples, mode='greedy',
+    discount=0.4, attr=None):
+
+    """
+    Return vector of rewards for the given samples.
+    - mode=='greedy' just uses the actual_ap of the taken action
+    - mode=='rl_regression' or 'rl_lspi' uses discounted sum
+    of actual_aps to the end of the episode
+    - attr can be ['det_actual_ap', 'entropy', 'auc_ap', 'auc_entropy']
+    """ 
+    if not attr:
+      attr = self.rewards_mode
+    y = np.array([getattr(sample,attr) for sample in samples])
+    if mode=='greedy':
+      return y
+    elif mode=='rl_regression':
+      y = np.zeros(len(samples))
+      for sample_idx in range(len(samples)):
+        sample = samples[sample_idx]
+        reward = getattr(sample,attr)
+        i = 1
+        while sample_idx + i < len(samples):
+          next_samp = samples[sample_idx + i]
+          if next_samp.step_ind == 0:
+            # New episode begins here
+            break
+          reward += discount**i*getattr(next_samp,attr)
+          i += 1
+        y[sample_idx] = reward
+      return y    
+    return None
+
+  def regress(self,samples,mode,warm_start=False):
+    """
+    Take list of samples and regress from the features to the rewards.
+    If warm_start, start with the current values of self.weights.
+    Return tuple of weights and error.
+    """
+    X = self.construct_X_from_samples(samples)
+    y = self.compute_reward_from_samples(samples,mode)
+    assert(X.shape[0]==y.shape[0])
+    print("Number of non-zero rewards: %d/%d"%(
+      np.sum(y!=0),y.shape[0]))
+
+    from sklearn.cross_validation import KFold
+    folds = KFold(X.shape[0], 4)
+    alpha_errors = []
+    alphas = [0.0001, 0.001, 0.01, 0.1, 1]
+    for alpha in alphas:
+      clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=2000)
+      errors = []
+      # TODO parallelize this? seems fast enough
+      for train_ind,val_ind in folds:
+        clf.fit(X[train_ind,:],y[train_ind])
+        errors.append(ut.mean_squared_error(clf.predict(X[val_ind,:]),y[val_ind]))
+      alpha_errors.append(np.mean(errors))
+    best_ind = np.argmin(alpha_errors)
+    best_alpha = alphas[best_ind]
+    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=200)
+    clf.fit(X,y)
+    print("Best lambda was %.3f"%best_alpha)
+    weights = clf.coef_
+    error = ut.mean_squared_error(clf.predict(X),y)
+    return (weights, error)
+
+  def get_b(self):
+    "Fetch a belief state, and if we don't have one, initialize one."
+    if not hasattr(self,'b'):
+      self.run_on_image(self.dataset.images[0],self.dataset)
+    return self.b
 
   def output_det_statistics(self):
-    # collect samples and display the statistics of times and naive and
-    # actual_ap increases for each class 
-    # TODO: increase sample size
+    """
+    Collect samples and display the statistics of times and naive and
+    actual_ap increases for each class, on the train dataset.
+    """
     det_configs = {}
-    all_samples = self.collect_samples(sample_size=-1)
-    if all_samples:
-      # construct ndarray of this stuff
-      action_inds = reduce(lambda x,y: x+y,
-          (samples['action_ind'] for samples in all_samples))
-      times = reduce(lambda x,y: x+y,
-          (samples['time'] for samples in all_samples))
-      naive_aps = reduce(lambda x,y: x+y,
-          (samples['naive_ap'] for samples in all_samples))
-      actual_aps = reduce(lambda x,y: x+y,
-          (samples['actual_ap'] for samples in all_samples))
-      img_inds = reduce(lambda x,y: x+y,
-          (samples['img_ind'] for samples in all_samples))
-      sample_array = np.array((action_inds,times,naive_aps,actual_aps,img_inds)).T
-      cols = ['action_ind','time','naive_ap','actual_ap','img_ind']
+    all_dets,all_clses,all_samples = self.run_on_dataset(train=True)
+    if comm_rank==0:
+      cols = ['action_ind','dt','det_naive_ap','det_actual_ap','img_ind']
+      sample_array = np.array([[getattr(s,col) for s in all_samples] for col in cols]).T
       table = ut.Table(sample_array,cols)
+
       # go through actions
       for ind,action in enumerate(self.actions):
         st = table.filter_on_column('action_ind', ind)
@@ -235,290 +532,226 @@ class DatasetPolicy:
         if isinstance(action.obj,Detector):
           img_inds = st.subset_arr('img_ind').astype(int)
           cls_ind = action.obj.cls_ind
-          d = self.dataset
+          d = self.train_dataset
           presence_inds = np.array([d.images[img_ind].contains_cls_ind(cls_ind) for img_ind in img_inds])
           st_present = np.atleast_2d(st.arr[np.flatnonzero(presence_inds),:])
           if st_present.shape[0]>0:
             means = np.mean(st_present[:,2:],0)
             det_configs[self.actions[ind].name]['naive_ap|present'] = means[0]
             det_configs[self.actions[ind].name]['actual_ap|present'] = means[1]
+          else:
+            # this is just for testing, where there may not be enough dets
+            det_configs[self.actions[ind].name]['naive_ap|present'] = 0
+            det_configs[self.actions[ind].name]['actual_ap|present'] = 0
           st_absent = np.atleast_2d(st.arr[np.flatnonzero(presence_inds==False),:])
           if st_absent.shape[0]>0:
             means = np.mean(st_absent[:,2:],0)
-            det_configs[self.actions[ind].name]['naive_ap|absent'] = means[0]
+            # naive_ap|absent is always 0
             det_configs[self.actions[ind].name]['actual_ap|absent'] = means[1]
-      # NOTE: probably only makes sense when running with one detector
-      det_suffix = '-'.join(self.dets_suffixes)
-      filename = os.path.join(config.dets_configs_dir,det_suffix+'.txt')
-      json.dumps(det_configs)
+          else:
+            det_configs[self.actions[ind].name]['actual_ap|absent'] = 0
+      detectors = '-'.join(self.detectors)
+      filename = opjoin(
+        config.get_dets_configs_dir(self.train_dataset), detectors+'.txt')
       with open(filename,'w') as f:
         json.dump(det_configs,f)
     safebarrier(comm)
-
-  def collect_samples(self, sample_size=200):
-    """
-    Runs MPI-parallelized sample collection with the current policy on
-    the train dataset.
-    If sample_size==-1, uses whole dataset.
-    """
-    sample_images = self.dataset.images
-    if not sample_size<0:
-      images = self.dataset.images
-      rand_ind = np.random.permutation(len(images))
-      sample_images = np.take(images, rand_ind[:sample_size])
-    all_samples = []
-    for i in range(comm_rank,len(sample_images),comm_size):
-      dets, samples = self.detect_in_image(sample_images[i],with_samples=True)
-      all_samples.append(samples)
-    final_samples = None
-    if comm_rank==0:
-      final_samples = []
-    safebarrier(comm)
-    final_samples = comm.reduce(all_samples,root=0)
-    return final_samples
-
-  def write_out_weights(self, name='default'):
-    """Write self.weights out to canonical filename given the name."""
-    filename = os.path.join(config.get_dp_weights_dirname(self), name+'.txt')
-    np.savetxt(filename, self.weights, fmt='%.2f') 
+    det_configs = comm.bcast(det_configs,root=0)
+    return det_configs
 
   ################
   # Image Policy stuff
   ################
-  def update_actions(self):
-    """Update the values of actions according to the current belief state."""
-    if self.learn_policy=='advanced' or \
-        self.learn_policy=='advanced_pair' or \
-        self.learn_policy=='slope' or self.learn_policy=='slope_pair':
-      for ind,action in enumerate(self.actions):
-        if isinstance(action.obj, Detector):
-          det = action.obj
-          taken_other = 0
-          if ind+20 < len(self.actions):
-            det_other = self.actions[ind+20].obj
-            taken_other = self.taken[ind+20]
-          elif ind-20 >= 0:
-            det_other = self.actions[ind-20].obj
-            taken_other = self.taken[ind-20]
-          #print det.cls_ind
-          P = self.priors.priors[det.cls_ind]
-          time_to_deadline = max(0,self.bounds[1]-self.time_elapsed)
-          norm_constant = self.y_to_go * time_to_deadline
-          if self.learn_policy=='slope' or self.learn_policy == 'slope_pair':
-            val =  P * det.config['naive_ap|present']
-            if self.learn_policy=='slope_pair':
-              if not taken_other == 0:
-                val -= P*det_other.config['naive_ap|present']
-            val /= det.config['avg_time']
-            val *= time_to_deadline
-          else:
-            # TODO: in the future, use norm_constant maybe
-            #val = time_to_deadline * P * det.config['actual_ap|present']
-            #val += time_to_deadline * (1-P) * det.config['actual_ap|absent']
-            val = time_to_deadline * P * det.config['naive_ap|present']
-            val -= P * det.config['naive_ap|present'] * det.config['avg_time']
-            #val -= (1-P) * det.config['actual_ap|absent'] * det.config['avg_time']
-            if self.learn_policy=='advanced_pair':
-              if not taken_other == 0:
-                assert(det_other.cls_ind == det.cls_ind)
-                val -= P*det_other.config['actual_ap|present']*time_to_deadline
-                val -= (1-P)*det_other.config['actual_ap|absent']*time_to_deadline
-                val += P * det_other.config['actual_ap|present'] * det.config['avg_time']
-                val += (1-P) * det_other.config['actual_ap|absent'] * det.config['avg_time']
-                val += P * det_other.config['actual_ap|present'] * det.config['avg_time']
-            #val /= norm_constant
-          self.values[ind] = val
-          self.ap_estimates[ind] = P*det.config['naive_ap|present']
-          if self.learn_policy=='advanced_pair':
-            if not taken_other == 0:
-              self.ap_estimates[ind] -= P * det_other.config['actual_ap|present']
-              self.ap_estimates[ind] -= (1-P) * det_other.config['actual_ap|absent']
-          if self.learn_policy == 'slope_pair':
-            if not taken_other == 0:
-              self.ap_estimates[ind] -= P*det_other.config['naive_ap|present']
-        else:
-          self.values[ind] = np.random.rand() 
-          self.ap_estimates[ind] = 0
+  def update_actions(self,b):
+    "Update the values of actions according to the current belief state."
+    if self.policy_mode=='random' or self.policy_mode=='oracle':
+      self.action_values = np.random.rand(len(self.actions))
     else:
-      self.values = np.dot(self.weights,self.get_feature_vec())
+      ff = b.compute_full_feature()
+      self.action_values = np.array([\
+        np.dot(self.weights, b.block_out_action(ff,action_ind)) for action_ind in range(len(self.actions))])
 
-  def reset_actions(self):
-    self.taken = np.zeros(len(self.actions)) 
-    self.values = np.zeros(len(self.actions)) 
-    self.ap_estimates = np.zeros(len(self.actions))
-    self.y_to_go = 1
-
-  def pick_next_action_ind(self):
-    """Return the index of the next action to take."""
-    if np.all(self.taken):
+  def select_action(self, b):
+    """
+    Return the index of the untaken action with the max value.
+    Return -1 if all actions have been taken.
+    """
+    taken = copy.deepcopy(b.taken)
+    for ind in self.blacklist:
+      taken[ind] = 1
+    if np.all(taken):
       return -1
-    untaken_inds = np.flatnonzero(self.taken==0)
-    vals = self.values[untaken_inds]
-    max_untaken_ind = vals.argmax()
-    ap_estimate = self.ap_estimates[max_untaken_ind]
-    self.y_to_go = max(0, self.y_to_go-ap_estimate)
+    untaken_inds = np.flatnonzero(taken==0)
+    max_untaken_ind = self.action_values[untaken_inds].argmax()
     return untaken_inds[max_untaken_ind]
 
-  def get_feature_vec(self):
+  def run_on_image(self, image, dataset, verbose=False):
     """
-    Return featurized representation of self.
-    Feature representation is [P(C_1), ..., P(C_K), 1].
-    """
-    features = self.priors.priors
-    
-    # TODO: add in the entropy feature
-    def mylog(x): return np.log2(x) if not x==0 else 0
-    def H(x): return np.sum([-x_i*mylog(x_i) -(1-x_i)*mylog(1-x_i) for x_i in x])
-    entropy = H(self.priors.priors)
-    #features += [entropy]
-
-    # TODO: add in the time_to_go features
-    time_to_start = 0
-    if self.bounds:
-      if self.bounds[0]>0:
-        time_to_start = max(0, (self.bounds[0]-self.time_elapsed)/self.bounds[0])
-      # TODO: should time_to_deadline be time between deadline and 0 or deadline
-      # and start_time?
-      time_to_deadline = max(0, (self.bounds[1]-self.time_elapsed)/self.bounds[1])
-    else:
-      time_to_start = 0
-      time_to_deadline = 1
-    #features += [time_to_start,time_to_deadline]
-    #features += [time_to_deadline]
-
-    return np.array(features)
-
-  def detect_in_image(self, image, with_samples=False):
-    """
-    Return list of detections in the image, with each row as self.dets_cols.
-    This is what runs the policy.
-    If with_samples=True, also return <s,a,r,s',r_n,time> samples.
+    Return
+    - list of detections in the image, with each row as self.get_det_cols()
+    - list of multi-label classification outputs, with each row as self.get_cls_cols()
+    - list of <s,a,r,s',dt> samples.
     """
     gt = image.get_ground_truth(include_diff=True)
-    actual_time_start = time.time()
-    img_ind = self.dataset.get_img_ind(image)
-    
-    # reset the state
-    # TODO: separate NGramModel from ClassPriors, to maintain the benefit of
-    # caching answers
-    self.priors = ClassPriors(self.train_dataset,mode=self.class_priors_mode)
-    self.time_elapsed = 0
-    self.reset_actions()
-    self.update_actions()
+    for ind in self.blacklist:
+      gt = gt.filter_on_column('cls_ind',ind,op=operator.ne)
 
-    action_sequence = []
+    self.tt.tic('run_on_image')
+
     all_detections = []
+    all_clses = []
+    samples = []
+    prev_ap = 0
+    img_ind = dataset.get_img_ind(image)
 
-    samples = {} 
-    # a sample collects
-    samples['state'] = []           # the belief state feature vector
-    samples['action_ind'] = []      # action index
-    samples['naive_ap'] = []        # resulting naive AP increase      
-    samples['actual_ap'] = []       # resulting non-naive AP increase
-    samples['time'] = []            # time taken by the detector
-    samples['next_state'] = []      # next belief state feature vector
-    samples['next_action_ind'] = [] # next action index
-    samples['img_ind'] = []         # sort of stupid, but I need this and this
-    # is easiest right now
-    
-    # If gist mode is on, the first action is gist :-)
-    if self.gist:
-      next_action_ind = 0
+    # If we have previously run_on_image(), then we already have a reference to an inf_model
+    # Otherwise, we make a new one and store a reference to it, to keep it alive
+    if hasattr(self,'inf_model'):
+      b = BeliefState(self.train_dataset, self.actions, self.inference_mode,
+        self.bounds, self.inf_model, self.fastinf_model_name)
     else:
-      next_action_ind = self.pick_next_action_ind()
+      b = BeliefState(self.train_dataset, self.actions, self.inference_mode,
+        self.bounds, fastinf_model_name=self.fastinf_model_name)
+      self.b = b
+      self.inf_model = b.model
 
-    prev_ap = None
+    self.update_actions(b)
+    action_ind = self.select_action(b)
+    step_ind = 0
+    initial_clses = np.array(b.get_p_c().tolist() + [img_ind,0])
+    entropy_prev = np.mean(b.get_entropies())
     while True:
-      action = self.actions[next_action_ind]
-      action_sequence.append(action.name)
-      self.taken[next_action_ind] = 1
+      # Populate the sample with stuff we know
+      sample = Sample()
+      sample.step_ind = step_ind
+      sample.img_ind = img_ind
+      sample.state = b.compute_full_feature()
+      sample.action_ind = action_ind
 
-      samples['state'].append(self.get_feature_vec())
-      samples['action_ind'].append(next_action_ind)
+      sample.t = b.t
 
-      if isinstance(action.obj, Detector):
-        # detector actions
+      # prepare for AUC reward stuff
+      time_to_deadline = 0
+      if self.bounds:
+        time_to_deadline = max(0,self.bounds[1]-b.t)
+      sample.auc_ap = 0
+
+      # Take the action and get the observations as a dict
+      action = self.actions[action_ind]
+      obs = action.obj.get_observations(image)
+      dt = obs['dt']
+
+      # If observations include detections, compute the relevant
+      # stuff for the sample collection
+      sample.det_naive_ap = 0
+      sample.det_actual_ap = 0
+      if 'dets' in obs:
         det = action.obj
-        cls = det.cls
-        cls_ind = self.dataset.classes.index(cls)
-        detections, time_e = det.detect(image)
-        self.time_elapsed += time_e
-        samples['time'].append(time_e)
-
+        detections = obs['dets']
+        cls_ind = dataset.classes.index(det.cls)
         if detections.shape[0]>0:
-          c_vector = np.tile(cls_ind,(np.shape(detections)[0],1)) 
+          c_vector = np.tile(cls_ind,(np.shape(detections)[0],1))
           i_vector = np.tile(img_ind,(np.shape(detections)[0],1))
-          detections = np.hstack((detections, c_vector, i_vector))          
+          detections = np.hstack((detections, c_vector, i_vector))
         else:
           detections = np.array([])
         dets_table = ut.Table(detections,det.get_cols()+['cls_ind','img_ind'])
 
-        # compute the greedy AP increase
-        ap,rec,prec = self.ev.compute_pr(dets_table,gt)
-        samples['naive_ap'].append(ap)
+        # compute the 'naive' det AP increase: adding dets to empty set
+        ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)
+        sample.det_naive_ap = ap
 
+        # TODO: am I needlessly recomputing this table?
         all_detections.append(detections)
         nonempty_dets = [dets for dets in all_detections if dets.shape[0]>0]
         all_dets_table = ut.Table(np.array([]),dets_table.cols)
         if len(nonempty_dets)>0:
           all_dets_table = ut.Table(np.concatenate(nonempty_dets,0),dets_table.cols)
-        # and the actual AP increase
-        ap,rec,prec = self.ev.compute_pr(all_dets_table,gt)
-        ap_diff = ap
-        if prev_ap:
-          ap_diff = ap-prev_ap
+
+        # compute the actual AP increase: addings dets to dets so far
+        ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
+        ap_diff = ap-prev_ap
+        sample.det_actual_ap = ap_diff
+
+        # detector AUC reward: this was tricky to get right :)
+        auc_ap = time_to_deadline * ap_diff - ap_diff * dt / 2
+        divisor = (time_to_deadline*(1-prev_ap))
+        if divisor == 0:
+          auc_ap = 1
+        else:
+          auc_ap /= divisor
+        if dt > time_to_deadline:
+          auc_ap = 0
+        if not (auc_ap>=-1 and auc_ap<=1):
+          auc_ap = 0
+        #assert(auc_ap>=-1 and auc_ap<=1)
+        sample.auc_ap = auc_ap
         prev_ap = ap
-        samples['actual_ap'].append(ap_diff)
 
-        # compute the posterior given these detections, and update the class priors
-        posterior = det.compute_posterior(image, dets_table, oracle=False)
-        self.priors.update_with_posterior(cls_ind, posterior)
-      else: 
-        # gist scene context action
-        gist_obj = action.obj
-        gist_priors = gist_obj.get_priors_lam(image, self.priors.priors)
-        self.priors.update_with_gist(gist_priors)
-        time_gist = 1
-        self.time_elapsed += time_gist
-        samples['time'].append(time_gist)
-        # does not lead to any detections
-        samples['naive_ap'].append(0)
-        samples['actual_ap'].append(0)
+      b.update_with_score(action_ind, obs['score'])
 
-      # pick the next action, having updated the priors
-      self.update_actions()
-      next_action_ind = self.pick_next_action_ind()
-      samples['next_state'].append(self.get_feature_vec())
-      samples['next_action_ind'].append(next_action_ind)
-      samples['img_ind'].append(img_ind)
+      # mean entropy
+      entropy = np.mean(b.get_entropies())
+      dh = entropy_prev-entropy # this is actually -dh :)
+      sample.entropy = dh
 
-      #print("vals: %s"%self.values)
-      #print("ap_estimates: %s"%self.ap_estimates)
-      #print("y_to_go: %s"%self.y_to_go)
-      #print("time_elapsed: %s"%self.time_elapsed)
+      auc_entropy = time_to_deadline * dh - dh * dt / 2
+      divisor = (time_to_deadline * entropy_prev)
+      if divisor == 0:
+        auc_entropy = 1
+      else:
+        auc_entropy /= divisor
+      if dt > time_to_deadline:
+        auc_entropy = 0
+      if not (auc_entropy>=-1 and auc_entropy<=1):
+        auc_entropy = 0
+      sample.auc_entropy = auc_entropy
+
+      entropy_prev = entropy
+
+      b.t += dt
+      sample.dt = dt
+      samples.append(sample)
+      step_ind += 1
+
+      # The updated belief state posterior over C is our classification result
+      clses = b.get_p_c().tolist() + [img_ind,b.t]
+      all_clses.append(clses)
+      # Update action values and pick the next action
+      self.update_actions(b)
+      action_ind = self.select_action(b)
 
       # check for stopping conditions
-      if next_action_ind < 0:
+      if action_ind < 0:
         break
-      if self.bounds and not self.class_priors_mode=='oracle':
-        if self.time_elapsed > self.bounds[1]:
+      if self.bounds and not self.policy_mode=='oracle':
+        if b.t > self.bounds[1]:
           break
 
-    # assert that we got the sample number of samples for all dimensions
-    lens = [len(samples[key]) for key in samples.keys()]
-    assert(len(np.unique(lens))==1)
-
     # in case of 'oracle' mode, re-sort the detections and times in order of AP
-    # contributions
-    times = samples['time']
-    if self.class_priors_mode=='oracle':
-      naive_aps = np.array(samples['naive_ap'])
-      sorted_inds = np.argsort(-naive_aps)
+    # contributions, and actually re-gather p_c's for clses.
+    action_inds = [s.action_ind for s in samples]
+    if self.policy_mode=='oracle':
+      naive_aps = np.array([s.det_naive_ap for s in samples])
+      sorted_inds = np.argsort(-naive_aps,kind='merge') # order-preserving
       all_detections = np.take(all_detections, sorted_inds)
-      times = np.take(times, sorted_inds)
+      sorted_action_inds = np.take(action_inds, sorted_inds)
 
-    # now construct the final return array, with correct times
-    assert(len(all_detections)==len(times))
+      # actually go through the whole thing again, getting new p_c's
+      b.reset()
+      all_clses = []
+      for action_ind in sorted_action_inds:
+        action = self.actions[action_ind]
+        obs = action.obj.get_observations(image)
+        b.t += obs['dt']
+        b.update_with_score(action_ind, obs['score'])
+        clses = b.get_p_c().tolist() + [img_ind,b.t]
+        all_clses.append(clses)
+
+    # now construct the final dets array, with correct times
+    times = [s.dt for s in samples]
+    
+    #assert(len(all_detections)==len(all_clses)==len(times))
     cum_times = np.cumsum(times)
     all_times = []
     all_nonempty_detections = []
@@ -540,16 +773,29 @@ class DatasetPolicy:
           all_detections = all_detections[:first_overdeadline_ind,:]
     else:
       all_detections = np.array([])
+    all_clses = np.array(all_clses)
 
-    print("Done with image, took %.3f s"%(time.time()-actual_time_start))
-    if with_samples:
-      return (all_detections, samples)
-    return all_detections
+    if verbose:
+      print("DatasetPolicy on image with ind %d took %.3f s"%(
+        img_ind,self.tt.qtoc('run_on_image')))
+
+    # TODO: temp debug thing
+    if False:
+      print("Action sequence was: %s"%[s.action_ind for s in samples])
+      print("here's an image:")
+      X = np.vstack((all_clses[:,:-2],image.get_cls_ground_truth()))
+      np.set_printoptions(precision=2, suppress=True)
+      print X
+      plt.pcolor(np.flipud(X))
+      plt.show()
+
+    return (all_detections,all_clses,samples)
 
   ###############
   # External detections stuff
   ###############
-  def load_ext_detections(self,dataset,mode,suffix,force=False):
+  @classmethod
+  def load_ext_detections(cls,dataset,suffix,force=False):
     """
     Loads multi-image, multi-class array of detections for all images in the
     given dataset.
@@ -565,27 +811,28 @@ class DatasetPolicy:
       all_dets = []
       for i in range(comm_rank,len(dataset.images),comm_size):
         image = dataset.images[i]
-        if mode=='dpm':
+        if re.search('dpm',suffix):
           # NOTE: not actually using the given suffix in the call below
-          dets = self.load_dpm_dets_for_image(image)
+          dets = cls.load_dpm_dets_for_image(image,dataset)
           ind_vector = np.ones((np.shape(dets)[0],1)) * i
           dets = np.hstack((dets,ind_vector))
           cols = ['x','y','w','h','dummy','dummy','dummy','dummy','score','time','cls_ind','img_ind']
           good_ind = [0,1,2,3,8,9,10,11]
           dets = dets[:,good_ind]
-        elif mode=='csc':
+        elif re.search('csc',suffix):
           # NOTE: not actually using the given suffix in the call below
-            dets = self.load_csc_dpm_dets_for_image(image)
-            ind_vector = np.ones((np.shape(dets)[0],1)) * i
-            dets = np.hstack((dets,ind_vector))
-        elif mode=='ctf':
+          dets = cls.load_csc_dpm_dets_for_image(image,dataset)
+          ind_vector = np.ones((np.shape(dets)[0],1)) * i
+          dets = np.hstack((dets,ind_vector))
+        elif re.search('ctf',suffix):
           # Split the suffix into ctf and the main part
           actual_suffix = suffix.split('_')[1]
-          dets = self.load_ctf_dets_for_image(image, actual_suffix)
+          dets = cls.load_ctf_dets_for_image(image, dataset, actual_suffix)
           ind_vector = np.ones((np.shape(dets)[0],1)) * i
           dets = np.hstack((dets,ind_vector))
         else:
-          raise RuntimeError('Unknown detections mode')
+          print(suffix)
+          raise RuntimeError('Unknown detector type in suffix')
         all_dets.append(dets)
       final_dets = None
       if comm_rank==0:
@@ -600,13 +847,13 @@ class DatasetPolicy:
         all_dets_table.arr = np.vstack(final_dets)
         np.save(filename,all_dets_table)
         print("Found %d dets"%all_dets_table.shape()[0])
-      safebarrier(comm)
       all_dets_table = comm.bcast(all_dets_table,root=0)
     time_elapsed = time.time()-t
     print("DatasetPolicy.load_ext_detections took %.3f"%time_elapsed)
     return all_dets_table
 
-  def load_ctf_dets_for_image(self, image, suffix='default'):
+  @classmethod
+  def load_ctf_dets_for_image(cls, image, dataset, suffix='default'):
     """Load multi-class array of detections for this image."""
     t = time.time()
     dirname = '/u/vis/x1/sergeyk/object_detection/ctfdets/%s/'%suffix
@@ -616,21 +863,23 @@ class DatasetPolicy:
     print("On image %s, took %.3f s"%(image.name, time_elapsed))
     return dets_table.arr
 
-  def load_csc_dpm_dets_for_image(self, image):
+  @classmethod
+  def load_csc_dpm_dets_for_image(cls, image, dataset):
     """
     Loads HOS's cascaded dets.
     """
     t = time.time()
     name = os.path.splitext(image.name)[0]
-    # if test dataset, use HOS's detections. if not, need to output my own
-    if re.search('test', self.dataset.name):
-      dirname = '/u/vis/song/rl_detection/datadir/voc-release4/2007/tmp/dets_test_original_cascade_wholeset/'
-      filename = dirname+'%s_dets_all_test_original_cascade_wholeset.mat'%name
+    # if uest dataset, use HOS's detections. if not, need to output my own
+    if re.search('test', dataset.name):
+      dirname = config.get_dets_test_wholeset_dir()
+      filename = os.path.join(dirname,'%s_dets_all_test_original_cascade_wholeset.mat'%name)
     else:
-      dirname = '/u/vis/x1/sergeyk/rl_detection/voc-release4/2007/tmp/dets_nov19/'
-      filename = dirname+'%s_dets_all_nov19.mat'%name
+      dirname = config.get_dets_nov19()
+      filename = os.path.join(dirname, '%s_dets_all_nov19.mat'%name)
+    print filename
     if not os.path.exists(filename):
-      print("File does not exist!")
+      raise RuntimeError("File %s does not exist!"%filename)
       return None
     mat = scipy.io.loadmat(filename)
     dets = mat['dets_mc']
@@ -638,7 +887,7 @@ class DatasetPolicy:
     feat_time = times[0,0]
     dets_seq = []
     cols = ['x1','y1','x2','y2','dummy','dummy','dummy','dummy','dummy','dummy','score'] 
-    for cls_ind,cls in enumerate(self.dataset.classes):
+    for cls_ind,cls in enumerate(dataset.classes):
       cls_dets = dets[cls_ind][0]
       if cls_dets.shape[0]>0:
         good_ind = [0,1,2,3,10]
@@ -652,25 +901,27 @@ class DatasetPolicy:
         cls_dets[:,:4] = BoundingBox.clipboxes_arr(cls_dets[:,:4], (0,0,image.size[0],image.size[1]))
         dets_seq.append(cls_dets)
     cols = ['x','y','w','h','score','time','cls_ind'] 
-    dets_mc = ut.collect(dets_seq, Detector.nms_detections, cols)
+    dets_mc = ut.collect(dets_seq, Detector.nms_detections, {'cols':cols})
     time_elapsed = time.time()-t
     print("On image %s, took %.3f s"%(image.name, time_elapsed))
     return dets_mc
 
-  def load_dpm_dets_for_image(self, image, suffix='dets_all_may25_DP'):
+  @classmethod
+  def load_dpm_dets_for_image(cls, image, dataset, suffix='dets_all_may25_DP'):
     """
     Loads multi-class array of detections for an image from .mat format.
-    self.suffix supercedes given suffix if present.
     """
     t = time.time()
     name = os.path.splitext(image.name)[0]
     # TODO: figure out how to deal with different types of detections
-    filename = os.path.join('/u/vis/x1/sergeyk/rl_detection/voc-release4/2007/tmp/dets_may25_DP/%(name)s_dets_all_may25_DP.mat'%{'name': name})
-    if not os.path.exists(filename):
-      filename = os.path.join('/u/vis/x1/sergeyk/rl_detection/voc-release4/2007/tmp/dets_jun1_DP_trainval/%(name)s_dets_all_jun1_DP_trainval.mat'%{'name': name})
-      if not os.path.exists(filename):
-        filename = os.path.join(config.test_support_dir,'dets/%s_dets_all_may25_DP.mat'%name)
-        if not os.path.exists(filename):
+    dets_dir = '/u/vis/x1/sergeyk/rl_detection/voc-release4/2007/tmp/dets_may25_DP'
+    filename = opjoin(dets_dir, '%s_dets_all_may25_DP.mat'%name)
+    if not opexists(filename):
+      dets_dir = '/u/vis/x1/sergeyk/rl_detection/voc-release4/2007/tmp/dets_jun1_DP_trainval'
+      filename = opjoin(dets_dir, '%s_dets_all_jun1_DP_trainval.mat'%name)
+      if not opexists(filename):
+        filename = opjoin(config.test_support_dir,'dets/%s_dets_all_may25_DP.mat'%name)
+        if not opexists(filename):
           print("File does not exist!")
           return None
     mat = scipy.io.loadmat(filename)
@@ -692,9 +943,45 @@ class DatasetPolicy:
         dets_seq.append(cls_dets)
     cols = ['x','y','w','h','dummy','dummy','dummy','dummy','score','time','cls_ind'] 
     # NMS detections per class individually
-    dets_mc = ut.collect(dets_seq, Detector.nms_detections, cols)
+    dets_mc = ut.collect(dets_seq, Detector.nms_detections, {'cols':cols})
     dets_mc[:,:4] = BoundingBox.clipboxes_arr(dets_mc[:,:4],(0,0,image.size[0]-1,image.size[1]-1))
     time_elapsed = time.time()-t
     print("On image %s, took %.3f s"%(image.name, time_elapsed))
     return dets_mc
 
+if __name__=='__main__':
+  train_d = Dataset('full_pascal_trainval')
+  
+  just_combine=False
+    
+  for ds in ['full_pascal_trainval']: # 'full_pascal_test'
+    eval_d = Dataset(ds) 
+    dp = DatasetPolicy(eval_d, train_d, detectors=['csc_default'])
+    test_table = np.zeros((len(eval_d.images), len(dp.actions)))
+    
+    if not just_combine:
+      for img_idx in range(comm_rank, len(eval_d.images), comm_size):
+        img = eval_d.images[img_idx]
+        for act_idx, act in enumerate(dp.actions):
+          print '%s on %d for act %d'%(img.name, comm_rank, act_idx)    
+          score = act.obj.get_observations(img)['score']
+          print '%s, score: %f'%(img.name, score)
+          test_table[img_idx, act_idx] = score
+      
+      dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp','agent_wise'))
+      filename = os.path.join(dirname,'table_%d'%comm_rank)
+      np.savetxt(filename, test_table) 
+  
+    safebarrier(comm)
+    
+    if comm_rank == 0:
+      for i in range(comm_size-1):
+        filename = os.path.join(dirname,'table_%d'%(i+1))
+        test_table += np.loadtxt(filename)
+      dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp'))
+      filename = os.path.join(dirname,'table_linear_20')
+      tab_test_table = ut.Table()
+      tab_test_table.cols = list(eval_d.classes) + ['img_ind']
+      
+      tab_test_table.arr = np.hstack((test_table, np.array(np.arange(test_table.shape[0]),ndmin=2).T))
+      cPickle.dump(tab_test_table, open(filename,'w'))

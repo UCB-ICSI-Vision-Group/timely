@@ -4,12 +4,11 @@ Created on Nov 17, 2011
 @author: Tobias Baumgartner
 '''
 
-import os
-import synthetic.config as config
-import numpy as np
+from common_imports import *
+from common_mpi import *
+
 import scipy.io
 import synthetic.util as ut
-import cPickle
 
 folder = config.VOC_dir + 'JPEGImages/gist/'
 gist_save = os.path.join(config.res_dir,'gist_features/')

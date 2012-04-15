@@ -1,7 +1,7 @@
 Timely Object Detection
 ===
 
-Repository for upcoming ECCV 2012 submission(s) on Timely Object Detection.
+Repository for upcoming NIPS 2012 submission on Timely Object Detection.
 
 Files
 ---
@@ -50,41 +50,3 @@ Ideas
 - general philosophy of particle filtering/coarse-to-fine vs. cascade: instead of rejecting regions a priori, look only in a few regions and let that guide the next places you look
 - evaluate the "valley" of detectors: what's the minimal overlap required to successfully get the detection?
   : in terms of pascal overlap, for example
-
-Tasks
----
-### misc
-- rename 'synthetic' to 'timely' everywhere
-- check code with pylint
-- write tests for all classes @sergey @tobi
-
-### policy
-- include values for object classes (reference some paper by Ashish if can find) @sergey
-- learn regression on policy samples, and replace the weight vectors of action with the results. @sergey
-- code up LSPI and try to improve on the 1-step policy @sergey
-- include scene context action
-
-### jumping windows
-- ensure performance at published levels
-- is VQ performance adequate? should be pretty fast
-
-### classification
-- evaluate classification performance
-  - train classifier on top of detection output
-  - train classifier for the whole image (SIFT+SPM)
-  - compare their performances
-
-### window proposals
-- speed up: profile code to see where the speed bottlenecks are. how can they be resolved?
-- try using x_scaled instead of x_frac for window proposal statistics
-
-### window classifier
-- port sub's code into scikits-learn
-
-### belief state model
-- refactor the validation method to use MPI instead of IPython.Parallel
-- experiment with smoothing in the empirical model
-- review graphical model solution
-- formulate as CRF, conditioned on the detectors and GIST
-
-### on the backburner

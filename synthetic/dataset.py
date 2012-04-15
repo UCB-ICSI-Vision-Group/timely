@@ -1,11 +1,13 @@
 from PIL import Image as PILImage
+from sklearn.cross_validation import KFold
 
 from common_mpi import *
 from common_imports import *
-
 import synthetic.config as config
+
 from synthetic.image import *
 from synthetic.sliding_windows import SlidingWindows
+from synthetic import config
 
 class Dataset:
   """
@@ -61,6 +63,7 @@ class Dataset:
     self.classes = []
     self.images = []
     self.name = name
+    self.current_fold = -1
     if re.search('pascal', name):
       self.load_from_pascal(name,force)
     elif name == 'data1':
@@ -80,7 +83,7 @@ class Dataset:
     tt = ut.TicToc().tic()
     print("Dataset: %s"%name),
     filename = config.get_cached_dataset_filename(name)
-    if opexists(filename):
+    if opexists(filename) and not force:
       with open(filename) as f:
         cached = cPickle.load(f)
         self.classes = cached.classes
@@ -170,6 +173,8 @@ class Dataset:
       for gt in gts.arr:
         overlaps = BoundingBox.get_overlap(windows[:,:4],gt[:4])
         windows = windows[overlaps <= max_overlap,:]
+      if windows.shape[0] == 0:
+        continue
       ind_to_take = ut.random_subset_up_to_N(windows.shape[0], num_per_image)
       all_windows.append(np.hstack(
         (windows[ind_to_take,:],np.tile(ind, (ind_to_take.shape[0],1)))))
@@ -191,6 +196,8 @@ class Dataset:
     """
     Return array of indices of self.images that contain no objects of this class.
     """
+    if number == 0:
+      return np.array([])
     pos_indices = self.get_pos_samples_for_class(cls,include_diff,include_trun)
     neg_indices = np.setdiff1d(np.arange(len(self.images)),pos_indices,assume_unique=True)
     # TODO tobi: why do these have to be ordered?
@@ -204,10 +211,16 @@ class Dataset:
     self.classes = config['classes']
     for image in config['images']:
       self.images.append(Image.from_json(self,image))
+  
+  def get_cls_ground_truth(self, include_diff=False,include_trun=True):
+    "Return Table containing classification ground truth."
+    arr = self.get_cls_counts()>0
+    cols = self.classes
+    return ut.Table(arr,cols)
       
   def get_ground_truth(self, include_diff=False, include_trun=True):
     """
-    Return Table object containing ground truth of the dataset.
+    Return Table object containing detection ground truth of the dataset.
     If include_diff or include_trun are False, those column names are omitted.
     """
     gt = ut.Table(arr=self.get_gt_arr(),cols=self.get_gt_cols())
@@ -221,6 +234,7 @@ class Dataset:
     """
     Return Table object containing ground truth for the given image indices.
     """
+    img_inds = np.unique(img_inds)
     images = (self.images[int(ind)] for ind in img_inds)
     arr = ut.collect(images, Image.get_gt_arr)
     gt = ut.Table(arr,Image.get_gt_cols())
@@ -233,12 +247,13 @@ class Dataset:
       gt = gt.filter_on_column('cls_ind',cls_ind)
     return gt
 
-  def get_cls_counts(self):
+  def get_cls_counts(self,include_diff=False,include_trun=True):
     """
     Return ndarray of size (num_images,num_classes), with counts of each class
     in each image.
     """
-    return ut.collect(self.images, Image.get_cls_counts)
+    kwargs = {'include_diff':include_diff,'include_trun':include_trun}
+    return ut.collect(self.images, Image.get_cls_counts, kwargs)
 
   def get_ground_truth_for_class(self, cls, include_diff=False,
       include_trun=True):
@@ -253,9 +268,59 @@ class Dataset:
     return gt.filter_on_column('cls_ind', self.get_ind(cls))
 
   def get_gt_arr(self):
-    return ut.collect_with_index_column(self.images, Image.get_gt_arr)
+    return ut.collect_with_index(self.images, Image.get_gt_arr)
 
   @classmethod
   def get_gt_cols(cls):
     return Image.get_gt_cols() + ['img_ind']
-
+      
+  def create_folds(self, numfolds):
+    """
+    Split the images of dataset in numfolds folds,
+    Dataset has an inner state about current fold (This is like an implicit 
+    generator)
+    """
+    folds = KFold(len(self.images), numfolds)
+    self.folds = []
+    for fold in folds:
+      self.folds.append(fold)
+    self.current_fold = 0
+    
+  def next_folds(self):
+    if self.current_fold < len(self.folds):
+      fold = self.folds[self.current_fold]
+      self.current_fold += 1
+      self.train, self.val = fold
+      if type(self.train[0]) == type(np.array([True])[0]):
+        self.train = np.where(self.train)[0]
+        self.val = np.where(self.val)[0]
+      return fold
+    if self.current_fold >= len(self.folds):
+      self.current_fold = 0
+      return 0
+  
+  def get_fold_by_index(self, ind):
+    """
+    Random access to folds
+    """
+    if ind >= len(self.folds):
+      raise RuntimeError('Try to access non-existing fold')
+    else:
+      return self.folds[ind]
+  
+  def get_pos_samples_for_fold_class(self, cls, include_diff=False,
+      include_trun=True):
+    if not hasattr(self, 'train'):
+      return self.get_pos_samples_for_class(cls, include_diff, include_trun)
+    all_pos = self.get_pos_samples_for_class(cls, include_diff, include_trun)
+    return np.intersect1d(all_pos, self.train)
+  
+  def get_neg_samples_for_fold_class(self, cls, num_samples, include_diff=False,
+      include_trun=True):
+    if not hasattr(self, 'train'):
+      return self.get_neg_samples_for_class(cls, include_diff=include_diff, include_trun=include_trun)
+    all_neg = self.get_neg_samples_for_class(cls, include_diff=include_diff, include_trun=include_trun)
+    intersect = np.intersect1d(all_neg, self.train)
+    if intersect.size == 0:
+      return np.array([])
+    return np.array(ut.random_subset(intersect, num_samples))

@@ -1,0 +1,10 @@
+{
+  "suffix": "csc_greedy",
+  "detectors": ["csc_default"],
+  "policy_mode": ["fixed_order"],
+  "weights_mode": ["greedy"],
+  "rewards_mode": ["det_actual_ap"],
+  "line": "-",
+  "color": "blue",
+  "label": "Greedy"
+}

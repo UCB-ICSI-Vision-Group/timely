@@ -9,23 +9,23 @@ import matplotlib.pyplot as plt
 
 from common_imports import *
 from common_mpi import *
+import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.evaluation import Evaluation
 from synthetic.sliding_windows import SlidingWindows 
-import synthetic.config as config
+
 from synthetic.extractor import Extractor
 from synthetic.training import *
 from synthetic.jumping_windows import JumpingWindowsDetector,LookupTable,RootWindow
 from synthetic.jumping_windows_with_grid import JumpingWindowsDetectorGrid,\
-  LookupTable_withgrid,RootWindow_withgrid
+  LookupTable,RootWindow
 
 def main():
   parser = argparse.ArgumentParser(description='Execute different functions of our system')
   parser.add_argument('mode',
     choices=[
-      'detect','evaluate',
       'window_stats', 'evaluate_metaparams', 'evaluate_jw',
       'evaluate_get_pos_windows', 'train_svm',
       'extract_sift','extract_assignments','extract_codebook',
@@ -106,34 +106,6 @@ def main():
     "Compute and plot the statistics of ground truth window parameters."
     results = SlidingWindows.get_dataset_window_stats(train_dataset,plot=True)
 
-  if args.mode=='detect' or args.mode=='evaluate':
-    tables = []
-    for prior in args.priors:
-      dp = DatasetPolicy(dataset=dataset, train_dataset=train_dataset,
-          sw=sw, detector=args.detector, class_priors_mode=prior,
-          suffix=args.name, bounds=args.bounds, gist=args.gist)
-
-      all_dets = None
-      if args.mode=='detect':
-        all_dets = dp.detect_in_dataset(force=args.force)
-        ev.evaluate_detections_whole(all_dets,force=args.force)
-
-      if args.mode=='evaluate':
-        ev = Evaluation(dp)
-        table = ev.evaluate_dets_vs_t_avg(all_dets,force=args.force)
-        if comm_rank==0:
-          tables.append(table)
-        #ev.evaluate_dets_vs_t_whole(all_dets,force=args.force)
-
-    # If asked to, and did more than one condition, plot comparison as well
-    if args.compare_evals and len(args.priors)>1 and comm_rank==0:
-      filename = os.path.join(config.evals_dir, '%s_%s_%s_%s.png'%(
-            dataset.get_name(),
-            '-'.join(args.priors),
-            args.detector,
-            args.name))
-      Evaluation.plot_ap_vs_t(tables,filename,args.bounds)
-
   if args.mode=='ctfdet':
     """Run Pedersoli's detector on the dataset and assemble into one Table."""
     run_pedersoli(dataset)
@@ -153,7 +125,7 @@ def main():
 #               'boat',  'cow',       'person',    'tvmonitor',\
 #               'bottle','diningtable',  'pottedplant',\
 #               'bus','dog'     ,'sheep']
-    for cls_idx in range(mpi_rank, len(classes), mpi_size):
+    for cls_idx in range(comm_rank, len(classes), comm_size):
     #for cls in dataset.classes:
       cls = classes[cls_idx]
       dirname = config.get_jumping_windows_dir(dataset.get_name())
@@ -171,7 +143,7 @@ def main():
     for cls in dataset.classes:
       dirname = config.get_jumping_windows_dir(dataset.get_name())
       filename = os.path.join(dirname,'%s'%cls)
-      if os.path.isfile(config.save_dir + 'JumpingWindows/'+cls):
+      if os.path.isfile(config.data_dir + 'JumpingWindows/'+cls):
         sw.evaluate_recall(cls, filename, metaparams=None, mode='jw', plot=True)
 
   if args.mode=='train_svm':
@@ -193,12 +165,12 @@ def main():
      
     kernel = args.kernel
     
-    if mpi_rank == 0:
-      ut.makedirs(config.save_dir + 'features/' + feature_type + '/times/')
-      ut.makedirs(config.save_dir + 'features/' + feature_type + '/codebooks/times/')
-      ut.makedirs(config.save_dir + 'features/' + feature_type + '/svms/train_times/')
+    if comm_rank == 0:
+      ut.makedirs(config.data_dir + 'features/' + feature_type + '/times/')
+      ut.makedirs(config.data_dir + 'features/' + feature_type + '/codebooks/times/')
+      ut.makedirs(config.data_dir + 'features/' + feature_type + '/svms/train_times/')
       
-    for cls_idx in range(mpi_rank, len(classes), mpi_size): 
+    for cls_idx in range(comm_rank, len(classes), comm_size): 
     #for cls in classes:
       cls = classes[cls_idx]
       codebook = e.get_codebook(d, feature_type)
@@ -310,7 +282,7 @@ def main():
       codebook = e.get_codebook(d, feature_type)  
       print 'codebook loaded'
       
-      for img_ind in range(mpi_rank,len(d.images),mpi_size):
+      for img_ind in range(comm_rank,len(d.images),comm_size):
         img = d.images[img_ind]
       #for img in d.images:
         e.get_assignments(np.array([0,0,img.size[0],img.size[1]]), feature_type, \

@@ -4,13 +4,11 @@ Created on Jan 25, 2012
 @author: tobibaum
 '''
 
-import numpy as np
 import scipy.io as sio
 from os.path import join
 
-import synthetic.config as config
 from synthetic.pyramid import *
-
+from synthetic.extractor import get_indices_for_pos
 
 def create_grid():
   positions = np.zeros((25,2))
@@ -51,7 +49,23 @@ def test_compare_to_original_pyramid():
   assert (mat.all() == pyr.all())
 #  io.savemat(spatial_pyr_root + 'python_pyr.mat', {'pyr':pyr})
   
-if __name__=='__main__':  
-  test_get_indices()
-  test_get_indices_empty_result()
-  test_compare_to_original_pyramid()
+def test_extract_horiz_slices():
+  assignments = np.zeros((25,3))
+  ind = 0
+  for i in range(5):
+    for j in range(5):
+      ass = 1
+      if (i, j) == (1,1) or (i, j) == (2,1) or (i, j) == (3,1):
+        ass = 2
+      if (i, j) == (1,2) or (i, j) == (2,2) or (i, j) == (3,2):
+        ass = 3
+      if (i, j) == (1,3) or (i, j) == (2,3) or (i, j) == (3,3):
+        ass = 4
+      assignments[ind, :] = np.matrix([[i, j, ass]])
+      ind += 1
+  image = Image(size=(5,5))
+  num_words = 4
+  slices = extract_horiz_sclices(3, assignments, image, num_words)
+  corr_stack = np.matrix([[.7, .3, 0, 0], [.4, 0, .6, 0], [.7, 0, 0, .3]])
+  slice_stack = np.vstack(slices)
+  np.testing.assert_array_equal(corr_stack, slice_stack)

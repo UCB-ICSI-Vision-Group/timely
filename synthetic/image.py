@@ -5,10 +5,6 @@ from common_imports import *
 from synthetic.bounding_box import BoundingBox
 from synthetic.sliding_windows import SlidingWindows
 
-# TODO: find library method
-def randi(max=2):
-  return int(np.random.rand(1)[0]*max)
-
 class Image:
   """An image has a size and a list of objects."""
   
@@ -83,7 +79,7 @@ class Image:
     # array ground truth representation was stored 
     return (len([obj for obj in self.objects if obj.cls_ind == cls_ind]) > 0)
 
-  def get_cls_counts(self):
+  def get_cls_counts(self, include_diff=False, include_trun=True):
     """
     Return a vector of size num_classes, with the counts of each class in
     the image.
@@ -94,6 +90,12 @@ class Image:
     counts = np.zeros(self.dataset.num_classes())
     counts[:bincount.size] = bincount
     return counts 
+
+  def get_cls_ground_truth(self,include_diff=False,include_trun=False):
+    counts = self.get_cls_counts(include_diff,include_trun)
+    z = np.zeros(counts.shape)
+    z[counts>0] = 1
+    return z
 
   def get_ground_truth(self, cls=None, include_diff=False, include_trun=True):
     """

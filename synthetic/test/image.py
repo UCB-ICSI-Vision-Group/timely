@@ -1,8 +1,9 @@
 from synthetic.common_imports import *
+from synthetic.common_mpi import *
+import synthetic.config as config
 
 from synthetic.image import *
 from synthetic.sliding_windows import *
-import synthetic.config as config
 
 class TestImage:
   def test_get_random_windows(self):
