@@ -1,6 +1,7 @@
 import xml.dom.minidom as minidom
 from common_imports import *
 from synthetic.bounding_box import BoundingBox
+from synthetic.sliding_windows import SlidingWindows
 
 class Image:
   "An image has a size and a list of objects."
@@ -116,74 +117,13 @@ class Image:
   def get_gt_cols(cls):
     return Object.get_cols()
 
-  def get_num_windows(self,window_params):
-    """Return the number of windows that self.get_windows will return."""
-    return self.get_windows(window_params,just_num=True)
-
   def get_random_windows(self,window_params,num_windows):
-    """
-    Return at most num_windows of random windows generated according to params.
-    """
+    "Return at most num_windows random windows generated according to params."
     windows = self.get_windows(window_params)
     return windows[ut.random_subset_up_to_N(windows.shape[0],num_windows),:]
 
-  def get_windows(self,window_params,with_time=False,just_num=False):
-    """
-    Return all windows that can be generated with window_params.
-    If with_time=True, return tuple of (windows, time_elapsed).
-    If just_num=True, return the number of windows instead of the actual windows.
-    """
-    t = time.time()
-    stride = window_params.stride
-    min_width = window_params.min_width
-    im_width = self.size[0]
-    im_height = self.size[1]
-    actual_xs = []
-    actual_ys = []
-    actual_ws = []
-    actual_hs = []
-    num_windows = 0
-    # we want to be able to capture objects that extend past the image
-    # we always iterate over locations in native space, and convert to
-    # actual image space when we record the window
-    w_pad = int(1.*min_width/2)
-    x_min = -w_pad
-    for scale in window_params.scales:
-      x_max = int(im_width*scale)-w_pad
-      if w_pad > 0:
-        x_max += stride
-      actual_w = int(min_width/scale) + 1
-      for ratio in window_params.aspect_ratios:
-        h_pad = int(1.*min_width*ratio/2)
-        y_min = -h_pad
-        y_max = int(im_height*scale)-h_pad
-        if h_pad > 0:
-          y_max += stride
-        actual_h = int(min_width/scale * ratio) + 1
-        if just_num:
-          num_y = len(range(y_min,y_max,stride))
-          num_x = len(range(x_min,x_max,stride))
-          num_windows += num_y*num_x
-          continue
-        for y in range(y_min,y_max,stride):
-          for x in range(x_min,x_max,stride):
-            actual_ws.append(actual_w)
-            actual_hs.append(actual_h)
-            actual_xs.append(int(x/scale))
-            actual_ys.append(int(y/scale))
-    if just_num:
-      if with_time:
-        time_elapsed = time.time()-t
-        return (num_windows,time_elapsed)
-      else:
-        return num_windows
-    windows = np.array([actual_xs,actual_ys,actual_ws,actual_hs]).T
-    windows = BoundingBox.clipboxes_arr(windows,(0,0,im_width,im_height))
-    if with_time:
-      time_elapsed = time.time()-t
-      return (windows,time_elapsed)
-    else:
-      return windows
+  def get_windows(self,window_params,with_time=False):
+    return SlidingWindows.get_windows(self,None,window_params,with_time)
 
 class Object:
   """An object has a bounding box and a class."""

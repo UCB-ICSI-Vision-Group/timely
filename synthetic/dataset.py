@@ -92,7 +92,7 @@ class Dataset:
   ###
   # Assemble data for training
   ###
-  def get_pos_windows(self, cls=None, window_params=None, min_overlap=0.6):
+  def get_pos_windows(self, cls=None, window_params=None, min_overlap=0.7):
     """
     Return array of all ground truth windows for the class, plus windows 
     that can be generated with window_params that overlap with it by more

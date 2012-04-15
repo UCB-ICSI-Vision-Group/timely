@@ -60,7 +60,6 @@ class SlidingWindows:
     self.train_dataset = train_dataset
     self.train_name = self.train_dataset.get_name()
     self.stats = None
-    4
     self.cached_params = {}
     self.jw = None
 
@@ -141,19 +140,65 @@ class SlidingWindows:
     ax.yaxis.grid(True,which='both')
     fig.savefig(filename)
 
-  def get_windows(self,image,cls,with_time=False):
-    # TODO: move the actual code here :-)
-    return image.get_windows(self.get_default_window_params(cls), with_time)
+  @classmethod
+  def get_windows(clas,image,cls=None,window_params=None,with_time=False):
+    """
+    Return all windows that can be generated with window_params.
+    If with_time=True, return tuple of (windows, time_elapsed).
+    """
+    assert(cls or window_params)
+    if not window_params:
+      window_params = self.get_default_window_params(cls)
+    t = time.time()
+    stride = window_params.stride
+    min_width = window_params.min_width
+    im_width = image.size[0]
+    im_height = image.size[1]
+    actual_xs = []
+    actual_ys = []
+    actual_ws = []
+    actual_hs = []
+    num_windows = 0
+    # we want to be able to capture objects that extend past the image
+    # we always iterate over locations in native space, and convert to
+    # actual image space when we record the window
+    w_pad = int(1.*min_width/2)
+    x_min = -w_pad
+    for scale in window_params.scales:
+      x_max = int(im_width*scale)-w_pad
+      if w_pad > 0:
+        x_max += stride
+      actual_w = int(min_width/scale) + 1
+      for ratio in window_params.aspect_ratios:
+        h_pad = int(1.*min_width*ratio/2)
+        y_min = -h_pad
+        y_max = int(im_height*scale)-h_pad
+        if h_pad > 0:
+          y_max += stride
+        actual_h = int(min_width/scale * ratio) + 1
+        for y in range(y_min,y_max,stride):
+          for x in range(x_min,x_max,stride):
+            actual_ws.append(actual_w)
+            actual_hs.append(actual_h)
+            actual_xs.append(int(x/scale))
+            actual_ys.append(int(y/scale))
+    windows = np.array([actual_xs,actual_ys,actual_ws,actual_hs]).T
+    windows = BoundingBox.clipboxes_arr(windows,(0,0,im_width,im_height))
+    if with_time:
+      time_elapsed = time.time()-t
+      return (windows,time_elapsed)
+    else:
+      return windows
   
   def grid_search_over_metaparams(self):
     """
     Evaluates different metaparams for the get_windows_new method with the
     metric of AUC under the recall vs. # windows curve.
     """
-    # approximately strides of 6, 4, and 8 px
-    samples_per_500px_vals = [83, 62, 125]
-    num_scales_vals = [15,9,12]
-    num_ratios_vals = [12,9,6]
+    # approximately strides of 4, 6, and 8 px
+    samples_per_500px_vals = [62, 83, 125]
+    num_scales_vals = [9,12,15]
+    num_ratios_vals = [6,9,12]
     mode_vals = ['linear','importance']
     priority_vals = [0]
     classes = self.dataset.classes+['all']
@@ -252,19 +297,23 @@ class SlidingWindows:
       tables = np.load(filename+'.npy')
     else:
       if mode=='jw':
-        window_intervals = [0, 3, 10, 35, 100, 300, 1000, 2000, 4000, 8000, 16000]
+        #window_intervals = [0, 3, 10, 35, 100, 300, 1000, 2000, 4000, 8000, 16000]
+        window_intervals = logspace(0,4,9).astype(int)
+        # array([    1,     3,    10,    31,   100,   316,  1000,  3162, 10000])
       elif mode=='sw':
-        window_intervals = [0, 3, 10, 35, 100, 300, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 128000, 256000, 512000, 1024000]
+        #window_intervals = [0, 3, 10, 35, 100, 300, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 128000, 256000, 512000, 1024000]
+        window_intervals = logspace(0,6,13).astype(int)
+        # array([      1,       3,      10,      31,     100,     316,    1000,
+        #  3162,   10000,   31622,  100000,  316227, 1000000])
       else:
         raise RuntimeError("Impossible mode")
-      min_overlaps=[0.35,0.5,0.65]
+      min_overlaps=[0.25,0.5,0.75]
       recalls = self.get_recalls(cls,metaparams,mode,window_intervals,min_overlaps)
-      #recalls=np.zeros((len(window_intervals),len(min_overlaps)))
 
       # Save recalls to Table and call plotting method
       cols = ['num_windows','recall']
       tables = []
-      for min_overlap in [0.35,0.5,0.65]:
+      for min_overlap in min_overlaps:
         arr = np.array((np.array(window_intervals),
           recalls[:,min_overlaps.index(min_overlap)])).T
         label = '%s, %s, ov=%.2f'%(cls,mode,min_overlap)
@@ -312,8 +361,7 @@ class SlidingWindows:
       if mode=='sw': 
         windows,time_elapsed = self.get_windows_new(image,cls,metaparams,with_time=True,at_most=max(window_intervals))
       elif mode=='jw':
-        # TODO by dw
-        windows,time_elapsed = self.jw.get_windows(image,cls,K=16000)
+        windows,time_elapsed = self.jw.get_windows(image,cls,K=10000)
       else:
         raise RuntimeError('impossible mode')
 
