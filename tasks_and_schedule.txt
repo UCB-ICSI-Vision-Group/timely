@@ -2,14 +2,17 @@ Schedule (all Fridays)
 ---
 
 18 Apr (wed)
-- refactor from ut.Table to pandas
+- refactor
+	- switch from ut.Table to pandas
+	- get rid of include_diff and include_trun and just filter the ground truth
+	- rename 'synthetic' to 'timely' everywhere
 - understand the inference behavior: why linear? @tobi @sergey
 - plots for inference error vs. time @tobi
 - results for current system with modified class values @sergey
 - finished implementation of "active classification" model @sergey
 
 20 Apr
-- rename 'synthetic' to 'timely' everywhere
+- run on PASCAL VOC 2011 (test on val)
 - results with the GIST action @tobi
 - optimized inference of marginals, with controlled caching and potentially regression approximation @tobi @sergey
 - more results, whatever we need @tobi

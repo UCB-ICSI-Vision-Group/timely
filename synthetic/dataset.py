@@ -7,58 +7,12 @@ import synthetic.config as config
 
 from synthetic.image import *
 from synthetic.sliding_windows import SlidingWindows
-from synthetic import config
 
 class Dataset:
   """
   Methods for constructing, accessing, and evaluating detection performance
   on a dataset.
   """
-
-  # Convenience methods
-  def num_classes(self):
-    return len(self.classes)
-  
-  def num_images(self):
-    return len(self.images)
-
-  def get_ind(self,cls):
-    """
-    Return the index of the given cls. If cls is 'all', returns an extra
-    index.
-    """
-    if cls=='all':
-      return len(self.classes)
-    assert(cls in self.classes)
-    return self.classes.index(cls)
-
-  def get_img_ind(self,image):
-    """Return the index of the given image."""
-    assert(image in self.images)
-    return self.images.index(image)
-
-  def get_name(self):
-    return "%s_%s"%(self.name,len(self.images))
-
-  def see_image(self,img_ind):
-    """Convenience method to display the image at given ind in self.images."""
-    # TODO: use scikits-image to load as numpy matrix (matplotlib.imread loads
-    # inverted for some reason)
-    im = PILImage.open(self.get_image_filename(img_ind))
-    im.show()
-
-  def get_image_by_filename(self, filename):
-    for img in self.images:
-      if img.name == filename:
-        return img
-    return None
-
-  def get_image_filename(self,img_ind):
-    return opjoin(config.VOC_dir, 'JPEGImages', self.images[img_ind].name)
-
-  def __repr__(self):
-    return self.get_name()
-  
   def __init__(self, name=None, force=False):
     self.classes = []
     self.images = []
@@ -66,18 +20,31 @@ class Dataset:
     self.current_fold = -1
     if re.search('pascal', name):
       self.load_from_pascal(name,force)
-    elif name == 'data1':
-      self.load_from_json(config.data1)
+    elif name == 'test_data1':
+      self.load_from_json(config.test_data1)
     else:
       print("WARNING: Unknown dataset initialization string, not loading images.")
+
+  def get_name(self):
+    return "%s_%s"%(self.name,self.df.shape[0])
+
+  ###
+  # Loaders
+  ###
+  def load_from_json(self, filename):
+    "Load all parameters of the dataset from a JSON file."
+    with open(filename) as f:
+      config = json.load(f)
+    self.classes = config['classes']
+    for image in config['images']:
+      self.images.append(Image.from_json(self,image))
 
   def load_from_pascal(self, name, force=False):
     """
     Look up the filename associated with the given name.
     Read image names from provided filename, and construct a dataset from the
     corresponding .xml files.
-    Caches self when loaded into conventional filename, such that next time
-    loading is faster.
+    Save self to disk when loaded for caching purposes.
     If force is True, does not look for cached data when loading.
     """
     tt = ut.TicToc().tic()
@@ -109,6 +76,22 @@ class Dataset:
       cPickle.dump(self,f)
     print("  ...done in %.2f s\n"%tt.qtoc())
 
+  ###
+  # Misc
+  ###
+  def see_image(self,img_ind):
+    "Convenience method to display the image at given ind in self.images."
+    # TODO: use scikits-image to load as numpy matrix (matplotlib.imread loads
+    # inverted for some reason)
+    im = PILImage.open(self.get_image_filename(img_ind))
+    im.show()
+
+  def get_image_filename(self,img_ind):
+    return opjoin(config.VOC_dir, 'JPEGImages', self.images[img_ind].name)
+
+  ###
+  # Assemble data for training
+  ###
   def get_pos_windows(self, cls=None, window_params=None, min_overlap=0.6):
     """
     Return array of all ground truth windows for the class, plus windows 
@@ -180,80 +163,33 @@ class Dataset:
         (windows[ind_to_take,:],np.tile(ind, (ind_to_take.shape[0],1)))))
     all_windows = np.concatenate(all_windows,0)
     return all_windows[:num,:]
-  
-  def get_pos_samples_for_class(self, cls, include_diff=False,
-      include_trun=True):
-    """
-    Return array of indices of self.images that contain at least one object of
-    this class.
-    """
-    cls_gt = self.get_ground_truth_for_class(cls,include_diff,include_trun)
-    img_indices = cls_gt.subset_arr('img_ind')
-    return np.sort(np.unique(img_indices)).astype(int)
 
-  def get_neg_samples_for_class(self, cls, number=None,
-      include_diff=False, include_trun=True):
-    """
-    Return array of indices of self.images that contain no objects of this class.
-    """
-    if number == 0:
-      return np.array([])
-    pos_indices = self.get_pos_samples_for_class(cls,include_diff,include_trun)
-    neg_indices = np.setdiff1d(np.arange(len(self.images)),pos_indices,assume_unique=True)
-    # TODO tobi: why do these have to be ordered?
-    return ut.random_subset(neg_indices, number, ordered=True)
-  
-  def load_from_json(self, filename):
-    """Load all parameters of the dataset from a JSON file."""
-    import json
-    with open(filename) as f:
-      config = json.load(f)
-    self.classes = config['classes']
-    for image in config['images']:
-      self.images.append(Image.from_json(self,image))
-  
-  def get_cls_ground_truth(self, include_diff=False,include_trun=True):
-    "Return Table containing classification ground truth."
-    arr = self.get_cls_counts()>0
-    cols = self.classes
-    return ut.Table(arr,cols)
-      
-  def get_ground_truth(self, include_diff=False, include_trun=True):
-    """
-    Return Table object containing detection ground truth of the dataset.
-    If include_diff or include_trun are False, those column names are omitted.
-    """
-    gt = ut.Table(arr=self.get_gt_arr(),cols=self.get_gt_cols())
-    if not include_diff:
-      gt = gt.filter_on_column('diff',0,omit=True)
-    if not include_trun:
-      gt = gt.filter_on_column('trun',0,omit=True)
-    return gt
+  ###
+  # Assemble ground truth
+  ###
+  def exclude_diff(self, det_gt):
+    "Return the passed in DataFrame with difficult objects excluded."
+    return det_gt.ix[~det_gt.diff]
 
-  def get_ground_truth_for_img_inds(self, img_inds, cls=None, include_diff=False, include_trun=True):
-    """
-    Return Table object containing ground truth for the given image indices.
-    """
-    img_inds = np.unique(img_inds)
-    images = (self.images[int(ind)] for ind in img_inds)
-    arr = ut.collect(images, Image.get_gt_arr)
-    gt = ut.Table(arr,Image.get_gt_cols())
-    if not include_diff:
-      gt = gt.filter_on_column('diff',0,omit=True)
-    if not include_trun:
-      gt = gt.filter_on_column('trun',0,omit=True)
-    if cls and not cls=='all':
-      cls_ind = self.dataset.get_ind(cls)
-      gt = gt.filter_on_column('cls_ind',cls_ind)
-    return gt
+  def exclude_trun(self, det_gt):
+    "Return the passed in DataFrame with truncated objects excluded."
+    return det_gt.ix[~det_gt.trun]
 
-  def get_cls_counts(self,include_diff=False,include_trun=True):
-    """
-    Return ndarray of size (num_images,num_classes), with counts of each class
-    in each image.
-    """
-    kwargs = {'include_diff':include_diff,'include_trun':include_trun}
-    return ut.collect(self.images, Image.get_cls_counts, kwargs)
+  def get_cls_ground_truth(self,with_diff=True,with_trun=True):
+    "Return DataFrame of classification (0/1) ground truth."
+    return self.get_cls_counts(with_diff,with_trun)>0
+
+  def get_cls_counts(self, with_diff=True, with_trun=True):
+    "Return DataFrame of class presence counts."
+    data = ut.collect(self.images, Image.get_cls_counts)
+    return DataFrame(data,columns=self.classes)
+
+  def get_det_ground_truth(self, with_diff=True, with_trun=True):
+    # TODO: have images return DataFrame as well
+    "Return DataFrame of detection ground truth."
+    data = ut.collect_with_index(self.images, Image.get_gt_arr)
+    columns = Image.get_gt_cols() + ['img_ind']
+    return DataFrame(data, columns)
 
   def get_ground_truth_for_class(self, cls, include_diff=False,
       include_trun=True):
@@ -266,13 +202,6 @@ class Dataset:
     if cls=='all':
       return gt
     return gt.filter_on_column('cls_ind', self.get_ind(cls))
-
-  def get_gt_arr(self):
-    return ut.collect_with_index(self.images, Image.get_gt_arr)
-
-  @classmethod
-  def get_gt_cols(cls):
-    return Image.get_gt_cols() + ['img_ind']
       
   def create_folds(self, numfolds):
     """

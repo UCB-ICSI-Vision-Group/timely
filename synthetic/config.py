@@ -1,12 +1,13 @@
-"Set up paths to files and other one-time or platform-dependent settings."
-
 from os.path import join,exists
 import getpass
+from IPython import embed
 
 from synthetic.util import makedirs
 
+"Set up paths to files and other one-time or platform-dependent settings."
+
 ##################
-# VARIABLES
+# CONSTANTS 
 ##################
 VOCyear = '2007'
 kernels = ['linear', 'rbf']
@@ -24,10 +25,11 @@ dpm_may25_dirname = '/tscratch/tmp/sergeyk/object_detection/dets_may25_DP/'
 # - temp_data_dir is for large files and can be on temp filespace
 ##################
 # Determine environment
-if exists('/home/tobibaum'):
-  env = 'tobi_home'
-elif exists('/Users/sergeyk'):
+if exists('/Users/sergeyk'):
   env = 'sergeyk_home'
+elif exists('/home/tobibaum'):
+  # NOTE (sergeyk): there's a strange bug where this *does* exist on my laptop
+  env = 'tobi_home'
 elif exists('/u/vis/'):
   user = getpass.getuser()
   if user=='tobibaum':
@@ -37,7 +39,7 @@ elif exists('/u/vis/'):
 else:
   raise RuntimeError("Can't set paths correctly")
 
-# repo_dir, data_dir, temp_data_dir
+# Set [repo_dir, data_dir, temp_data_dir]
 # temp_data_dir is not propagated between machines!
 paths = {
   'tobi_home':    ['/home/tobibaum/Documents/Vision/timely/',
@@ -46,11 +48,11 @@ paths = {
   'tobi_icsi':    ['/u/tobibaum/timely/',
                    '/u/vis/x1/tobibaum/data/',
                    '/tscratch/tmp/tobibaum/timely/'],
-  'sergeyk_home': ['/Users/sergeyk/research/timely/',
-                   '/Users/sergeyk/research/timely/data/',
-                   '/Users/sergeyk/research/timely/data/temp/'],
-  'sergeyk_icsi': ['/u/sergeyk/research/timely/',
-                   '/u/sergeyk/research/timely/data',
+  'sergeyk_home': ['/Users/sergeyk/work/timely/',
+                   '/Users/sergeyk/work/timely/data/',
+                   '/Users/sergeyk/work/timely/data/temp/'],
+  'sergeyk_icsi': ['/u/sergeyk/work/timely/',
+                   '/u/sergeyk/work/timely/data',
                    '/tscratch/tmp/sergeyk/timely/'],                   
 }
 repo_dir, data_dir, temp_data_dir = paths[env]
@@ -65,7 +67,7 @@ script_dir = join(repo_dir, 'synthetic')
 
 # Input data
 test_support_dir = join(script_dir, 'test_support')
-data1 = join(test_support_dir,'data1.json')
+test_data1 = join(test_support_dir,'data1.json')
 VOC_dir = join(data_dir, 'VOC%(year)s/')%{'year':VOCyear}
 pascal_paths = {
     'test_pascal_train':    join(test_support_dir,'train.txt'),
