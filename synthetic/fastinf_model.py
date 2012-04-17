@@ -8,7 +8,7 @@ from synthetic.ngram_model import InferenceModel
 from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,model_name,num_actions,m='0',r2='1'):
+  def __init__(self,dataset,model_name,num_actions,m='0',r2='1', lbp_iters=3000):
     # TODO: experiment with different values of fastinf
 
     self.dataset = dataset
@@ -17,7 +17,7 @@ class FastinfModel(InferenceModel):
 
     # TODO: experiment with different amounts of smoothing
     # amount of smoothing is correlated with fastinf slowness, values [0,1)
-    self.smoothing = 0
+    self.smoothing = 0.5
     self.cache_fname = config.get_fastinf_cache_file(dataset,model_name,m,r2,self.smoothing)
 
     if opexists(self.cache_fname):
@@ -26,13 +26,14 @@ class FastinfModel(InferenceModel):
         self.cache = cPickle.load(f)
     else:
       self.cache = {}
-    self.cmd = config.fastinf_bin+" -i %s -m 0 -Is %f"%(self.res_fname, self.smoothing)
+    self.cmd = config.fastinf_bin+" -i %s -m 0 -Is %f -Imm %d"%(self.res_fname, self.smoothing, lbp_iters)
     self.num_actions = num_actions
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
     self.blacklist = []
+  
     marginals = self.get_marginals()
-    #print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
+    print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
 
   def save_cache(self):
     "Write cache out to file with cPickle."
@@ -56,6 +57,7 @@ class FastinfModel(InferenceModel):
       print("comm_rank %d: something went wrong in fastinf:get_marginals!!!"%
         comm_rank)
       print evidence
+      print e
       # blacklist this evidence and restart process
       self.blacklist.append(evidence)
       try:
@@ -90,7 +92,7 @@ class FastinfModel(InferenceModel):
       if evidence in self.cache:
         print "Fetching cached marginals"
         marginals = self.cache[evidence]
-        self.p_c = np.array([m[1] for m in marginals[:20]])
+        self.p_c = np.array([m[1] for m in marginals[:self.dataset.num_classes()]])
         return marginals
       else:
         self.process.sendline(evidence)
@@ -99,7 +101,7 @@ class FastinfModel(InferenceModel):
     marginals = FastinfModel.extract_marginals(output)
     # Don't cache anything!
     #self.cache[evidence] = marginals
-    self.p_c = np.array([m[1] for m in marginals[:20]])
+    self.p_c = np.array([m[1] for m in marginals[:self.dataset.num_classes()]])
     return marginals
 
   @classmethod

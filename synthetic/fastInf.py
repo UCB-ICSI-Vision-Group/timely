@@ -10,15 +10,11 @@ from matplotlib.pylab import *
 import argparse
 from matplotlib.pyplot import hist
 
-# TODO: why are these two needed?
-def plausible_assignments(assignments):
-  return np.absolute(assignments - np.random.random(assignments.shape)/3.)
-
 class FastinfDiscretizer(object):
   def __init__(self,d,suffix):
     # For a given setting return bounds as num_bins x num_cols
-    self.bounds = np.loadtxt(config.get_mrf_bound_filename(d, suffix))
-
+    self.bounds = np.loadtxt(config.get_mrf_bound_filename(d, suffix),ndmin=2)
+    
   def discretize_value(self, val, clf_idx):
     """
     For d, suffix discretize val for all 20 classes. 
@@ -267,9 +263,10 @@ def c_corr_to_a(num_lines, func):
 def store_bound(d, suffix, bounds):
   bound_file = config.get_mrf_bound_filename(d, suffix)
   np.savetxt(bound_file, bounds)  
+  print bound_file
 
-def run_fastinf_different_settings(d, ms, rs, suffixs):
-  num_bins = 5
+def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
+  
   settings = list(itertools.product(suffixs, ms, rs))
   table_gt = d.get_cls_ground_truth().arr.astype(int)
   print 'run with a total of %d settings'%len(settings)
@@ -288,6 +285,8 @@ def run_fastinf_different_settings(d, ms, rs, suffixs):
     
     if suffix == 'perfect':      
       table = np.hstack((table_gt, table_gt))
+      bounds = np.tile(np.linspace(0, 1, num_bins+1),(table_gt.shape[1],1))
+      print bounds
       
     elif suffix == 'GIST':
       table = gist_classify_dataset(d)   
@@ -322,7 +321,8 @@ def run_fastinf_different_settings(d, ms, rs, suffixs):
       
       full_bound = np.hstack((sec_bounds, bounds))
       store_bound(d, 'GIST_CSC', full_bound)
-    if suffix == 'GIST' or suffix == 'CSC':
+    
+    if not suffix == 'GIST_CSC':
       store_bound(d, suffix, bounds)
     
     print 'set up table on %d, write out mrf for %s, m=%s, r2=%s'%(comm_rank, suffix, m, r2)   
@@ -384,14 +384,14 @@ def run_all_in_3_parts():
 
 def run_fastinf_for_dataset(dataset):
   
-  suffixs = ['GIST_CSC', 'GIST']
-  ms = ['0', '2', '5']
-  rs = ['', '0.5', '1']
-  
-  run_fastinf_different_settings(dataset, ms, rs, suffixs)
+  suffixs = ['perfect']
+  ms = ['0']
+  rs = ['1']
+  num_bins = 2
+  run_fastinf_different_settings(dataset, ms, rs, suffixs, num_bins)
 
 if __name__=='__main__':
-  d = Dataset('full_pascal_trainval')
+  d = Dataset('synthetic')
   run_fastinf_for_dataset(d)
   #run_all_in_3_parts()
   
