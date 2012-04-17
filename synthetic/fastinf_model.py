@@ -26,7 +26,7 @@ class FastinfModel(InferenceModel):
         self.cache = cPickle.load(f)
     else:
       self.cache = {}
-    self.cmd = config.fastinf_bin+" -i %s -m 0 -Is %f -Ims %d"%(self.res_fname, self.smoothing, lbp_time)
+    self.cmd = config.fastinf_bin+" -i %s -m 0 -Is %f -Imm %d"%(self.res_fname, self.smoothing, lbp_time)
     self.num_actions = num_actions
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
@@ -57,6 +57,7 @@ class FastinfModel(InferenceModel):
       print("comm_rank %d: something went wrong in fastinf:get_marginals!!!"%
         comm_rank)
       print evidence
+      print e
       # blacklist this evidence and restart process
       self.blacklist.append(evidence)
       try:
@@ -91,7 +92,7 @@ class FastinfModel(InferenceModel):
       if evidence in self.cache:
         print "Fetching cached marginals"
         marginals = self.cache[evidence]
-        self.p_c = np.array([m[1] for m in marginals[:20]])
+        self.p_c = np.array([m[1] for m in marginals[:self.dataset.num_classes()]])
         return marginals
       else:
         self.process.sendline(evidence)
@@ -100,7 +101,7 @@ class FastinfModel(InferenceModel):
     marginals = FastinfModel.extract_marginals(output)
     # Don't cache anything!
     #self.cache[evidence] = marginals
-    self.p_c = np.array([m[1] for m in marginals[:20]])
+    self.p_c = np.array([m[1] for m in marginals[:self.dataset.num_classes()]])
     return marginals
 
   @classmethod
