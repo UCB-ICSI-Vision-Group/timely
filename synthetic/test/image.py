@@ -36,13 +36,76 @@ class TestImage:
       [2,2,2,2,2,0,0]]), columns=self.columns)
     assert(image.objects_df == objects_df)
 
-  def test_ground_truth_methods(self):
+  def test_get_det_gt(self):
     image = Image.load_from_json_data(self.data,self.classes)
     objects_df = DataFrame(np.array([
       [0,0,0,0,0,0,0],
       [1,1,1,1,1,0,0],
       [2,2,2,2,2,0,0]]), columns=self.columns)
     assert(image.get_objects_df() == objects_df)
+
+    data = self.data.copy()
+    data['objects'][0]['diff'] = 1
+    data['objects'][1]['trun'] = 1
+    image = Image.load_from_json_data(data,self.classes)
+    objects_df = DataFrame(np.array([
+      [0,0,0,0,0,1,0],
+      [1,1,1,1,1,0,1],
+      [2,2,2,2,2,0,0]]), columns=self.columns)
+    assert(image.get_objects_df(with_diff=True,with_trun=True) == objects_df)
+
+    objects_df = DataFrame(np.array([
+      [1,1,1,1,1,0,1],
+      [2,2,2,2,2,0,0]]), 
+      index=[1,2], columns=self.columns)
+    assert(image.get_objects_df(with_diff=False,with_trun=True) == objects_df)
+
+    # this should be default behavior
+    assert(image.get_objects_df() == objects_df)
+
+    objects_df = DataFrame(np.array([
+      [2,2,2,2,2,0,0]]), 
+      index=[2], columns=self.columns)
+    assert(image.get_objects_df(with_diff=False,with_trun=False) == objects_df)
+
+    objects_df = DataFrame(np.array([
+      [0,0,0,0,0,1,0],
+      [2,2,2,2,2,0,0]]), 
+      index=[0,2], columns=self.columns)
+    assert(image.get_objects_df(with_diff=True,with_trun=False) == objects_df)
+
+    # What if everything is filtered out?
+    data['objects'] = data['objects'][:-1]
+    objects_df = DataFrame(np.array([
+      [0,0,0,0,0,1,0],
+      [1,1,1,1,1,0,1]]),
+      index=[0,1], columns=self.columns)
+    image = Image.load_from_json_data(data,self.classes)
+    assert(image.get_objects_df(with_diff=True,with_trun=True) == objects_df)
+    assert(image.get_objects_df(with_diff=False,with_trun=False).shape[0] == 0)
+
+  def test_get_cls_counts_and_gt(self):
+    data = self.data.copy()
+    image = Image.load_from_json_data(data,self.classes)
+    assert(np.all(image.get_cls_counts() == Series([1,1,1],self.classes)))
+    assert(np.all(image.get_cls_gt() == Series([True,True,True],self.classes)))
+    assert(image.contains_class('A') == True)
+    assert(image.contains_class('B') == True)
+
+    data['objects'][0]['class'] = 'B'
+    image = Image.load_from_json_data(data,self.classes)
+    # doesn't actually have to be Series, can be ndarray for comparison
+    assert(np.all(image.get_cls_counts() == np.array([0,2,1])))
+    assert(np.all(image.get_cls_gt() == np.array([False,True,True])))
+    assert(image.contains_class('A') == False)
+    assert(image.contains_class('B') == True)
+
+    data['objects'] = []
+    image = Image.load_from_json_data(data,self.classes)
+    assert(np.all(image.get_cls_counts() == np.array([0,0,0])))
+    assert(np.all(image.get_cls_gt() == np.array([False,False,False])))
+    assert(image.contains_class('A') == False)
+    assert(image.contains_class('B') == False)
 
   def test_get_random_windows(self):
     image = Image(width=3,height=2,classes=[],name='test')

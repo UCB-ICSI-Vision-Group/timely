@@ -18,20 +18,17 @@ class Image:
     # the above DataFrame is constructed by loader
 
   def __repr__(self):
-    return "Image:\n  name: %(name)s\n  w x h: %(width)d x %(height)d\n  objects: %(objects_df)s" % self.__dict__
+    return "Image (%(name)s)\n  W x H: %(width)d x %(height)d\n  Objects:\n %(objects_df)s" % self.__dict__
 
   def get_objects_df(self,with_diff=False,with_trun=True):
     "Return objects_df filtered with the parameters."
     df = self.objects_df
+    ind = []
     if not with_diff:
       df = df[df['diff']==0]
     if not with_trun:
       df = df[df['trun']==0]
     return df
-
-  def contains_class(self, cls_name, with_diff=False, with_trun=True):
-    "Return whether the image contains an object of class cls."
-    return self.get_cls_gt(with_diff,with_trun)[cls_name]
 
   def get_det_gt(self, cls_name=None, with_diff=False, with_trun=True):
     """
@@ -39,27 +36,30 @@ class Image:
     If class_name is given, only includes objects of that class.
     Filter according to with_diff and with_trun.
     """
-    df = get_objects_df(with_diff,with_trun)
+    df = self.get_objects_df(with_diff,with_trun)
     if cls_name and not cls_name=='all':
       cls_ind = self.classes.index(cls_name)
-      df = df[df['cls_ind']==cls_ind]
+      df = df.ix[df['cls_ind']==cls_ind]
     return df 
 
   def get_cls_counts(self, with_diff=False, with_trun=True):
-    "Return a 1d ndarray of the counts of each class in the image."
-    cls_inds = self.get_objects_df(with_diff,with_trun).cls_ind
-    bincount = np.bincount(cls_inds)
-    # need to pad this with zeros for total length of num_classes
+    "Return a Series of the counts of each class in the image."
     counts = np.zeros(len(self.classes))
-    counts[:bincount.size] = bincount
-    return counts
+    objects_df = self.get_objects_df(with_diff,with_trun)
+    if objects_df.shape[0]>0:
+      cls_inds = objects_df['cls_ind'].astype('int')
+      bincount = np.bincount(cls_inds)
+      # need to pad this with zeros for total length of num_classes
+      counts[:bincount.size] = bincount
+    return Series(counts,self.classes)
 
   def get_cls_gt(self,with_diff=False,with_trun=False):
-    "Return a 1d ndarray of class presence (0/1) ground truth."
-    counts = self.get_cls_counts(include_diff,include_trun)
-    z = np.zeros(counts.shape)
-    z[counts>0] = 1
-    return z
+    "Return a Series of class presence (True/False) ground truth."
+    return self.get_cls_counts(with_diff,with_trun)>0
+
+  def contains_class(self, cls_name, with_diff=False, with_trun=True):
+    "Return whether the image contains an object of class cls."
+    return self.get_cls_gt(with_diff,with_trun)[cls_name]
 
   ### 
   # Windows
@@ -78,7 +78,7 @@ class Image:
     return windows[ut.random_subset_up_to_N(windows.shape[0],num_windows),:]
 
   ###
-  # Factories
+  # Loaders
   ###
   @classmethod
   def load_from_json_data(cls, data, classes):
@@ -95,7 +95,10 @@ class Image:
       diff = obj['diff']
       trun = obj['trun']
       objects.append(np.hstack((bbox.get_arr(), cls_ind, diff, trun)))
-    img.objects_df = DataFrame(objects, columns=cls.columns)
+    if len(objects)>0:
+      img.objects_df = DataFrame(objects, columns=cls.columns)
+    else:
+      img.objects_df = DataFrame(None, columns=cls.columns)
     return img
   
   @classmethod
@@ -136,5 +139,8 @@ class Image:
       cls_ind = dataset.get_ind(categ)
       objects.append(np.hstack((bbox.get_arr(), cls_ind, diff, trun)))
 
-    img.objects_df = DataFrame(objects,columns=cls.columns)
+    if len(objects)>0:
+      img.objects_df = DataFrame(objects, columns=cls.columns)
+    else:
+      img.objects_df = DataFrame(None, columns=cls.columns)
     return img
