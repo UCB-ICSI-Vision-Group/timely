@@ -24,9 +24,9 @@ class Image:
     "Return objects_df filtered with the parameters."
     df = self.objects_df
     if not with_diff:
-      df = df[~df.diff]
+      df = df[df['diff']==0]
     if not with_trun:
-      df = df[~df.trun]
+      df = df[df['trun']==0]
     return df
 
   def contains_class(self, cls_name, with_diff=False, with_trun=True):
@@ -42,7 +42,7 @@ class Image:
     df = get_objects_df(with_diff,with_trun)
     if cls_name and not cls_name=='all':
       cls_ind = self.classes.index(cls_name)
-      df = df[df.cls_ind==cls_ind]
+      df = df[df['cls_ind']==cls_ind]
     return df 
 
   def get_cls_counts(self, with_diff=False, with_trun=True):
@@ -136,5 +136,5 @@ class Image:
       cls_ind = dataset.get_ind(categ)
       objects.append(np.hstack((bbox.get_arr(), cls_ind, diff, trun)))
 
-    img.objects = DataFrame(objects,columns=self.columns)
+    img.objects_df = DataFrame(objects,columns=cls.columns)
     return img
