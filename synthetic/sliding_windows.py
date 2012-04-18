@@ -1,9 +1,5 @@
-import scipy.stats as st
-import matplotlib.pyplot as plt
-from sklearn.cross_validation import KFold
-
-from common_imports import *
-from common_mpi import *
+from synthetic.common_imports import *
+from synthetic.common_mpi import *
 import synthetic.config as config
 
 from synthetic.bounding_box import BoundingBox
@@ -152,8 +148,6 @@ class SlidingWindows:
     t = time.time()
     stride = window_params.stride
     min_width = window_params.min_width
-    im_width = image.size[0]
-    im_height = image.size[1]
     actual_xs = []
     actual_ys = []
     actual_ws = []
@@ -165,14 +159,14 @@ class SlidingWindows:
     w_pad = int(1.*min_width/2)
     x_min = -w_pad
     for scale in window_params.scales:
-      x_max = int(im_width*scale)-w_pad
+      x_max = int(image.width*scale)-w_pad
       if w_pad > 0:
         x_max += stride
       actual_w = int(min_width/scale) + 1
       for ratio in window_params.aspect_ratios:
         h_pad = int(1.*min_width*ratio/2)
         y_min = -h_pad
-        y_max = int(im_height*scale)-h_pad
+        y_max = int(image.height*scale)-h_pad
         if h_pad > 0:
           y_max += stride
         actual_h = int(min_width/scale * ratio) + 1
@@ -183,7 +177,7 @@ class SlidingWindows:
             actual_xs.append(int(x/scale))
             actual_ys.append(int(y/scale))
     windows = np.array([actual_xs,actual_ys,actual_ws,actual_hs]).T
-    windows = BoundingBox.clipboxes_arr(windows,(0,0,im_width,im_height))
+    windows = BoundingBox.clipboxes_arr(windows,(0,0,image.width,image.height))
     if with_time:
       time_elapsed = time.time()-t
       return (windows,time_elapsed)
@@ -450,8 +444,8 @@ class SlidingWindows:
 
         img_inds = cls_gt_table.subset_arr('img_ind').astype(int)
         images = [dataset.images[i] for i in img_inds]
-        image_widths = [img.size[0] for img in images]
-        image_heights = [img.size[1] for img in images]
+        image_widths = [img.width for img in images]
+        image_heights = [img.height for img in images]
 
         # scale = width/min_width
         scale =  1.*bboxes[:,2] / SlidingWindows.MIN_WIDTH
@@ -700,10 +694,8 @@ class SlidingWindows:
         'priority': 0}
 
     t = time.time()
-    img_width = image.size[0]
-    img_height = image.size[1]
-    x_samples = int(img_width/500. * metaparams['samples_per_500px'])
-    y_samples = int(img_height/500. * metaparams['samples_per_500px'])
+    x_samples = int(image.width/500. * metaparams['samples_per_500px'])
+    y_samples = int(image.height/500. * metaparams['samples_per_500px'])
 
     # check for cached windows and return if found
     dirname = config.get_sliding_windows_cached_dir(self.train_name)

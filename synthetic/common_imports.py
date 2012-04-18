@@ -1,23 +1,29 @@
-from IPython import embed
-import copy
-from abc import abstractmethod
 import os
-from os.path import join as opjoin
-from os.path import exists as opexists
 import sys
 import time
+import copy
 import types
 import math
 import re
 import operator
-from pprint import pprint
+
+from abc import abstractmethod
+
 import json
 import itertools
 import cPickle
 import pickle
-from pandas import *
+
+from IPython import embed
+from os.path import join as opjoin
+from os.path import exists as opexists
+from pprint import pprint
 
 import numpy as np
 import scipy.stats as st
+from sklearn.cross_validation import KFold
+import matplotlib.pyplot as plt
 
-import util as ut
+from pandas import *
+
+import synthetic.util as ut

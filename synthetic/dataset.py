@@ -1,11 +1,11 @@
 from PIL import Image as PILImage
 from sklearn.cross_validation import KFold
 
-from common_mpi import *
-from common_imports import *
+from synthetic.common_mpi import *
+from synthetic.common_imports import *
 import synthetic.config as config
 
-from synthetic.image import *
+from synthetic.image import Image
 from synthetic.sliding_windows import SlidingWindows
 
 class Dataset:
