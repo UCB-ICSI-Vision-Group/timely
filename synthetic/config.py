@@ -124,6 +124,9 @@ def get_jumping_windows_dir(dataset_name):
 def get_ccmat_file(dataset, feature):
   return join(get_jumping_windows_dir(dataset.name), feature+'_ccmat')
 
+def get_ccmat_file(dataset, feature):
+  return join(get_jumping_windows_dir(dataset.name), feature+'_ccmat')
+
 def get_windows_params_grid(dataset_name):
   return join(get_sliding_windows_params_dir(dataset_name), 'window_params_grid.csv')
 

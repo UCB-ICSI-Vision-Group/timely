@@ -189,6 +189,7 @@ class Extractor():
     else:
       print 'load assignment for: %s'%img.name[0:-4]
       assignments = np.loadtxt(filename)
+
     if positions == None:
       positions = [0,0,10000000,10000000]
     if type(positions) == type([]):

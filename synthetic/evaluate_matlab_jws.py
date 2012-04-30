@@ -9,6 +9,7 @@ from synthetic.bounding_box import BoundingBox
 import matplotlib.pyplot as plt
 
 
+
 def evaluate_matlab_jws(dataset, suffix):
   d_train = Dataset('full_pascal_trainval')
   d = Dataset(dataset)
@@ -83,6 +84,7 @@ def generate_bboxes(d, e, suffix):
     # load these bounding boxes
     bboxes = sio.loadmat(os.path.join(path,filename))['bboxes']    
     bboxes[:,2:] -= bboxes[:,:2]-1
+
     n = bboxes.shape[0]   
     print 'bboxes:', n
     arr = np.hstack((bboxes,(n-np.arange(n)).reshape(n,1)/float(n),cls_ind*np.ones((bboxes.shape[0],1)), img_ind*np.ones((bboxes.shape[0],1))))
