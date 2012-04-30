@@ -347,6 +347,8 @@ def determine_bin(data, bounds, asInt=True):
   asInt=True: return number of bin each val falls in
   asInt=False: return representative value for each val (center between bounds)
   """
+  if type(bounds) == type([]):
+    bounds = np.array(bounds)  
   num_bins = bounds.shape[0]-1
   ret_tab = np.zeros((data.shape[0],1))
   col_bin = np.zeros((data.shape[0],1))
@@ -373,8 +375,7 @@ def determine_bin(data, bounds, asInt=True):
 
 def histogram(x, num_bins, normalize=False):
   """
-  compute a histogram for x = np.array and num_bins bins
-  assumpt: x is already binned up 
+  compute a histogram for x = np.array and num_bins bins 
   """
   bounds = np.linspace(np.min(x), np.max(x), num_bins+1)
   x = determine_bin(x, bounds)
@@ -414,7 +415,10 @@ class TicToc:
     assert(label in self.labels)
     elapsed = time.time()-self.labels[label]
     if not quiet:
-      print "Time elapsed: %.3f"%elapsed
+      if label == '__default':
+        print "Time elapsed: %.3f"%elapsed
+      else:
+        print "Time elapsed for %s: %.3f"%(label, elapsed)
     return elapsed
   
   def qtoc(self,label=None):

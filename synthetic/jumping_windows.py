@@ -109,7 +109,7 @@ class LookupTable:
       
   def save(self):
     filename_lookup = join(config.data_dir, 'jumping_window','lookup', self.cls)
-    store_file = open( filename_lookup, 'w')
+    store_file = open(filename_lookup, 'w')
     print 'save ', filename_lookup 
     cPickle.dump(self, store_file)
   
@@ -181,8 +181,9 @@ def sub2ind(A, x, y):
   return (y-1)*A[0] + x
 
 def ind2sub(width, ind):
-  y = ind/width
   x = ind%width - 1
+  y = ind/width   
+  y -= x==-1
   return [x, y]    
 
 def sort_cols(A,top_k=None):
@@ -274,107 +275,116 @@ def train_jumping_windows(d, codebook, trun=False, diff=False, feature='sift'):
 
   #first_visit = True
   print 'Read all features to create weights'
-  tocer.tic()
-  for filename in trainfiles:
-    print filename
-
-    # Load feature positions
-    if feature == 'sift':
-      filename = filename[:-1] + '.jpg'
-      assignment = e.get_assignments(np.asarray([0,0,100000,1000000]), 'sift', codebook, d.get_image_by_filename(filename))
-      pts = assignment[:,0:2]
-      codes = assignment[:,2]
-      
-    elif feature == 'llc':
-      feaSet = sio.loadmat(join(featdir,filename))['feaSet']
-      x = feaSet['x'][0][0]
-      y = feaSet['y'][0][0]    
-      pts = np.hstack((x,y))
-      codes = sio.loadmat(join(llc_dir,filename))['codes']
-      
-    bg = np.ones((pts.shape[0], 1))        
-    
-    image = d.get_image_by_filename(filename[:-4]+'.jpg')
-    im_ind = d.get_img_ind(image)
-    gt = d.get_ground_truth_for_img_inds([im_ind])
-    
-    for row in gt.arr:
-    #for row in gt.arr[0,:]:
-      cls = row[gt.cols.index('cls_ind')]
-      #print d.classes[int(cls)]
-      bbox = row[0:4]
-      #print bbox[0], bbox[0]+bbox[2]-1, bbox[1], bbox[1]+bbox[3]-1
-      inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2]-1, bbox[1], bbox[1]+bbox[3]-1)
-      bg[inds] = 0
-      
-      selbins = get_selbins(grids, inds, pts, bbox)
-      binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
-          + cls*grids*grids);
-#      print cls*grids*grids
-#      print sub2ind([4,4],1,1)
+  
+  tocer.tic()  
+  ccmat_file = config.get_ccmat_file(d, feature)
+  
+  force_ccmat = False
+  print ccmat_file
+  if not os.path.exists(ccmat_file+'.mat') or force_ccmat:  
+    #trainfiles = ['000753.mat', '000750.mat']
+    for filename in trainfiles:
+      print filename
+  
+      # Load feature positions
       if feature == 'sift':
-        binidx -= np.tile(grids, binidx.shape)
+        filename = filename[:-1] + '.jpg'
+        assignment = e.get_assignments(np.asarray([0,0,100000,1000000]), 'sift', codebook, d.get_image_by_filename(filename))
+        pts = assignment[:,0:2]
+        codes = assignment[:,2]
+        
+      elif feature == 'llc':
+        feaSet = sio.loadmat(join(featdir,filename))['feaSet']
+        x = feaSet['x'][0][0]
+        y = feaSet['y'][0][0]    
+        pts = np.hstack((x,y))
+        codes = sio.loadmat(join(llc_dir,filename))['codes']
+        
+      bg = np.ones((pts.shape[0], 1))        
       
-#      if filename == '000753.mat':
-#        print 'inds', len(inds)
-#        print 'sel', len(selbins)
-#        print 'bindx', len(binidx)      
-            
-      idx = get_idx(inds, codes, ccmat.shape, feature, binidx)
-            
-      for i in idx:        
-        [x, y] = ind2sub(ccmat.shape[0], i)  
-        #print x, y      
-        ccmat[x, y] = ccmat[x, y] + 1
-#      print inds[:9]
-#      print selbins[:9]
-#      sio.savemat('selbins', {'selbins2':selbins})
-#      sio.savemat('binidx', {'binidx2':binidx})
-#      print binidx[:-9]
-#      print idx[:9]
-#      sio.savemat('idx', {'idx2':idx})
-    #return      
+      image = d.get_image_by_filename(filename[:-4]+'.jpg')
+      im_ind = d.get_img_ind(image)
+      gt = d.get_ground_truth_for_img_inds([im_ind])
+      
+      
+      for row in gt.arr:
+      #for row in gt.arr[0,:]:
+        cls = row[gt.cols.index('cls_ind')]
+        #print d.classes[int(cls)]
+        bbox = row[0:4]
+        #print bbox[0], bbox[0]+bbox[2]-1, bbox[1], bbox[1]+bbox[3]-1
+        inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2]-1, bbox[1], bbox[1]+bbox[3]-1)
+        bg[inds] = 0
+        
+        selbins = get_selbins(grids, inds, pts, bbox)
+        binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
+            + cls*grids*grids);
+        if feature == 'sift':
+          binidx -= np.tile(grids, binidx.shape)
+             
+        idx = get_idx(inds, codes, ccmat.shape, feature, binidx)
+        
+        ccmat_now = np.zeros(ccmat.shape)  
+        indics = ind2sub(ccmat.shape[0], idx)
+        ccmat_now[indics] = 1
+        ccmat += ccmat_now
+  
+      # Now record background features
+      cls = len(d.classes)*grids*grids
+      inds = np.where(bg > 0)[0]
+  
+      if feature == 'llc':
+        ind = np.where(codes[:,inds].data > 0)[0]
+        words = codes[:,inds].nonzero()[0][ind]
+        words = np.unique(words)
+      elif feature == 'sift':
+        words = codes[inds]
+        
+      ccmat_now = np.zeros(ccmat.shape)
+#      for w in words:
+        #ccmat[w, cls] = ccmat[w, cls] + 1
+      ccmat_now[words, cls] = 1
+      ccmat += ccmat_now
     
-    # Now record background features
-    cls = len(d.classes)*grids*grids
-    inds = np.where(bg > 0)[0]
-
-    if feature == 'llc':
-      ind = np.where(codes[:,inds].data > 0)[0]
-      words = codes[:,inds].nonzero()[0][ind]
-      words = np.unique(words)
-    elif feature == 'sift':
-      words = codes[inds]
-    
-    for w in words:
-      ccmat[w, cls] = ccmat[w, cls] + 1
+    sio.savemat(ccmat_file, {'ccmat':ccmat})
+      
+  else:
+    print 'load ccmat'
+    ccmat = sio.loadmat(ccmat_file)['ccmat']
   
   if feature == 'llc':
     ccmat_orig = sio.loadmat(join(jw_test_dir,'cooccurrence.mat'))['ccmat']
     # ========= ASSSERT
+    sio.savemat('ccmat',{'ccmat2':ccmat})
     np.testing.assert_equal(ccmat, ccmat_orig)
-                             
-  return
+    print 'llc test for ccmat passed...'
   
   print 'features counted'
   tocer.toc()
   tocer.tic()
-  # counted all words for all images&object, now compute weights   
+  
+  # counted all words for all images&object, now compute weights
+  ####################
+  ##### WEIGHTS ######
+  ####################
   div = np.sum(ccmat,1)
+  # Do this better
   for didx in range(len(div)):
     ta = div[didx]
     if ta == 0:
       ccmat[didx, :] = 2.5
       continue
-    ccmat[didx, :] /= ta
+    ccmat[didx, :] /= float(ta)
   
+  sio.savemat('ccmat2',{'ccmat2':ccmat})
   print 'computed weights'
+  #return
   tocer.toc()
   
   tocer.tic()
   numwords = 500
   [sortedprob, discwords] = sort_cols(ccmat, numwords)
-  #return
+  
   # Lookup for every class
   for cls_idx in range(len(d.classes)):
   #for cls_idx in [14]:
@@ -382,9 +392,11 @@ def train_jumping_windows(d, codebook, trun=False, diff=False, feature='sift'):
     cls = d.classes[cls_idx]
     print cls
     clswords = discwords[:, cls_idx*grids*grids:(cls_idx+1)*grids*grids]
-    binidx,_ = np.meshgrid(range(grids*grids), np.zeros((clswords.shape[0],1)))
+    binidx, _ = np.meshgrid(range(grids*grids), np.zeros((clswords.shape[0],1)))
     
-    clswords = sub2ind([numcenters, grids*grids], line_up_cols(clswords), line_up_cols(binidx))
+    #embed()
+    clswords = sub2ind([numcenters, grids*grids], line_up_cols(clswords), line_up_cols(binidx)+1)
+    ################### HERE ON 04/29    
     
     # === GOOD! ===
     wordprobs = sortedprob[:, cls_idx*grids*grids:(cls_idx+1)*grids*grids];
@@ -450,6 +462,9 @@ def train_jumping_windows(d, codebook, trun=False, diff=False, feature='sift'):
     bbinfo.perform_mean_shifts()
     bbinfo.top_words = np.asarray(bbinfo.wordprobs.argsort(axis=0))[::-1]
     bbinfo.save()
+    print bbinfo
+    #embed()
+    #break
     
   print 'computed all lookup tables' 
   tocer.toc()

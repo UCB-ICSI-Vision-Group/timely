@@ -5,6 +5,7 @@ from string import atoi
 from numpy.numarray.numerictypes import Int
 import scipy.cluster.vq as sp
 from sklearn import cluster
+from IPython import embed
 
 import util as ut
 
@@ -139,12 +140,12 @@ class Extractor():
         comm.bcast(codebook[0], root=comm_rank)
     return codebook
   
-  def get_image_feature(self,d , feature_type, img_ind, bound_box):
+  def get_image_feature(self, d , feature_type, img_ind, bound_box):
     image = d.images[img_ind.astype(Int)]
     print image.name
     # meassure the time it took and print to file
     t = time.time()
-    feature_type = self.get_feature(feature_type, image, bound_box)
+    feature = self.get_feature(feature_type, image, bound_box)
     t = time.time() - t
     filename = self.data_dir + feature_type + '/times/' + \
       image.name[0:-4]
@@ -152,7 +153,7 @@ class Extractor():
       f = open(filename, 'w')
       f.write(str(t))
       f.close()
-    return feature_type
+    return feature
 
   
   def process_img(self, img, feature, sizes=[16,24,32], step_size=4):
@@ -188,6 +189,8 @@ class Extractor():
     else:
       print 'load assignment:',img.name[0:-4]
       assignments = np.loadtxt(filename)
+    if not positions:
+      positions = [0,0,10000000,10000000]
     if type(positions) == type([]):
       bbox = [positions[0],positions[1],positions[0]+positions[2],positions[1]+\
               positions[3]]
@@ -357,6 +360,7 @@ class Extractor():
         image = images[img]
         pos_bounds = [0,0,image.size[0],image.size[1]]
         self.get_assignments(pos_bounds, feature, codebook, image, sizes=sizes,step_size=step_size)
+        embed()
             
   def get_bow_for_image(self, d, num_words, ass, image):
     width = image.size[0]

@@ -423,6 +423,53 @@ class Evaluation:
       with open(filename) as f:
         ap = float(f.readline())
     return ap
+  
+  def plot_recall_vs_windows(self, det, gt, filename):
+    res = self.evaluate_recall_vs_jws(det, gt)
+    num_bins = res.shape[0]
+    plt.plot(np.linspace(0, 10000,num_bins),res)
+    plt.xlabel('num windows')
+    plt.ylabel('recall')
+    plt.savefig(filename)
+  
+  def evaluate_recall_vs_jws(self, det, gt): 
+    images = np.unique(det.subset_arr('img_ind'))
+    num_obs = 0
+    tp_array = np.zeros(10000*1.5)
+    
+    for img_ind in images:
+      img = self.dataset.images[int(img_ind)]
+      # determine what classes to look for in this image.
+      img_bboxes = det.filter_on_column('img_ind', img_ind, omit=True)
+      classes = np.nonzero(img.get_cls_counts())[0]
+      for cls_ind in classes:
+        cls_bboxes = img_bboxes.filter_on_column('cls_ind', cls_ind)
+        gt = img.get_ground_truth()
+        gt = gt.filter_on_column('cls_ind', cls_ind)
+        if gt.shape()[0] == 1:
+          continue
+        if cls_bboxes.shape()[0] == 0:
+          continue
+        num_obs += gt.shape()[0]
+        for i in range(gt.arr.shape[0]):
+          overlaps = BoundingBox.get_overlap(cls_bboxes.arr,gt.arr[i,:4])
+          # This is just to  make our min function work ( we basically don't count these anymore)      
+          overlaps[overlaps<self.MIN_OVERLAP] = 2
+          if not np.min(overlaps) == 2:
+            # If we found it, record the number of windows that was necessary to 
+            # create this.
+            pos = np.argmin(overlaps)
+            tp_array[pos] += 1
+            
+    dat = np.nonzero(tp_array)[0]      
+    num_bins = 20
+    hist = ut.determine_bin(dat, np.linspace(0, 10000,num_bins+1))  
+    rec_vs_numwin = np.zeros(num_bins)
+    for bindex in range(num_bins):
+      rec_vs_numwin[bindex] = np.sum(tp_array[dat[hist == bindex]])
+      
+    res = np.cumsum(rec_vs_numwin)/float(num_obs)      
+    return res
 
   def plot_pr(self, ap, rec, prec, name, filename, force=False):
     """Plot the Precision-Recall curve, saving png to filename."""
@@ -517,7 +564,7 @@ class Evaluation:
 
       # assign detection as true positive/don't care/false positive
       if ovmax >= cls.MIN_OVERLAP:
-        if not gt_for_image[jmax,gt.ind('diff')]:
+        if not 'diff' in gt.cols or not gt_for_image[jmax,gt.ind('diff')]:
           is_matched = gt_for_image[jmax,gt.ind('matched')]
           if is_matched == 0:
             if gt_for_image[jmax,gt.ind('cls_ind')] == det[dets.ind('cls_ind')]:
