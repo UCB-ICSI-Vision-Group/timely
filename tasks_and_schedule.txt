@@ -1,29 +1,22 @@
 Schedule (all Fridays)
 ---
 
-18 Apr (wed)
+4 May
 - refactor
-	- switch from ut.Table to pandas
-	- get rid of include_diff and include_trun and just filter the ground truth
-	- rename 'synthetic' to 'timely' everywhere
+  - switch from ut.Table to pandas
+  - rename 'synthetic' to 'timely' everywhere
 - understand the inference behavior: why linear? @tobi @sergey
 - plots for inference error vs. time @tobi
 - results for current system with modified class values @sergey
 - finished implementation of "active classification" model @sergey
-
-20 Apr
 - run on PASCAL VOC 2011 (test on val)
 - results with the GIST action @tobi
 - optimized inference of marginals, with controlled caching and potentially regression approximation @tobi @sergey
 - more results, whatever we need @tobi
 - finished implementation of inverse RL to learn policy @sergey
-
-27 Apr
 - more proper entropy computation, probably by sampling @tobi
 - LSPI? @sergey
 - paper draft with the above things and tighter story/intro @sergey
-
-4 May
 - finished paper draft with the following improvements over eccv12:
 	- active classification model baseline
 	- modified class value results
