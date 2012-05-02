@@ -30,7 +30,7 @@ Our goal is a general recognition policy that outputs both classification and de
 \section{Multi-class Recognition Policy} \label{sec:tech}
 \begin{figure}[h!]
 \center{\includegraphics[width=0.66\linewidth]
-    {figures/pomdp.png}}
+    {../figures/pomdp.png}}
   \caption{Summary of our approach to the problem. Our system has two major parts: (1) selecting an action by predicting its value; (2) updating the belief state with observations resulting from the action.}
   \label{fig:pomdp}
 \end{figure}
@@ -123,7 +123,7 @@ Before we discuss how to set $V(b,a_i)$ such that our policy obtains best perfor
 \subsection{The model of the belief state}
 \begin{figure}[h!]
 \centering
-\includegraphics[width=0.56\linewidth]{figures/inf_model_mrf_1.pdf}
+\includegraphics[width=0.56\linewidth]{../figures/inf_model_mrf_1.pdf}
 \caption{
 The MRF inference model used in our system.
 We show a point in the middle of the decision process for 3 classes; one action has already been taken.
@@ -186,7 +186,7 @@ We formulate two reward definitions: one strives to match the final AP evaluatio
 \subsubsection{Reward: area under the AP vs. Time curve}
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=0.56\linewidth]{figures/apvst_expl.pdf}
+  \includegraphics[width=0.56\linewidth]{../figures/apvst_expl.pdf}
   \caption{A per-action greedy value function that corresponds to the maximization of our objective function is the area of the horizontal slice under the curve due to the action. The figure shows this analysis for the action highlighted in orange.}
   \label{fig:rewards}
 \end{figure}

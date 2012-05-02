@@ -92,7 +92,7 @@ The following exposition deals with the classification problem, although we eval
 
 \begin{figure}[h!]
 \center{\includegraphics[width=0.66\linewidth]
-    {figures/pomdp.pdf}}
+    {../figures/pomdp.pdf}}
   \caption{Summary of our approach to the problem. Our system has two major parts: (1) selecting an action by predicting its value; (2) updating the belief state with observations resulting from the action.}
   \label{fig:evaluation}
 \end{figure}
@@ -121,7 +121,7 @@ Between these times, the system must strive for the goal of \emph{Anytime} perfo
 
 \begin{figure}[h!]
 \center{\includegraphics[width=0.56\linewidth]
-    {figures/evaluation.pdf}}
+    {../figures/evaluation.pdf}}
   \caption{We aim for \emph{Anytime} performance within the bounds of the curve. That is, the policy should give the best possible answer at any time from start time $T_s$ to deadline $T_d$.}
   \label{fig:evaluation}
 \end{figure}
@@ -180,9 +180,9 @@ Keeping in mind that $ H(\mathbf{C}|\mathcal{O}) = -\sum_{\mathbf{c}} P(\mathbf{
 \begin{figure}[h!]
 \centering
 % \subfloat[MRF]{
-\includegraphics[width=0.56\linewidth]{figures/inf_model_mrf.pdf}
+\includegraphics[width=0.56\linewidth]{../figures/inf_model_mrf.pdf}
 % }
-% \subfloat[Local]{\includegraphics[width=0.46\linewidth]{figures/inf_model_loc.pdf}}
+% \subfloat[Local]{\includegraphics[width=0.46\linewidth]{../figures/inf_model_loc.pdf}}
 \caption{We present a point in the middle of the decision process, when some classifiers have already been observed.}
 \label{fig:model}
 \end{figure}
@@ -226,7 +226,7 @@ The reward function does not necessarily have to be related to the evaluation of
 \subsubsection{Slope of performance vs. time}
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=0.56\linewidth]{figures/apvst_expl.pdf}
+  \includegraphics[width=0.56\linewidth]{../figures/apvst_expl.pdf}
   \caption{A per-action greedy value function that corresponds to the maximization of our objective function is the area of the horizontal slice under the curve due to the action. The figure shows this analysis for the action highlighted in orange.}
   \label{fig:rewards}
 \end{figure}
