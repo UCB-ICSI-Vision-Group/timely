@@ -431,7 +431,7 @@ class Evaluation:
     plt.ylabel('recall')
     plt.savefig(filename)
     return (x, y)
-    
+
   def evaluate_recall_vs_jws(self, det, gt): 
     images = np.unique(det.subset_arr('img_ind'))
     num_obs = 0

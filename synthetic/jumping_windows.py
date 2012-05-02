@@ -11,6 +11,7 @@ import scipy.io as sio
 from dataset import *
 from synthetic.extractor import Extractor
 from synthetic.mean_shift import MeanShiftCluster
+from synthetic.evaluate_matlab_jws import *
 
 # Gridding factors: NxM grids per window. Good Values are still tbd.
 N = 4

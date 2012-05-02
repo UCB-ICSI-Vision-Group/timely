@@ -8,15 +8,12 @@ from synthetic.dataset_policy import DatasetPolicy
 from synthetic.bounding_box import BoundingBox
 import matplotlib.pyplot as plt
 
-
-
 def evaluate_matlab_jws(dataset, suffix):
   d_train = Dataset('full_pascal_trainval')
   d = Dataset(dataset)
   dp = DatasetPolicy(d, d_train)
   e = Evaluation(dp, d)
   jwdir = os.path.join(config.res_dir, 'jumping_windows')
-  
   gt = d.get_ground_truth(include_diff=True)
         
 #  # No point in pickling this....to big!
