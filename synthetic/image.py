@@ -1,4 +1,5 @@
 from synthetic.common_imports import *
+import synthetic.config as config
 
 import xml.dom.minidom as minidom
 from synthetic.bounding_box import BoundingBox
@@ -10,15 +11,26 @@ class Image:
   columns = BoundingBox.columns + ['cls_ind', 'diff', 'trun']
   
   def __init__(self,width,height,classes,name):
-    self.name = name
     self.width = width
     self.height = height
     self.classes = classes
+    self.name = name
+    self.filename = None
     self.objects_df = None
     # the above DataFrame is constructed by loader
 
   def __repr__(self):
     return "Image (%(name)s)\n  W x H: %(width)d x %(height)d\n  Objects:\n %(objects_df)s" % self.__dict__
+
+  def display_image(self):
+    "Convenience method to display the Image."
+    # TODO: use scikits-image to load as numpy matrix (matplotlib.imread loads
+    # inverted for some reason)
+    if not self.filename:
+      print("Image: Cannot display, no associated filename")
+      return
+    im = PILImage.open(self.filename)
+    im.show()
 
   def get_objects_df(self,with_diff=False,with_trun=True):
     "Return objects_df filtered with the parameters."
@@ -30,7 +42,7 @@ class Image:
       df = df[df['trun']==0]
     return df
 
-  def get_det_gt(self, cls_name=None, with_diff=False, with_trun=True):
+  def get_det_gt(self, with_diff=False, with_trun=True, cls_name=None):
     """
     Return DataFrame of detection ground truth.
     If class_name is given, only includes objects of that class.
@@ -81,7 +93,7 @@ class Image:
   # Loaders
   ###
   @classmethod
-  def load_from_json_data(cls, data, classes):
+  def load_from_json_data(cls, classes, data):
     "Return an Image instantiated from a JSON representation."
     name = data['name']
     width = data['size'][0]
@@ -120,6 +132,7 @@ class Image:
 
     # image info
     name = cls.get_data_from_tag(data, "filename")
+    filename = opjoin(config.VOC_dir, 'JPEGImages', self.images[img_ind].name)
     size = data.getElementsByTagName("size")[0]
     im_width = int(cls.get_data_from_tag(size, "width"))
     im_height = int(cls.get_data_from_tag(size, "height"))

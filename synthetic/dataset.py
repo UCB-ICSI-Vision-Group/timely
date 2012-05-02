@@ -1,10 +1,8 @@
-from PIL import Image as PILImage
-from sklearn.cross_validation import KFold
-
 from synthetic.common_mpi import *
 from synthetic.common_imports import *
 import synthetic.config as config
 
+from PIL import Image as PILImage
 from synthetic.image import Image
 from synthetic.sliding_windows import SlidingWindows
 
@@ -24,9 +22,14 @@ class Dataset:
       self.load_from_json(config.test_data1)
     else:
       print("WARNING: Unknown dataset initialization string, not loading images.")
+    self.image_names = [image.name for image in self.images]
+    assert(len(self.image_names)==len(np.unique(self.image_names)))
 
   def get_name(self):
-    return "%s_%s"%(self.name,self.df.shape[0])
+    return "%s_%s"%(self.name,self.num_images())
+
+  def num_images(self):
+    return len(self.images)
 
   ###
   # Loaders
@@ -36,8 +39,8 @@ class Dataset:
     with open(filename) as f:
       config = json.load(f)
     self.classes = config['classes']
-    for image in config['images']:
-      self.images.append(Image.from_json(self,image))
+    for data in config['images']:
+      self.images.append(Image.load_from_json_data(self.classes,data))
 
   def load_from_pascal(self, name, force=False):
     """
@@ -69,25 +72,12 @@ class Dataset:
         tt.tic('2')
       if len(img)>0:
         xml_filename = opjoin(config.VOC_dir,'Annotations',img+'.xml')
-        self.images.append(Image.load_from_xml(self,xml_filename))
+        self.images.append(Image.load_from_xml_filename(self.classes,xml_filename))
     filename = config.get_cached_dataset_filename(name)
     print("  ...saving to cache file")
     with open(filename, 'w') as f:
       cPickle.dump(self,f)
     print("  ...done in %.2f s\n"%tt.qtoc())
-
-  ###
-  # Misc
-  ###
-  def see_image(self,img_ind):
-    "Convenience method to display the image at given ind in self.images."
-    # TODO: use scikits-image to load as numpy matrix (matplotlib.imread loads
-    # inverted for some reason)
-    im = PILImage.open(self.get_image_filename(img_ind))
-    im.show()
-
-  def get_image_filename(self,img_ind):
-    return opjoin(config.VOC_dir, 'JPEGImages', self.images[img_ind].name)
 
   ###
   # Assemble data for training
@@ -167,14 +157,6 @@ class Dataset:
   ###
   # Assemble ground truth
   ###
-  def exclude_diff(self, det_gt):
-    "Return the passed in DataFrame with difficult objects excluded."
-    return det_gt.ix[~det_gt.diff]
-
-  def exclude_trun(self, det_gt):
-    "Return the passed in DataFrame with truncated objects excluded."
-    return det_gt.ix[~det_gt.trun]
-
   def get_cls_ground_truth(self,with_diff=True,with_trun=True):
     "Return DataFrame of classification (0/1) ground truth."
     return self.get_cls_counts(with_diff,with_trun)>0
@@ -185,11 +167,16 @@ class Dataset:
     return DataFrame(data,columns=self.classes)
 
   def get_det_ground_truth(self, with_diff=True, with_trun=True):
-    # TODO: have images return DataFrame as well
     "Return DataFrame of detection ground truth."
-    data = ut.collect_with_index(self.images, Image.get_gt_arr)
-    columns = Image.get_gt_cols() + ['img_ind']
-    return DataFrame(data, columns)
+    # TODO: implement caching here?
+    # TODO: figure out hierarchical indexing, but for now we'll just use image_name as a column
+    # TODO: PICK UP HERE
+    data = {}
+    for image in self.images:
+      data[image.name] = image.get_det_gt(with_diff,with_trun)
+      data[image.name] = data[image.name].append(Index(['image_name']))
+      data[image.name]['image_name'] = image.name
+    return DataFrame(data, columns=self.image_names, index=Image.columns)
 
   def get_ground_truth_for_class(self, cls, include_diff=False,
       include_trun=True):

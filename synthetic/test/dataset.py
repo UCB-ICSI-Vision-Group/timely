@@ -5,22 +5,23 @@ from synthetic.dataset import Dataset
 class TestDatasetJson:
   def setup(self):
     self.d = Dataset('test_data1',force=True)
+    self.classes = ["A","B","C"]
 
-  def test_load_from_json(self):
+  def test_load(self):
     assert(self.d.num_images() == 4)
-    assert(self.d.classes == ["A","B","C"])
+    assert(self.d.classes == self.classes)
 
-  def test_ground_truth_json(self):
-    gt = self.d.get_ground_truth(include_trun=False)
+  def test_get_det_ground_truth(self):
+    gt = self.d.get_det_ground_truth(with_diff=True,with_trun=False)
     df = DataFrame(
-      [[ 0.,  0.,  0.,  0.,  0.,  0.],
-       [ 1.,  1.,  1.,  1.,  1.,  0.],
-       [ 2.,  2.,  2.,  2.,  2.,  0.],
-       [ 1.,  1.,  1.,  1.,  0.,  1.],
-       [ 0.,  0.,  0.,  0.,  1.,  2.],
-       [ 0.,  0.,  0.,  0.,  2.,  3.],
-       [ 1.,  1.,  1.,  1.,  2.,  3.]],
-       columns=['x','y','w','h','cls_ind','img_ind'])
+      [[ 0.,  0.,  0.,  0.,  0.,  0, 0, 0.],
+       [ 1.,  1.,  1.,  1.,  1.,  0, 0, 0.],
+       [ 2.,  2.,  2.,  2.,  2.,  0, 0, 0.],
+       [ 1.,  1.,  1.,  1.,  0.,  0, 0, 1.],
+       [ 0.,  0.,  0.,  0.,  1.,  0, 0, 2.],
+       [ 0.,  0.,  0.,  0.,  2.,  0, 0, 3.],
+       [ 1.,  1.,  1.,  1.,  2.,  0, 0, 3.]],
+       columns=['x','y','w','h','cls_ind','diff','trun','img_ind'])
     assert(gt == df)
 
   def test_get_cls_counts_json(self):
