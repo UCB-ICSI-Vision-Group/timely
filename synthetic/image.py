@@ -151,7 +151,6 @@ class Image:
       bbox = BoundingBox(rect, format='corners')
       cls_ind = dataset.get_ind(categ)
       objects.append(np.hstack((bbox.get_arr(), cls_ind, diff, trun)))
-
     if len(objects)>0:
       img.objects_df = DataFrame(objects, columns=cls.columns)
     else:

@@ -6,6 +6,22 @@ from PIL import Image as PILImage
 from synthetic.image import Image
 from synthetic.sliding_windows import SlidingWindows
 
+""" TODO: temp synthetic code
+    self.synthetic = synthetic
+    if synthetic:
+      self.gen_cls_ground_truth()
+
+  def gen_cls_ground_truth(self):
+    "Hard-coded right now"
+    choices = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]
+    probs = np.array([0,8,3,1,6,1,8,3])
+    cum_probs = np.cumsum(1.*probs/np.sum(probs))
+    choice = np.where(cum_probs>np.random.rand())[0][0]
+    # to check that this is right (it is):
+    # hist(choices,bins=arange(0,9),normed=True,align='left'); plot(1.*probs/sum(probs))
+    self.cls_ground_truth = np.array(choices[choice])
+"""
+
 class Dataset:
   """
   Methods for constructing, accessing, and evaluating detection performance
@@ -20,6 +36,12 @@ class Dataset:
       self.load_from_pascal(name,force)
     elif name == 'test_data1':
       self.load_from_json(config.test_data1)
+    elif name == 'synthetic':
+      # TODO!!
+      self.classes = ['A','B','C']
+      num_images = 1000
+      for i in range(0,num_images):
+        self.images.append(Image(name="whatever",size=(100,100),classes=self.classes)
     else:
       print("WARNING: Unknown dataset initialization string, not loading images.")
     self.image_names = [image.name for image in self.images]
