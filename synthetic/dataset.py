@@ -1,8 +1,6 @@
-from synthetic.common_mpi import *
 from synthetic.common_imports import *
 import synthetic.config as config
 
-from PIL import Image as PILImage
 from synthetic.image import Image
 from synthetic.sliding_windows import SlidingWindows
 
@@ -22,11 +20,12 @@ from synthetic.sliding_windows import SlidingWindows
     self.cls_ground_truth = np.array(choices[choice])
 """
 
-class Dataset:
+class Dataset(object):
   """
-  Methods for constructing, accessing, and evaluating detection performance
-  on a dataset.
+  Representation of a dataset, with methods to construct from different sources
+  of data, get ground truth, and construct sets of train/test data.
   """
+
   def __init__(self, name=None, force=False):
     self.classes = []
     self.images = []
@@ -41,7 +40,7 @@ class Dataset:
       self.classes = ['A','B','C']
       num_images = 1000
       for i in range(0,num_images):
-        self.images.append(Image(name="whatever",size=(100,100),classes=self.classes)
+        self.images.append(Image(name="whatever",size=(100,100),classes=self.classes))
     else:
       print("WARNING: Unknown dataset initialization string, not loading images.")
     self.image_names = [image.name for image in self.images]
@@ -94,7 +93,7 @@ class Dataset:
         tt.tic('2')
       if len(img)>0:
         xml_filename = opjoin(config.VOC_dir,'Annotations',img+'.xml')
-        self.images.append(Image.load_from_xml_filename(self.classes,xml_filename))
+        self.images.append(Image.load_from_pascal_xml_filename(self.classes,xml_filename))
     filename = config.get_cached_dataset_filename(name)
     print("  ...saving to cache file")
     with open(filename, 'w') as f:
@@ -177,46 +176,63 @@ class Dataset:
     return all_windows[:num,:]
 
   ###
-  # Assemble ground truth
+  # Ground truth
   ###
+  def get_cls_counts(self, with_diff=True, with_trun=True):
+    """
+    Return DataFrame of class presence counts.
+      Index: image.name
+      Columns: self.classes
+    """
+    data = {}
+    for image in self.images:
+      data[image.name] = image.get_cls_counts()
+    return DataFrame(data).T
+
   def get_cls_ground_truth(self,with_diff=True,with_trun=True):
     "Return DataFrame of classification (0/1) ground truth."
     return self.get_cls_counts(with_diff,with_trun)>0
 
-  def get_cls_counts(self, with_diff=True, with_trun=True):
-    "Return DataFrame of class presence counts."
-    data = ut.collect(self.images, Image.get_cls_counts)
-    return DataFrame(data,columns=self.classes)
-
   def get_det_ground_truth(self, with_diff=True, with_trun=True):
-    "Return DataFrame of detection ground truth."
-    # TODO: implement caching here?
-    # TODO: figure out hierarchical indexing, but for now we'll just use image_name as a column
-    # TODO: PICK UP HERE
-    data = {}
-    for image in self.images:
-      data[image.name] = image.get_det_gt(with_diff,with_trun)
-      data[image.name] = data[image.name].append(Index(['image_name']))
-      data[image.name]['image_name'] = image.name
-    return DataFrame(data, columns=self.image_names, index=Image.columns)
+    """
+    Return DataFrame of detection ground truth.
+      Major index: image.name
+      Minor index: object index (irrelevant)
+      Columns: Image.columns
+    Caches the result in memory.
+    """
+    name = '%s%s'%(with_diff,with_trun)
+    if name not in self.cached_det_ground_truth:
+      data = {}
+      for image in self.images:
+        data[image.name] = image.get_det_gt(with_diff,with_trun)
+      df = Panel.from_dict(data,orient='minor').swapaxes().to_frame()
+      self.cached_det_ground_truth[name] = df
+    return self.cached_det_ground_truth[name]
 
-  def get_ground_truth_for_class(self, cls, include_diff=False,
-      include_trun=True):
+  ###
+  # Statistics
+  ###
+  def plot_cooccurence(self,with_diff=True,with_trun=False,second_order=False):
     """
-    As get_ground_truth, but filters on cls_ind, without omitting that
-    column.
-    If cls=='all', returns all ground truth.
+    Plot the correlation matrix of class occurence.
+      second_order: plot co-occurence of two-class pairs with third class.
     """
-    gt = self.get_ground_truth(include_diff, include_trun)
-    if cls=='all':
-      return gt
-    return gt.filter_on_column('cls_ind', self.get_ind(cls))
-      
+    from nitime.viz import drawmatrix_channels
+    # TODO: second-order
+    df = self.get_cls_ground_truth(with_diff,with_trun)
+    f = drawmatrix_channels(df.corr().as_matrix(),df.columns,
+      size=(10,10),color_anchor=(-1,1))
+    f.savefig(config.get_cooccurence_plot_filename(with_diff,with_trun,second_order)
+
+  ###
+  # K-Folds
+  ###
   def create_folds(self, numfolds):
     """
-    Split the images of dataset in numfolds folds,
+    Split the images of dataset in numfolds folds.
     Dataset has an inner state about current fold (This is like an implicit 
-    generator)
+    generator).
     """
     folds = KFold(len(self.images), numfolds)
     self.folds = []
@@ -246,18 +262,17 @@ class Dataset:
     else:
       return self.folds[ind]
   
-  def get_pos_samples_for_fold_class(self, cls, include_diff=False,
-      include_trun=True):
+  def get_pos_samples_for_fold_class(self, cls, with_diff=False,
+      with_trun=True):
     if not hasattr(self, 'train'):
-      return self.get_pos_samples_for_class(cls, include_diff, include_trun)
-    all_pos = self.get_pos_samples_for_class(cls, include_diff, include_trun)
+      return self.get_pos_samples_for_class(cls, with_diff, with_trun)
+    all_pos = self.get_pos_samples_for_class(cls, with_diff, with_trun)
     return np.intersect1d(all_pos, self.train)
   
-  def get_neg_samples_for_fold_class(self, cls, num_samples, include_diff=False,
-      include_trun=True):
+  def get_neg_samples_for_fold_class(self, cls, num_samples, with_diff=False,
+      with_trun=True):
     if not hasattr(self, 'train'):
-      return self.get_neg_samples_for_class(cls, include_diff=include_diff, include_trun=include_trun)
-    all_neg = self.get_neg_samples_for_class(cls, include_diff=include_diff, include_trun=include_trun)
+      return self.get_neg_samples_for_class(cls, with_diff, with_trun)
     intersect = np.intersect1d(all_neg, self.train)
     if intersect.size == 0:
       return np.array([])

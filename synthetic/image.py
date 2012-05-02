@@ -1,11 +1,13 @@
 from synthetic.common_imports import *
 import synthetic.config as config
 
+from skimage.io import imread,imsave,imshow
 import xml.dom.minidom as minidom
+
 from synthetic.bounding_box import BoundingBox
 from synthetic.sliding_windows import SlidingWindows
 
-class Image:
+class Image(object):
   "An image has a name, size and a DataFrame of objects."
 
   columns = BoundingBox.columns + ['cls_ind', 'diff', 'trun']
@@ -17,29 +19,32 @@ class Image:
     self.name = name
     self.filename = None
     self.objects_df = None
-    # the above DataFrame is constructed by loader
+    # the above DataFrame is constructed by the loader class
 
   def __repr__(self):
     return "Image (%(name)s)\n  W x H: %(width)d x %(height)d\n  Objects:\n %(objects_df)s" % self.__dict__
 
   def display_image(self):
-    "Convenience method to display the Image."
-    # TODO: use scikits-image to load as numpy matrix (matplotlib.imread loads
-    # inverted for some reason)
+    "Display the image using skimage."
+    imshow(self.load_image())
+
+  def load_image(self):
+    "Return the image loaded using skimage."
     if not self.filename:
-      print("Image: Cannot display, no associated filename")
-      return
-    im = PILImage.open(self.filename)
-    im.show()
+      print("Image: Cannot load, no associated filename")
+      return None
+    return imread(self.filename)
+
+  def compute_sift(self):
+    "Return SIFT features on the image."
+    # TODO
+    None
 
   def get_objects_df(self,with_diff=False,with_trun=True):
     "Return objects_df filtered with the parameters."
     df = self.objects_df
-    ind = []
-    if not with_diff:
-      df = df[df['diff']==0]
-    if not with_trun:
-      df = df[df['trun']==0]
+    df = df if with_diff else df[df['diff']==0] 
+    df = df if with_trun else df[df['trun']==0]
     return df
 
   def get_det_gt(self, with_diff=False, with_trun=True, cls_name=None):
@@ -117,7 +122,7 @@ class Image:
   def load_from_pascal_xml_filename(cls, classes, filename):
     "Load image info from a file in the PASCAL VOC XML format."
 
-    def get_data_from_tag(cls, node, tag):
+    def get_data_from_tag(node, tag):
       if tag is "bndbox":
         x1 = int(node.getElementsByTagName(tag)[0].childNodes[1].childNodes[0].data)
         y1 = int(node.getElementsByTagName(tag)[0].childNodes[3].childNodes[0].data)
@@ -131,12 +136,12 @@ class Image:
       data = minidom.parseString(f.read())
 
     # image info
-    name = cls.get_data_from_tag(data, "filename")
-    filename = opjoin(config.VOC_dir, 'JPEGImages', self.images[img_ind].name)
+    name = get_data_from_tag(data, "filename")
+    filename = opjoin(config.VOC_dir, 'JPEGImages', name)
     size = data.getElementsByTagName("size")[0]
-    im_width = int(cls.get_data_from_tag(size, "width"))
-    im_height = int(cls.get_data_from_tag(size, "height"))
-    im_depth = int(cls.get_data_from_tag(size, "depth"))
+    im_width = int(get_data_from_tag(size, "width"))
+    im_height = int(get_data_from_tag(size, "height"))
+    im_depth = int(get_data_from_tag(size, "depth"))
     width = im_width
     height = im_height
     img = Image(width,height,classes,name)
@@ -144,12 +149,12 @@ class Image:
     # per-object info
     objects = []
     for obj in data.getElementsByTagName("object"):
-      categ = str(cls.get_data_from_tag(obj, "name")).lower().strip()
-      diff = int(cls.get_data_from_tag(obj, "difficult"))
-      trun = int(cls.get_data_from_tag(obj, "truncated"))
-      rect = cls.get_data_from_tag(obj, "bndbox")
+      clas = str(get_data_from_tag(obj, "name")).lower().strip()
+      diff = int(get_data_from_tag(obj, "difficult"))
+      trun = int(get_data_from_tag(obj, "truncated"))
+      rect = get_data_from_tag(obj, "bndbox")
       bbox = BoundingBox(rect, format='corners')
-      cls_ind = dataset.get_ind(categ)
+      cls_ind = classes.index(clas)
       objects.append(np.hstack((bbox.get_arr(), cls_ind, diff, trun)))
     if len(objects)>0:
       img.objects_df = DataFrame(objects, columns=cls.columns)
