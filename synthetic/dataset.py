@@ -213,7 +213,7 @@ class Dataset(object):
   ###
   # Statistics
   ###
-  def plot_cooccurence(self,with_diff=True,with_trun=False,second_order=False):
+  def plot_cooccurence(self,with_diff=True,with_trun=True,second_order=False):
     """
     Plot the correlation matrix of class occurence.
       second_order: plot co-occurence of two-class pairs with third class.
@@ -223,7 +223,10 @@ class Dataset(object):
     df = self.get_cls_ground_truth(with_diff,with_trun)
     f = drawmatrix_channels(df.corr().as_matrix(),df.columns,
       size=(10,10),color_anchor=(-1,1))
-    f.savefig(config.get_cooccurence_plot_filename(with_diff,with_trun,second_order)
+    dirname = config.get_dataset_stats_dir(self)
+    filename = opjoin(dirname,'cooccur_diff_%s_trun_%s_second_order_%s.png'%(
+      with_diff,with_trun,second_order))
+    f.savefig(filename)
 
   ###
   # K-Folds

@@ -88,6 +88,9 @@ eval_template_filename = join(eval_support_dir, 'dashboard_template.html')
 res_dir = makedirs(join(data_dir, 'results'))
 temp_res_dir = makedirs(join(data_dir, 'temp_results'))
 
+def get_dataset_stats_dir(dataset):
+  return makedirs(join(res_dir,'dataset_stats',dataset.name))
+
 # ./results/det_configs/{dataset}
 def get_dets_configs_dir(dataset):
   return makedirs(join(res_dir,'det_configs',dataset.name))
