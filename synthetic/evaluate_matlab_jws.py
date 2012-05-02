@@ -9,14 +9,14 @@ from synthetic.bounding_box import BoundingBox
 import matplotlib.pyplot as plt
 
 
-def evaluate_matlab_jws(dataset):
+def evaluate_matlab_jws(dataset, suffix):
   d_train = Dataset('full_pascal_trainval')
   d = Dataset(dataset)
   dp = DatasetPolicy(d, d_train)
   e = Evaluation(dp, d)
   jwdir = os.path.join(config.res_dir, 'jumping_windows')
         
-  picklename = os.path.join(jwdir, 'all_bboxes')
+  picklename = os.path.join(jwdir, 'all_bboxes_'+suffix)
   t = ut.TicToc()
   if not os.path.exists(picklename):
     bboxes_table = pickle_matlab_jws(d, e, picklename)
@@ -27,8 +27,12 @@ def evaluate_matlab_jws(dataset):
     t.toc()
   gt = d.get_ground_truth(include_diff=True)
   
-  filename = os.path.join(jwdir, 'recall_vs_jws')
-  e.plot_recall_vs_windows(bboxes_table, gt, filename)
+  filename = os.path.join(jwdir, 'recall_vs_jws_'+suffix)
+  (x, y) = e.plot_recall_vs_windows(bboxes_table, gt, filename)
+    
+  # compute area under recall_vs_windows curve
+  auc = np.dot(x,y)/np.max(x)
+  return auc
      
 
 def pickle_matlab_jws(d, e, picklename):
@@ -68,5 +72,6 @@ def pickle_matlab_jws(d, e, picklename):
   return bboxes_table      
 
 if __name__=='__main__':
-  dataset = 'full_pascal_test'
-  evaluate_matlab_jws(dataset)
+  dataset = 'full_pascal_trainval'
+  suffix = 'small'
+  evaluate_matlab_jws(dataset, suffix)

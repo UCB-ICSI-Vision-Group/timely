@@ -427,10 +427,13 @@ class Evaluation:
   def plot_recall_vs_windows(self, det, gt, filename):
     res = self.evaluate_recall_vs_jws(det, gt)
     num_bins = res.shape[0]
-    plt.plot(np.linspace(0, 10000,num_bins),res)
+    x = np.linspace(0, 10000,num_bins)
+    y = res
+    plt.plot(x, y)
     plt.xlabel('num windows')
     plt.ylabel('recall')
     plt.savefig(filename)
+    return (x, y)
   
   def evaluate_recall_vs_jws(self, det, gt): 
     images = np.unique(det.subset_arr('img_ind'))
