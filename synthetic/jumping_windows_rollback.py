@@ -222,7 +222,7 @@ def run():
   d = Dataset(dataset)  
   e = Extractor()
   codebook = e.get_codebook(d, 'sift')
-    
+  t_train = time.time()
   if comm_rank == 0:
     t = LookupTable(config.pascal_classes, codebook)  
     gt = d.get_ground_truth()
@@ -240,8 +240,13 @@ def run():
     t.perform_mean_shifts()   
     
     t.save_table(config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl')
-    
+  
+  
   safebarrier(comm)
+  if comm_rank == 0:
+    outfile = open('times','w')
+    t_train = time.time() - t_train
+    outfile.writelines('train took %f secs\n'%t_train)
   
   ###############################################################
   ######################### Testing #############################
@@ -255,18 +260,24 @@ def run():
   del t
   t = cPickle.load(open(config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl','r'))
   K = 10000
-  
+  t_test = time.time()
   for img_ind in range(comm_rank, len(d.images), comm_size):
     img = d.images[img_ind]  
     annotations = e.get_assignments(None, 'sift', codebook, img)
     for cls_ind, cls in enumerate(config.pascal_classes):
       if not img.get_cls_ground_truth()[cls_ind]:
         continue
-      print 'on %s for %s'%(img.name, cls)
+      print 'machine %d on %s for %s'%(comm_rank, img.name, cls)
       top_wins = t.get_top_windows(K, annotations, cls_ind)
       savename = os.path.join(ut.makedirs(os.path.join(config.res_dir, 'jumping_windows','bboxes')), '%s_%s.mat'%(cls,img.name[:-4]))
       sio.savemat(savename, {'bboxes':top_wins})              
   
+  safebarrier(comm)
+  if comm_rank == 0:
+    t_test = time.time() - t_test
+    outfile.writelines('test took %f secs\n'%t_test)
+    outfile.close()
+    
   return
   
 if __name__=='__main__':
