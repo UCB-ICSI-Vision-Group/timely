@@ -7,6 +7,7 @@ Created on Feb 6, 2012
 import numpy as np
 import random
 import math
+from IPython import embed
 
 def MeanShiftCluster(dataPts, bandWidth):
   dataPts = dataPts.T
@@ -46,10 +47,11 @@ def MeanShiftCluster(dataPts, bandWidth):
       meanscales = np.vstack((m_scale_x, m_scale_y, m_scale_x, m_scale_y))
 
       bsq = 1./np.tile(meanscales,(1,numPts))/datascales;
-      sqDistToAll = sum(np.multiply(np.square((np.tile(myMean,(1,numPts)) - dataPts)), bsq))
+      sqDistToAll = sum(np.multiply(np.square((np.tile(myMean,(numPts,1)).T - dataPts)), bsq))
 
-      inInds = (np.where(sqDistToAll < bandSq))[1]         
-      inInds = inInds[0].tolist()[0]     
+      #embed()
+      inInds = (np.where(sqDistToAll < bandSq))[0]         
+      inInds = inInds.tolist()     
       thisClusterVotes[:,inInds] = thisClusterVotes[:,inInds]+1      
       myOldMean   = myMean         
       myMean      = np.mean(dataPts[:,inInds],1)          

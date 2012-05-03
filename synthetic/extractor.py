@@ -189,18 +189,18 @@ class Extractor():
     else:
       print 'load assignment:',img.name[0:-4]
       assignments = np.loadtxt(filename)
-    if not positions:
+    if positions == None:
       positions = [0,0,10000000,10000000]
     if type(positions) == type([]):
-      bbox = [positions[0],positions[1],positions[0]+positions[2],positions[1]+\
-              positions[3]]
+      bbox = [positions[0],positions[1],positions[0]+positions[2]-1,positions[1]+\
+              positions[3]-1]
     else:
       if not positions.size == 4: 
         bbox = [np.amin(positions[:,0]), np.amin(positions[:,1]), 
               np.amax(positions[:,0]), np.amax(positions[:,1])]
       else:
-        bbox = [positions[0],positions[1],positions[0]+positions[2],positions[1]+\
-              positions[3]]
+        bbox = [positions[0],positions[1],positions[0]+positions[2]-1,positions[1]+\
+              positions[3]-1]
       
     if not assignments.size == 0:  
       assignments = assignments[assignments[:, 0] >= bbox[0], :]
