@@ -9,64 +9,30 @@ from synthetic.common_mpi import *
 
 import scipy.io as sio
 from dataset import *
-from math import floor
-import Image, ImageDraw
 from synthetic.extractor import Extractor
 from synthetic.mean_shift import MeanShiftCluster
 
-###############################################################
-######################### Utils ###############################
-###############################################################
-
 # Gridding factors: NxM grids per window. Good Values are still tbd.
-
 N = 4
 M = 4
-# -------------------------------------------------- RootWindow
-class RootWindow():
-  """ A root window containing NxM grid cells, position and size"""  
-  def __init__(self, bbox):
-    None
-  
-  @classmethod
-  def add_feature(self, bbox, positions):
-    """ We expect a 1x2 positions here: x y """
-    # First compute the bin in which this positions belongs. We need the relative
-    # coordinates of this feat to the rootWindow. Suppose this positions really
-    # belongs here (no check if outsite window.)    
-    x = positions[:,0] - bbox[0]
-    y = positions[:,1] - bbox[1]
-    x_pos = (x/(bbox[2]/M)).astype(int)
-    y_pos = (y/(bbox[3]/N)).astype(int)
-    # return the grid cell it belongs to.
-    return self.convert_tuple_to_num((x_pos, y_pos))
-  
-  @classmethod
-  def convert_tuple_to_num(self, tup):
-    return N*tup[1] + tup[0]
-  
-  @classmethod
-  def convert_num_to_tuple(self, num):
-    m = num%M
-    n = num/M
-    return (m, n)
 
-# -------------------------------------------------- LookupTable
 class LookupTable():
   """ Data structure for storing the trained lookup table. It's values are
 lists of tuples (grid-position, root window)"""
-  def __init__(self, classes = config.pascal_classes, codebook = None):
+  def __init__(self, classes = config.pascal_classes, codebook = None, filename=None):
     self.classes = classes
-    self.codebook = []
-    
-    # no file given, we train a new lookup table
     self.codebook = codebook
-    self.tables = [{} for _ in range(len(self.classes))]
-    self.weights = [np.matrix([]) for _ in range(len(self.classes))]
+    if filename:
+      self.read_table(filename)
+    # no file given, we train a new lookup table
+    else:
+      self.tables = [{} for _ in range(len(self.classes))]
+      self.weights = [np.matrix([]) for _ in range(len(self.classes))]
     
     
   def compute_all_weights(self):
     for i in range(len(self.classes)):
+      print 'compute weights for class %s...'%(self.classes[i])
       tab = self.tables[i]
       weights = self.weights[i]
       weights = np.zeros((len(self.codebook), N*M))
@@ -81,6 +47,7 @@ lists of tuples (grid-position, root window)"""
   def perform_mean_shifts(self):
     '''Perform mean_shift of windows for all (cls, v, g) combinations'''
     for cls_ind in range(len(self.classes)):
+      print 'perform meanshifts for class %s'%(self.classes[cls_ind])
       table = self.tables[cls_ind]
       for v_ind in table:
         win_grids = table[v_ind]
@@ -89,12 +56,18 @@ lists of tuples (grid-position, root window)"""
           wins = np.vstack(wins)
           centers = MeanShiftCluster(wins, 0.25)
           win_grids[windex] = centers
-#        table[v_ind] = win_grids
-#      self.tables[cls_ind] = table
-  
+            
   def get_gridcell(self,positions, bbox):
-    # TODO: well obvi here factor in RootWindow
-    return RootWindow.add_feature(bbox, positions)
+    '''
+    Compute the gridcell that these positions fall into within the box and 
+    convert it to one number between 0, N*M. Here we numerate the gridcells
+    in a row-wise order
+    '''
+    x = positions[:,0] - bbox[0]
+    y = positions[:,1] - bbox[1]
+    x_pos = (x/(bbox[2]/M)).astype(int)
+    y_pos = (y/(bbox[3]/N)).astype(int)    
+    return N*y_pos + x_pos
       
   def add_features(self, features, bbox, cls_ind):
     # First translate features to codebook assignments.
@@ -134,15 +107,32 @@ lists of tuples (grid-position, root window)"""
       return None
     
   def save_table(self, filename):
-    outfile = open(filename, 'w')
-    pickle.dump(self, outfile)
+    # we also save a just plain file to make search for existence easier. 
+    # (I'm lazy)
+    open(filename,'w').close()
+    for cls_ind, cls in enumerate(self.classes):
+      outfile = open(filename+'_'+cls, 'w')
+      print 'save %s'%(filename+'_'+cls)
+      pickle.dump(self.tables[cls_ind], outfile)
+      outfile.close()
+      
+    outfile = open(filename+'_weights', 'w')
+    print 'save %s'%(filename+'_weights')
+    pickle.dump(self.weights, outfile)
     outfile.close()
   
   def read_table(self, filename):
-    outfile = open(filename, 'r')
-    content = pickle.load(outfile)
-    outfile.close()
-    return content
+    self.tables=[]
+    for cls in self.classes:
+      infile = open(filename+'_'+cls, 'r')
+      print 'read %s'%(filename+'_'+cls)
+      table = pickle.load(infile)
+      self.tables.append(table)
+      infile.close()      
+    infile = open(filename+'_weights', 'r')
+    print 'read %s'%(filename+'_weights')
+    self.weights = pickle.load(infile)
+    infile.close()     
   
   def get_ranked_word_grid(self, words, cls_ind):
     mask = np.zeros((self.codebook.shape[0],M*N))
@@ -177,42 +167,25 @@ lists of tuples (grid-position, root window)"""
       # Now add all those windows for each point that has this annotation
       poss = positions[np.where(annotations[:,3] == word)]
       for pos in poss:
-        add_wins = wins + np.tile(pos, (wins.size/4.,2))
+        add_pos = np.hstack((pos, [0,0]))
+        try: 
+          add_wins = wins + np.tile(add_pos, (wins.size/4.,1))
+        except:
+          embed()
+          raise RuntimeError('break it')
         all_wins.append(add_wins)
         insert_count += add_wins.shape[0]
       if insert_count >= K:
         break
+    # is this usual except for testing data :/ NO: just if none of these objects
+    # has been seen during training time
+    if len(all_wins) == 0:
+      print '##### WARNING: FOUND NO WINS FOR object of class %s ####'%self.classes[cls_ind]
+      return all_wins    
     all_wins = np.vstack(all_wins)
-    return all_wins
-      
-         
-def get_back_indices(num, myM, myN):
-  m = num%myM
-  n = num/myM
-  return (n, m)
+    return all_wins      
 
-
-def broken_draw():  
-  #print bboxes
-  image_filename = d.config.VOC_dir + '/JPEGImages/' + image.name
-  os.system('convert ' + image_filename + ' img.png')
-   
-  im = Image.open('img.png')
-  draw = ImageDraw.Draw(im)
-  
-  
-  for k in range(K):
-    # TODO: Why are the features selected at these weird points?
-    # draw.rectangle(((bboxes[k,0]-5, bboxes[k,1]-5),(bboxes[k,0]+5, bboxes[k,1]+5)))
-    draw.rectangle(((bboxes[k,0],bboxes[k,1]),(bboxes[k, 2] + bboxes[k, 0], (bboxes[k, 3] + bboxes[k, 1]))))
-  del draw
-  im.save('im-out.png', "PNG")
-  os.system('xv im-out.png')
-  
-  print '\nfinished...'
-
-
-def run():
+def run(force=False):
   ###############################################################
   ######################### Training ############################
   ###############################################################
@@ -226,28 +199,44 @@ def run():
   if comm_rank == 0:
     t = LookupTable(config.pascal_classes, codebook)  
     gt = d.get_ground_truth()
-      
-    for row in gt.arr:
-      bbox = row[0:4]
-      #r = RootWindow(bbox)
-      image = d.images[int(row[gt.cols.index('img_ind')])]
-      features = e.get_assignments(bbox, 'sift', codebook, image)
-      cls_ind = int(row[gt.cols.index('cls_ind')])
-      t.add_features(features, bbox, cls_ind)    
-      
-    t.compute_all_weights()
-    # Now also compute the cluster means
-    t.perform_mean_shifts()   
+    filename_lookuptable = config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl'
     
-    t.save_table(config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl')
+    if not os.path.exists(filename_lookuptable):
+        
+      filename_bfr_ms = config.get_jumping_windows_dir(dataset) + 'lookup_table_bfore_mshift.pkl'
+      if not os.path.exists(filename_bfr_ms) or force:
+        filename_bfr_wghts = config.get_jumping_windows_dir(dataset) + ' lookup_table_bfore_wghts.pkl'
+        print 'searching lookup table weight file'
+        if not os.path.exists(filename_bfr_wghts) or force:
+          for rowdex, row in enumerate(gt.arr):
+            bbox = row[0:4]
+            print 'add row %d of %d'%(rowdex, gt.shape()[0])
+            image = d.images[int(row[gt.cols.index('img_ind')])]
+            features = e.get_assignments(bbox, 'sift', codebook, image)
+            cls_ind = int(row[gt.cols.index('cls_ind')])
+            t.add_features(features, bbox, cls_ind)    
+            
+          t.save_table(filename_bfr_wghts)
+        else:
+          print 'found weight file: %s'%filename_bfr_wghts
+          t = LookupTable(config.pascal_classes, codebook, filename_bfr_wghts)
+          print 'lookup table before comp weights loaded...'      
+        t.compute_all_weights()
+        # Now also compute the cluster means
+        # t.save_table(filename_bfr_ms) # For now skip this step
+      else:
+        t = LookupTable(config.pascal_classes, codebook, filename_bfr_ms)
+        print 'lookup table before comp ms loaded...'
+        
+      t.perform_mean_shifts()   
+      
+      t.save_table(filename_lookuptable)
+      outfile = open('times','w')
+      t_train = time.time() - t_train
+      outfile.writelines('train took %f secs\n'%t_train)
   
   
-  safebarrier(comm)
-  if comm_rank == 0:
-    outfile = open('times','w')
-    t_train = time.time() - t_train
-    outfile.writelines('train took %f secs\n'%t_train)
-  
+  safebarrier(comm) 
   ###############################################################
   ######################### Testing #############################
   ###############################################################
@@ -258,7 +247,8 @@ def run():
     # Dataset
   d = Dataset('full_pascal_test')
   del t
-  t = cPickle.load(open(config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl','r'))
+  t = LookupTable(config.pascal_classes, codebook, config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl')
+
   K = 10000
   t_test = time.time()
   for img_ind in range(comm_rank, len(d.images), comm_size):
@@ -281,4 +271,5 @@ def run():
   return
   
 if __name__=='__main__':
-  run()
+  force = False
+  run(force)
