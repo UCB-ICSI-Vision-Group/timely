@@ -10,14 +10,7 @@ from synthetic.sliding_windows import SlidingWindows
       self.gen_cls_ground_truth()
 
   def gen_cls_ground_truth(self):
-    "Hard-coded right now"
-    choices = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]
-    probs = np.array([0,8,3,1,6,1,8,3])
-    cum_probs = np.cumsum(1.*probs/np.sum(probs))
-    choice = np.where(cum_probs>np.random.rand())[0][0]
-    # to check that this is right (it is):
-    # hist(choices,bins=arange(0,9),normed=True,align='left'); plot(1.*probs/sum(probs))
-    self.cls_ground_truth = np.array(choices[choice])
+    
 """
 
 class Dataset(object):
@@ -36,15 +29,12 @@ class Dataset(object):
     elif name == 'test_data1':
       self.load_from_json(config.test_data1)
     elif name == 'synthetic':
-      # TODO!!
-      self.classes = ['A','B','C']
-      num_images = 1000
-      for i in range(0,num_images):
-        self.images.append(Image(name="whatever",size=(100,100),classes=self.classes))
+      self.generate_synthetic()
     else:
       print("WARNING: Unknown dataset initialization string, not loading images.")
     self.image_names = [image.name for image in self.images]
     assert(len(self.image_names)==len(np.unique(self.image_names)))
+    self.cached_det_ground_truth = {}
 
   def get_name(self):
     return "%s_%s"%(self.name,self.num_images())
@@ -53,8 +43,29 @@ class Dataset(object):
     return len(self.images)
 
   ###
-  # Loaders
+  # Loaders / Generators
   ###
+  def generate_synthetic(self):
+    "Generate a synthetic dataset that follows some simple cooccurence rules."
+    # hard-coded 3-class generation
+    choices = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]
+    probs = np.array([0,8,3,1,6,1,8,3])
+    cum_probs = np.cumsum(1.*probs/np.sum(probs))
+    # to check that this is right (it is):
+    # hist(choices,bins=arange(0,9),normed=True,align='left'); plot(1.*probs/sum(probs))
+    
+    self.classes = ['A','B','C']
+    num_images = 1000
+    for i in range(0,num_images):
+      image = Image(100,100,self.classes,str(i))
+      choice = np.where(cum_probs>np.random.rand())[0][0]
+      objects = []
+      for cls_ind,clas in enumerate(choices[choice]):
+        if clas == 1:
+          objects.append(np.array([0,0,0,0,cls_ind,0,0]))
+      image.objects_df = DataFrame(objects, columns=Image.columns)
+      self.images.append(image)
+
   def load_from_json(self, filename):
     "Load all parameters of the dataset from a JSON file."
     with open(filename) as f:

@@ -17,7 +17,7 @@ from os.path import join as opjoin
 from os.path import exists as opexists
 from pprint import pprint
 from sklearn.cross_validation import KFold
-from pandas import Series,DataFrame
+from pandas import Series,DataFrame,Panel
 
 import numpy as np
 import scipy.stats as st
