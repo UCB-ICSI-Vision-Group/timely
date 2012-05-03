@@ -224,19 +224,45 @@ class Dataset(object):
   ###
   # Statistics
   ###
-  def plot_cooccurence(self,with_diff=True,with_trun=True,second_order=False):
+  def plot_cooccurence(self,with_diff=True,with_trun=True):
     """
     Plot the correlation matrix of class occurence.
       second_order: plot co-occurence of two-class pairs with third class.
     """
     from nitime.viz import drawmatrix_channels
-    # TODO: second-order
     df = self.get_cls_ground_truth(with_diff,with_trun)
+    if second_order:
+      combinations = [x for x in itertools.combinations(self.classes,2)]
+      df2 = DataFrame(index=df.index, columns=combinations)
+      for column in df2.columns:
+        df2[column] = df[column[0]]+df[column[1]]
+      df = df2
+    plot_size = max(12,len(df.columns)/2)
     f = drawmatrix_channels(df.corr().as_matrix(),df.columns,
-      size=(10,10),color_anchor=(-1,1))
+      size=(plot_size,plot_size),color_anchor=(-1,1))
     dirname = config.get_dataset_stats_dir(self)
-    filename = opjoin(dirname,'cooccur_diff_%s_trun_%s_second_order_%s.png'%(
-      with_diff,with_trun,second_order))
+    filename = opjoin(dirname,'cooccur_diff_%s_trun_%s.png'%(
+      with_diff,with_trun))
+    f.savefig(filename)
+
+  def plot_second_order_cooccurence(self,with_diff=True,with_trun=True):
+    df = self.get_cls_ground_truth(with_diff,with_trun)
+    combinations = [x for x in itertools.combinations(self.classes,2)]
+    # construct DataFrame of 2-class occurences
+    df2 = DataFrame(index=df.index, columns=combinations)
+    for column in df2.columns:
+      df2[column] = df[column[0]]*df[column[1]]
+    # join them together; the relevant block of the correlation matrix is it
+    df_corr = df.join(df2).corr().ix[combinations][self.classes]
+    dirname = config.get_dataset_stats_dir(self)
+    filename = opjoin(dirname,'cooccur_diff_%s_trun_%s_second_order.png'%(
+      with_diff,with_trun))
+    plot_length=max(12,len(df_corr.index)/2)
+    plot_width=max(12,len(df_corr.columns)/2)
+    f = plt.figure(figsize=(plot_width,plot_length))
+    ax = f.add_subplot(1,1,1)
+    cax = ax.imshow(df_corr,interpolation='nearest')
+    f.colorbar(cax, ticks=[-1, 0, 1])
     f.savefig(filename)
 
   ###
