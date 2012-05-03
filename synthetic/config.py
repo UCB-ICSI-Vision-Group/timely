@@ -119,7 +119,7 @@ def get_sliding_windows_params_dir(dataset_name):
 
 # ./results/jumping_windows_{dataset}/
 def get_jumping_windows_dir(dataset_name):
-  return makedirs(join(res_dir, 'jumping_windows_%s'%dataset_name))
+  return makedirs(join(res_dir, 'jumping_windows_%s/'%dataset_name))
 
 def get_ccmat_file(dataset, feature):
   return join(get_jumping_windows_dir(dataset.name), feature+'_ccmat')

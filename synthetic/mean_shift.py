@@ -75,7 +75,11 @@ def MeanShiftCluster(dataPts, bandWidth):
           
           bsq = 1/meanscales/datascales;
           
-          distToOther = math.sqrt(sum(np.multiply(np.power((myMean - X2_clust[cN]),2), bsq)))
+          try:
+            distToOther = math.sqrt(sum(np.dot(np.power((myMean - X2_clust[cN]),2), bsq)))
+          except:
+            embed()#
+            return
           if distToOther < bandWidth/2:
             mergeWith = cN;
             break
@@ -91,7 +95,7 @@ def MeanShiftCluster(dataPts, bandWidth):
     
     initPtInds = np.where(beenVisitedFlag == 0)[1]
     numInitPts = initPtInds.shape[0]
-  return np.hstack(X2_clust).T
+  return np.vstack(X2_clust)
 
   
 

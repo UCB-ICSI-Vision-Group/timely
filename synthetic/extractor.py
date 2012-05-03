@@ -187,7 +187,7 @@ class Extractor():
         assignments = np.hstack((feature[:,0:2], assignments))
       np.savetxt(filename, assignments, fmt='%d')
     else:
-      print 'load assignment:',img.name[0:-4]
+      print 'load assignment for: %s'%img.name[0:-4]
       assignments = np.loadtxt(filename)
     if positions == None:
       positions = [0,0,10000000,10000000]
