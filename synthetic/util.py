@@ -1,5 +1,5 @@
 import subprocess
-from common_imports import *
+import operator
 
 class Table:
   "An ndarray with associated column names."
