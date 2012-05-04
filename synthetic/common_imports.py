@@ -23,6 +23,8 @@ import numpy as np
 import matplotlib as mpl
 import scipy.stats as st
 import matplotlib.pyplot as plt
+import matplotlib.ticker
+from mpl_toolkits.axes_grid import make_axes_locatable
 
 import synthetic.util as ut
 

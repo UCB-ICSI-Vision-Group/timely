@@ -38,20 +38,31 @@ class Dataset(object):
   ###
   def generate_synthetic(self):
     "Generate a synthetic dataset that follows some simple cooccurence rules."
-    # hard-coded 3-class generation
-    choices = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]
-    probs = np.array([0,8,3,1,6,1,8,3])
-    cum_probs = np.cumsum(1.*probs/np.sum(probs))
-    # to check that this is right:
-    # hist(choices,bins=arange(0,9),normed=True,align='left'); plot(1.*probs/sum(probs))
-    
-    self.classes = ['A','B','C']
+    # hard-coded 4-class generation
+    choice_probs = {
+      (1,0,0,0):2,
+      (0,1,0,0):1,
+      (0,0,1,0):1,
+      (0,0,0,1):1,
+      (1,1,0,0):2,
+      (1,0,1,0):0,
+      (1,0,0,1):0,
+      (0,1,1,0):0,
+      (0,1,0,1):1,
+      (0,0,1,1):2,
+      (1,1,1,0):0,
+      (1,1,0,1):1,
+      (1,0,1,1):1,
+      (0,1,1,1):2}
+    probs = np.array(choice_probs.values())
+    cum_probs = np.cumsum(1.*probs/np.sum(probs))    
+    self.classes = ['A','B','C','D']
     num_images = 1000
     for i in range(0,num_images):
       image = Image(100,100,self.classes,str(i))
       choice = np.where(cum_probs>np.random.rand())[0][0]
       objects = []
-      for cls_ind,clas in enumerate(choices[choice]):
+      for cls_ind,clas in enumerate(choice_probs.keys()[choice]):
         if clas == 1:
           objects.append(np.array([0,0,0,0,cls_ind,0,0]))
       image.objects_df = DataFrame(objects, columns=Image.columns)
@@ -215,55 +226,163 @@ class Dataset(object):
   ###
   # Statistics
   ###
-  def plot_cooccurence(self,with_diff=True,with_trun=True):
+  def plot_coocurrence(self, cmap=plt.cm.Reds, color_anchor=[0,1],
+    x_tick_rot=90, size=None, title=None, plot_vals=True,
+    second_order=False):
     """
-    Plot the correlation matrix of class occurence.
-      second_order: plot co-occurence of two-class pairs with third class.
+    Construct a DataFrame of class occurence ground truth, and plot 
+    a heat map of conditional occurence, where cell (i,j) means
+    P(C_i|C_j). The last column in the K x (K+2) heat map corresponds
+    to the prior P(c_i).
+
+    If second_order, plots (K choose 2) x (K+2) heat map corresponding
+    to P(C_i|C_j,C_k): second-order correlations.
+
+    Return the figure.
     """
-    from nitime.viz import drawmatrix_channels
-    df = self.get_cls_ground_truth(with_diff,with_trun)
+    # Construct the conditional co-occurence
+    df = self.get_cls_ground_truth() # TODO: with_diff, with_trun here
+    combinations = [x for x in itertools.combinations(df.columns,2)]
+    combination_strs = ['%s, %s'%(x[0],x[1]) for x in combinations]
+
+    total = df.shape[0]
+    N = len(df.columns)
+    K = len(combinations) if second_order else len(df.columns)
+    data = np.zeros((K,N+1))
+    prior = np.zeros(K)
+    for i in range(0,K):
+      if not second_order:
+        cls = df.columns[i]
+        conditioned = df[df[cls]]
+      else:
+        cls1 = combinations[i][0]
+        cls2 = combinations[i][1]
+        conditioned = df[df[cls1]&df[cls2]]      
+
+      # count all the classes
+      data[i,:-1] = conditioned.sum()
+
+      # count the number of times that cls was the only one present
+      if not second_order:
+        data[i,-1] = ((conditioned.sum(1)-1)==0).sum()
+      else:
+        data[i,-1] = ((conditioned.sum(1)-2)==0).sum()
+
+      # normalize
+      max_val = np.max(data[i,:])
+      data[i,:] /= max_val
+      data[i,:][data[i,:]==1]=np.nan
+
+      # use the max count to compute the prior
+      prior[i] = max_val / total
+
+      index = combination_strs if second_order else df.columns
+      columns = df.columns.tolist()+['nothing']
+      m = DataFrame(data,index=index,columns=columns)
+
+    # Insert P(X) as the last column
+    m.insert(N+1,'prior',prior)
+
+    # If second_order, sort by prior and remove rows with 0 prior
     if second_order:
-      combinations = [x for x in itertools.combinations(self.classes,2)]
-      df2 = DataFrame(index=df.index, columns=combinations)
-      for column in df2.columns:
-        df2[column] = df[column[0]]+df[column[1]]
-      df = df2
-    plot_size = max(12,len(df.columns)/2)
-    f = drawmatrix_channels(df.corr().as_matrix(),df.columns,
-      size=(plot_size,plot_size),color_anchor=(-1,1))
-    dirname = config.get_dataset_stats_dir(self)
-    filename = opjoin(dirname,'cooccur_diff_%s_trun_%s.png'%(
-      with_diff,with_trun))
-    f.savefig(filename)
+      m = m.sort('prior',ascending=False)
+      m = m[m['prior']>0]
 
-  def plot_second_order_cooccurence(self,with_diff=True,with_trun=True):
-    """
-    Plot the correlation matrix of co-occurence between two-class and one-class
-    presences.
-    Note that this is not the same as conditioning on a two-class presence:
-    that is the correlation between (A,B) and (A) is not 1, because A
-    often occurs without B occuring.
+    if size:
+      fig = plt.figure(figsize=size)
+    else:
+      w=max(12,m.shape[1])
+      h=max(12,m.shape[0])
+      fig = plt.figure(figsize=(w,h))
+    ax_im = fig.add_subplot(111)
 
-    Check out http://matplotlib.sourceforge.net/examples/pylab_examples/colorbar_tick_labelling_demo.html
-    """
-    df = self.get_cls_ground_truth(with_diff,with_trun)
-    combinations = [x for x in itertools.combinations(self.classes,2)]
-    # construct DataFrame of 2-class occurences
-    df2 = DataFrame(index=df.index, columns=combinations)
-    for column in df2.columns:
-      df2[column] = df[column[0]]*df[column[1]]
-    # join them together; the relevant block of the correlation matrix is it
-    df_corr = df.join(df2).corr().ix[combinations][self.classes]
+    # make axes for colorbar
+    divider = make_axes_locatable(ax_im)
+    ax_cb = divider.new_vertical(size="5%", pad=0.1, pack_start=True)
+    fig.add_axes(ax_cb)
+
+    #The call to imshow produces the matrix plot:
+    im = ax_im.imshow(m, origin='upper', interpolation='nearest',
+            vmin=color_anchor[0], vmax=color_anchor[1], cmap=cmap)
+
+    #Formatting:
+    ax = ax_im
+    ax.set_xticks(np.arange(m.shape[1]))
+    ax.set_xticklabels(m.columns)
+    for tick in ax.xaxis.iter_ticks():
+      tick[0].label2On = True
+      tick[0].label1On = False
+      tick[0].label2.set_rotation(x_tick_rot)
+      tick[0].label2.set_fontsize('x-large')
+
+    ax.set_yticks(np.arange(m.shape[0]))
+    ax.set_yticklabels(m.index,size='x-large')
+
+    ax.yaxis.set_minor_locator(
+      matplotlib.ticker.FixedLocator(np.arange(-.5,m.shape[0]+0.5)))
+    ax.xaxis.set_minor_locator(
+      matplotlib.ticker.FixedLocator(np.arange(-.5,m.shape[1]-0.5)))
+    ax.grid(False,which='major')
+    ax.grid(True,which='minor',ls='-',lw=7,c='w')
+
+    # Make the major and minor tick marks invisible
+    for line in ax.xaxis.get_ticklines() + ax.yaxis.get_ticklines():
+        line.set_markeredgewidth(0)
+    for line in ax.xaxis.get_minorticklines() + ax.yaxis.get_minorticklines():
+        line.set_markeredgewidth(0)
+
+    # Limit the area of the plot
+    ax.set_ybound([-0.5, m.shape[0] - 0.5])
+    ax.set_xbound([-0.5, m.shape[1] - 0.5])
+
+    #The following produces the colorbar and sets the ticks
+    #Set the ticks - if 0 is in the interval of values, set that, as well
+    #as the maximal and minimal values:
+    #Extract the minimum and maximum values for scaling
+    max_val = np.nanmax(m)
+    min_val = np.nanmin(m)
+    if min_val < 0:
+      ticks = [color_anchor[0], min_val, 0, max_val, color_anchor[1]]
+    #Otherwise - only set the maximal value:
+    else:
+      ticks = [color_anchor[0], max_val, color_anchor[1]]
+
+    # Plot line separating 'nothing' and 'prior' from rest of plot
+    l = ax.add_line(mpl.lines.Line2D(
+      [m.shape[1]-2.5,m.shape[1]-2.5],[-.5,m.shape[0]-0.5],
+      ls='--',c='gray',lw=2))
+    l.set_zorder(3)
+
+    # Display the actual values in the cells
+    if plot_vals:
+      for i in xrange(0, m.shape[0]):
+        for j in xrange(0,m.shape[1]):
+          val = m.as_matrix()[i,j]
+          if not np.isnan(val):
+            ax.text(j-0.2,i+0.1,'%.2f'%val)
+
+    # Hide the black frame around the plot
+    # Doing ax.set_frame_on(False) results in weird thin lines
+    # from imshow() at the edges. Instead, we set the frame to white.
+    for spine in ax.spines.values():
+      spine.set_edgecolor('w')
+
+    # Set title
+    if title is not None:
+      ax.set_title(title)
+
+    # Plot the colorbar and remove its frame as well.
+    cb = fig.colorbar(im, cax=ax_cb, orientation='horizontal',
+            cmap=cmap, ticks=ticks, format='%.2f')
+    cb.ax.artists.remove(cb.outline)
+
+    # Save figure
     dirname = config.get_dataset_stats_dir(self)
-    filename = opjoin(dirname,'cooccur_diff_%s_trun_%s_second_order.png'%(
-      with_diff,with_trun))
-    plot_length=max(12,len(df_corr.index)/2)
-    plot_width=max(12,len(df_corr.columns)/2)
-    f = plt.figure(figsize=(plot_width,plot_length))
-    ax = f.add_subplot(1,1,1)
-    cax = ax.imshow(df_corr,interpolation='nearest')
-    f.colorbar(cax, ticks=[-1, 0, 1])
-    f.savefig(filename)
+    suffix = '_second_order' if second_order else ''
+    filename = opjoin(dirname,'cooccur%s.png'%suffix)
+    fig.savefig(filename)
+
+    return fig
 
   ###
   # K-Folds
