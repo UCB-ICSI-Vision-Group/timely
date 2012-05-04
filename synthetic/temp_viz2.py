@@ -17,12 +17,7 @@ def drawmatrix_channels(df, x_tick_rot=90,
     # Compute normalized occurences
     prior = 1.*df.sum()/df.sum().sum()
     m.insert(N,'prior',prior)
-
     channel_names = m.columns
-
-    def channel_formatter(x, pos=None):
-        thisind = np.clip(int(x), 0, N - 1)
-        return channel_names[thisind]
 
     fig = plt.figure()
 
@@ -52,29 +47,26 @@ def drawmatrix_channels(df, x_tick_rot=90,
         color_min = color_anchor[0]
         color_max = color_anchor[1]
 
-    print(max_val,min_val,color_max,color_min)
-
     #The call to imshow produces the matrix plot:
-    cmap=plt.cm.jet
     im = ax_im.imshow(m, origin='upper', interpolation='nearest',
        vmin=color_min, vmax=color_max, cmap=cmap)
 
     #Formatting:
     ax = ax_im
-    #ax.grid(True)
-    #Label each of the cells with the row and the column:
-    for i in xrange(0, m.shape[1]): # x labels
-      ax.text(i, -1, channel_names[i],
-        rotation=x_tick_rot,verticalalignment='bottom')
-    for i in xrange(0, m.shape[0]): # y labels
-      ax.text(-1, i, channel_names[i], horizontalalignment='right')
+    ax.grid(True)
 
-    ax.set_axis_off()
-    ax.set_xticks(np.arange(N))
-    ax.xaxis.set_major_formatter(ticker.FuncFormatter(channel_formatter))
+    #ax.set_axis_off()
+    ax.set_xticks(np.arange(N+1))
+    ax.set_xticklabels(channel_names,rotation=x_tick_rot)
     fig.autofmt_xdate(rotation=x_tick_rot)
+    for tick in ax.xaxis.iter_ticks():
+      tick[0].label2On = True
+      tick[0].label1On = False
+      tick[0].label2.set_rotation(x_tick_rot)
+
     ax.set_yticks(np.arange(N))
     ax.set_yticklabels(channel_names)
+
     ax.set_ybound([-0.5, N - 0.5])
     ax.set_xbound([-0.5, N + 0.5])
 
@@ -96,6 +88,7 @@ def drawmatrix_channels(df, x_tick_rot=90,
     #Otherwise - only set the minimal and maximal value:
     else:
         ticks = [color_min, min_val, max_val, color_max]
+    ticks = np.unique(ticks)
 
     # line separating prior
     l = mpl.lines.Line2D([N-0.48,N-0.48],[-.48,N-0.48],ls='--',c='gray')
@@ -110,6 +103,11 @@ def drawmatrix_channels(df, x_tick_rot=90,
                       format='%.2f')
     return fig
 
-cmap = plt.cm.Blues
+df = DataFrame.load('temp.df')
+cmap = plt.cm.gray_r
+f = drawmatrix_channels(df,cmap=cmap)
+
+cmap = plt.cm.jet
 df = DataFrame.load('temp2.df')
-f = drawmatrix_channels(df,size=(10,10))
+f2 = drawmatrix_channels(df,cmap=cmap)
+f3 = drawmatrix_channels(df,size=(10,10),cmap=cmap)
