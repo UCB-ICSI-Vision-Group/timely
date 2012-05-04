@@ -1,5 +1,7 @@
 import subprocess
 import operator
+import os
+import time
 
 class Table:
   "An ndarray with associated column names."

@@ -61,14 +61,16 @@ def plot_coocurrence(df, cmap=plt.cm.gray_r, color_anchor=[0,1],
     # Insert P(X) as the last column
     m.insert(N+1,'prior',prior)
 
-    # Sort by prior
-    m = m.sort('prior',ascending=False)
+    # If second_order, sort by prior and remove rows with 0 prior
+    if second_order:
+      m = m.sort('prior',ascending=False)
+      m = m[m['prior']>0]
 
     if size:
       fig = plt.figure(figsize=size)
     else:
-      w=max(12,m.shape[1]/1)
-      h=max(12,m.shape[0]/1)
+      w=max(12,m.shape[1])
+      h=max(12,m.shape[0])
       fig = plt.figure(figsize=(w,h))
     ax_im = fig.add_subplot(111)
 
@@ -83,7 +85,7 @@ def plot_coocurrence(df, cmap=plt.cm.gray_r, color_anchor=[0,1],
 
     #Formatting:
     ax = ax_im
-    ax.set_xticks(np.arange(N+2))
+    ax.set_xticks(np.arange(m.shape[1]))
     ax.set_xticklabels(m.columns)
     for tick in ax.xaxis.iter_ticks():
       tick[0].label2On = True
@@ -91,24 +93,25 @@ def plot_coocurrence(df, cmap=plt.cm.gray_r, color_anchor=[0,1],
       tick[0].label2.set_rotation(x_tick_rot)
       tick[0].label2.set_fontsize('x-large')
 
-    ax.set_yticks(np.arange(K))
+    ax.set_yticks(np.arange(m.shape[0]))
     ax.set_yticklabels(m.index,size='x-large')
 
-    ax.yaxis.set_minor_locator(ticker.FixedLocator(np.arange(-.5,K+0.5)))
-    ax.xaxis.set_minor_locator(ticker.FixedLocator(np.arange(-.5,N+1.5)))
+    ax.yaxis.set_minor_locator(
+      ticker.FixedLocator(np.arange(-.5,m.shape[0]+0.5)))
+    ax.xaxis.set_minor_locator(
+      ticker.FixedLocator(np.arange(-.5,m.shape[1]-0.5)))
     ax.grid(False,which='major')
     ax.grid(True,which='minor',ls='-',lw=7,c='w')
 
-    #Make the tick-marks invisible:
+    # Make the major and minor tick marks invisible
     for line in ax.xaxis.get_ticklines() + ax.yaxis.get_ticklines():
         line.set_markeredgewidth(0)
-    for line in ax.xaxis.get_minorticklines()+ax.yaxis.get_minorticklines():
+    for line in ax.xaxis.get_minorticklines() + ax.yaxis.get_minorticklines():
         line.set_markeredgewidth(0)
-    if title is not None:
-        ax.set_title(title)
 
-    ax.set_ybound([-0.5, K - 0.5])
-    ax.set_xbound([-0.5, N + 1.5])
+    # Limit the area of the plot
+    ax.set_ybound([-0.5, m.shape[0] - 0.5])
+    ax.set_xbound([-0.5, m.shape[1] - 0.5])
 
     #The following produces the colorbar and sets the ticks
     #Set the ticks - if 0 is in the interval of values, set that, as well
@@ -122,27 +125,35 @@ def plot_coocurrence(df, cmap=plt.cm.gray_r, color_anchor=[0,1],
     else:
         ticks = [color_anchor[0], max_val, color_anchor[1]]
 
-    # lines separating 'nothing' and 'prior'
-    l = mpl.lines.Line2D([N-0.5,N-0.5],[-.5,K-0.5],
-      ls='--',c='gray',lw=2)
-    l = ax.add_line(l)
+    # Plot line separating 'nothing' and 'prior' from rest of plot
+    l = ax.add_line(mpl.lines.Line2D(
+      [m.shape[1]-2.5,m.shape[1]-2.5],[-.5,m.shape[0]-0.5],
+      ls='--',c='gray',lw=2))
     l.set_zorder(3)
 
-    for i in xrange(0, m.shape[0]):
-      for j in xrange(0,m.shape[1]):
-        val = m.as_matrix()[i,j]
-        if not np.isnan(val):
-          ax.text(j-0.2,i+0.1,'%.2f'%val)
+    # Display the actual values in the cells
+    if plot_vals:
+      for i in xrange(0, m.shape[0]):
+        for j in xrange(0,m.shape[1]):
+          val = m.as_matrix()[i,j]
+          if not np.isnan(val):
+            ax.text(j-0.2,i+0.1,'%.2f'%val)
 
-    # Just doing ax.set_frame_on(False) results in weird thin lines
-    # from imshow() on the edges. This covers them up.
+    # Hide the black frame around the plot
+    # Doing ax.set_frame_on(False) results in weird thin lines
+    # from imshow() at the edges. Instead, we set the frame to white.
     for spine in ax.spines.values():
-        spine.set_edgecolor('w')
+      spine.set_edgecolor('w')
 
-    #This makes the colorbar:
+    # Set title
+    if title is not None:
+      ax.set_title(title)
+
+    # Plot the colorbar and remove its frame as well.
     cb = fig.colorbar(im, cax=ax_cb, orientation='horizontal',
             cmap=cmap, ticks=ticks, format='%.2f')
     cb.ax.artists.remove(cb.outline)
+
     return fig
 
 df = DataFrame.load('temp.df')
@@ -162,5 +173,5 @@ df2 = DataFrame.load('pascal_train.df')
 #df2 = df2[['aeroplane','bird','car','chair','diningtable','person','tvmonitor']]
 f3 = plot_coocurrence(df2,plt.cm.Reds,[0,1])
 f3.savefig('../data/results/dataset_stats/pascal_train_cooccur.png')
-f3 = plot_coocurrence(df2,plt.cm.Reds,[0,1],second_order=True)
+#f3 = plot_coocurrence(df2,plt.cm.Reds,[0,1],second_order=True)
 #f3.savefig('../data/results/dataset_stats/pascal_train_cooccur_2.png')
