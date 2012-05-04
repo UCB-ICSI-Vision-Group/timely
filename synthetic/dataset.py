@@ -4,15 +4,6 @@ import synthetic.config as config
 from synthetic.image import Image
 from synthetic.sliding_windows import SlidingWindows
 
-""" TODO: temp synthetic code
-    self.synthetic = synthetic
-    if synthetic:
-      self.gen_cls_ground_truth()
-
-  def gen_cls_ground_truth(self):
-    
-"""
-
 class Dataset(object):
   """
   Representation of a dataset, with methods to construct from different sources
@@ -51,7 +42,7 @@ class Dataset(object):
     choices = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]]
     probs = np.array([0,8,3,1,6,1,8,3])
     cum_probs = np.cumsum(1.*probs/np.sum(probs))
-    # to check that this is right (it is):
+    # to check that this is right:
     # hist(choices,bins=arange(0,9),normed=True,align='left'); plot(1.*probs/sum(probs))
     
     self.classes = ['A','B','C']
@@ -246,6 +237,15 @@ class Dataset(object):
     f.savefig(filename)
 
   def plot_second_order_cooccurence(self,with_diff=True,with_trun=True):
+    """
+    Plot the correlation matrix of co-occurence between two-class and one-class
+    presences.
+    Note that this is not the same as conditioning on a two-class presence:
+    that is the correlation between (A,B) and (A) is not 1, because A
+    often occurs without B occuring.
+
+    Check out http://matplotlib.sourceforge.net/examples/pylab_examples/colorbar_tick_labelling_demo.html
+    """
     df = self.get_cls_ground_truth(with_diff,with_trun)
     combinations = [x for x in itertools.combinations(self.classes,2)]
     # construct DataFrame of 2-class occurences
