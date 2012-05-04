@@ -38,13 +38,14 @@ color_max = 1.
 im = ax.imshow(data, origin='upper', interpolation='nearest',
   vmin=color_min, vmax=color_max, cmap=cmap)
 
-for i in xrange(0, data.shape[0]):
-            if i < (data.shape[0] - 1):
-                ax.text(i - 0.3, i, df.columns[i], rotation=0)
-            if i > 0:
-                ax.text(-1, i + 0.3, df.columns[i],
-                        horizontalalignment='right')
+for i in xrange(0, N):
+  if i < (data.shape[0] - 1):
+    ax.text(i - 0.3, i, df.columns[i], rotation=0)
+  if i > 0:
+    ax.text(-1, i + 0.3, df.columns[i],
+      horizontalalignment='right')
 
+ax.set_axis_off()
 ax.set_xticks(np.arange(N+1))
 ax.xaxis.set_major_formatter(ticker.FuncFormatter(channel_formatter))
 

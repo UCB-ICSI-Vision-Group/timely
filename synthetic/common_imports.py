@@ -20,8 +20,10 @@ from sklearn.cross_validation import KFold
 from pandas import Series,DataFrame,Panel
 
 import numpy as np
+import matplotlib as mpl
 import scipy.stats as st
 import matplotlib.pyplot as plt
-import synthetic.util as ut
+
+#import synthetic.util as ut
 
 from synthetic.common_mpi import *
