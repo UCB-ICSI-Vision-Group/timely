@@ -22,6 +22,8 @@ class TestDatasetJson:
        [ 0.,  0.,  0.,  0.,  2.,  0, 0, 3.],
        [ 1.,  1.,  1.,  1.,  2.,  0, 0, 3.]],
        columns=['x','y','w','h','cls_ind','diff','trun','img_ind'])
+    print(gt)
+    print(df)
     assert(gt == df)
 
   def test_get_cls_counts_json(self):
@@ -39,6 +41,7 @@ class TestDatasetJson:
         [ True, False, False],
         [ False, True, False],
         [ False, False, True] ], columns = ["A","B","C"])
+    print(df)
     print(self.d.get_cls_ground_truth())
     assert(self.d.get_cls_ground_truth()==df)
 

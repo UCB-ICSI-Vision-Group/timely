@@ -1,3 +1,8 @@
+"""
+Runner script to output cooccurrence statistics for the synthetic
+and PASCAL datasets.
+"""
+
 from synthetic.common_imports import *
 from synthetic.dataset import Dataset
 

@@ -2,7 +2,7 @@
   "classes": ["A","B","C"],
   "images": [
     {
-      "name": "1",
+      "name": "one",
       "size": [640,480],
       "objects": [
         {"class":"A", "bbox": [0,0,0,0], "diff": 0, "trun": 0},
@@ -11,21 +11,21 @@
       ]
     },
     {
-      "name": "2",
+      "name": "two",
       "size": [640,480],
       "objects": [
         {"class":"A", "bbox": [1,1,1,0], "diff": 0, "trun": 0}
       ]
     },
     {
-      "name": "3",
+      "name": "three",
       "size": [640,480],
       "objects": [
         {"class":"B", "bbox":[0,0,0,0], "diff": 0, "trun": 0}
       ]
     },
     {
-      "name": "4",
+      "name": "four",
       "size": [640,480],
       "objects": [
         {"class":"C", "bbox":[0,0,0,0], "diff": 0, "trun": 0},

@@ -232,8 +232,8 @@ class Dataset(object):
     """
     Construct a DataFrame of class occurence ground truth, and plot 
     a heat map of conditional occurence, where cell (i,j) means
-    P(C_i|C_j). The last column in the K x (K+2) heat map corresponds
-    to the prior P(c_i).
+    P(C_j|C_i). The last column in the K x (K+2) heat map corresponds
+    to the prior P(C_i).
 
     If second_order, plots (K choose 2) x (K+2) heat map corresponding
     to P(C_i|C_j,C_k): second-order correlations.
