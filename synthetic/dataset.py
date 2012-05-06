@@ -68,7 +68,7 @@ class Dataset(object):
       for cls_ind,clas in enumerate(choice_probs.keys()[choice]):
         if clas == 1:
           objects.append(np.array([0,0,0,0,cls_ind,0,0]))
-      image.objects_df = DataFrame(objects, columns=Image.columns)
+      image.objects_table = Table(np.array(objects), Image.columns)
       self.images.append(image)
 
   def load_from_json(self, filename):
@@ -196,35 +196,37 @@ class Dataset(object):
   ###
   def get_cls_counts(self, with_diff=True, with_trun=True):
     """
-    Return DataFrame of class presence counts.
-      Index: image.name
-      Columns: self.classes
+    Return (N,K) array of class presence counts, where
+    - n corresponds to index into self.images,
+    - k corresponds to index into self.classes.
     """
-    data = {}
-    for image in self.images:
-      data[image.name] = image.get_cls_counts()
-    return DataFrame(data).T
+    kwargs = {'with_diff':with_diff, 'with_trun':with_trun}
+    return ut.collect(self.images, Image.get_cls_counts, kwargs)
 
   def get_cls_ground_truth(self,with_diff=True,with_trun=True):
-    "Return DataFrame of classification (0/1) ground truth."
-    return self.get_cls_counts(with_diff,with_trun)>0
+    "Return Table of classification (0/1) ground truth."
+    arr = self.get_cls_counts(with_diff,with_trun)>0
+    return Table(arr,self.classes)
 
   def get_det_ground_truth(self, with_diff=True, with_trun=True):
     """
-    Return DataFrame of detection ground truth.
-      Major index: image.name
-      Minor index: object index (irrelevant)
-      Columns: Image.columns
-    Caches the result in memory.
+    Return Table of detection ground truth.
+    Cache the results for the given parameter settings.
     """
     name = '%s%s'%(with_diff,with_trun)
     if name not in self.cached_det_ground_truth:
-      data = {}
-      for image in self.images:
-        data[image.name] = image.get_det_gt(with_diff,with_trun)
-      df = Panel.from_dict(data,orient='minor').swapaxes().to_frame()
-      self.cached_det_ground_truth[name] = df
+      kwargs = {'with_diff':with_diff, 'with_trun':with_trun}
+      table = ut.collect_with_index(
+        self.images, Image.get_det_gt, kwargs, 'img_ind')
+      self.cached_det_ground_truth[name] = table
     return self.cached_det_ground_truth[name]
+
+  def get_det_ground_truth_for_class(self, class_name, with_diff=True, with_trun=True):
+    """
+    Return Table of detection ground truth, filtered for the given class.
+    """
+    gt = self.get_det_ground_truth(with_diff,with_trun)
+    return gt.filter_on_column('cls_ind',self.classes.index(class_name))
 
   ###
   # Statistics
@@ -243,24 +245,25 @@ class Dataset(object):
 
     Return the figure.
     """
+    from pandas import DataFrame
     # Construct the conditional co-occurence
-    df = self.get_cls_ground_truth() # TODO: with_diff, with_trun here
-    combinations = [x for x in itertools.combinations(df.columns,2)]
+    table = self.get_cls_ground_truth() # TODO: with_diff, with_trun here
+    combinations = [x for x in itertools.combinations(table.cols,2)]
     combination_strs = ['%s, %s'%(x[0],x[1]) for x in combinations]
 
-    total = df.shape[0]
-    N = len(df.columns)
-    K = len(combinations) if second_order else len(df.columns)
+    total = table.shape[0]
+    N = len(table.cols)
+    K = len(combinations) if second_order else len(table.cols)
     data = np.zeros((K,N+1))
     prior = np.zeros(K)
     for i in range(0,K):
       if not second_order:
-        cls = df.columns[i]
-        conditioned = df[df[cls]]
+        cls = table.cols[i]
+        conditioned = table.filter_on_column(cls,True)
       else:
         cls1 = combinations[i][0]
         cls2 = combinations[i][1]
-        conditioned = df[df[cls1]&df[cls2]]      
+        conditioned = table.filter_on_column(cls1,True).filter_on_column(cls2,True)
 
       # count all the classes
       data[i,:-1] = conditioned.sum()
@@ -279,8 +282,8 @@ class Dataset(object):
       # use the max count to compute the prior
       prior[i] = max_val / total
 
-      index = combination_strs if second_order else df.columns
-      columns = df.columns.tolist()+['nothing']
+      index = combination_strs if second_order else table.cols
+      columns = table.cols+['nothing']
       m = DataFrame(data,index=index,columns=columns)
 
     # Insert P(X) as the last column

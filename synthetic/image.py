@@ -8,7 +8,7 @@ from synthetic.bounding_box import BoundingBox
 from synthetic.sliding_windows import SlidingWindows
 
 class Image(object):
-  "An image has a name, size and a DataFrame of objects."
+  "An image has a name, size and a Table of objects."
 
   columns = BoundingBox.columns + ['cls_ind', 'diff', 'trun']
   
@@ -18,11 +18,11 @@ class Image(object):
     self.classes = classes
     self.name = name
     self.filename = None
-    self.objects_df = None
-    # the above DataFrame is constructed by the loader class
+    self.objects_table = None
+    # the above Table is constructed by the loader class
 
   def __repr__(self):
-    return "Image (%(name)s)\n  W x H: %(width)d x %(height)d\n  Objects:\n %(objects_df)s" % self.__dict__
+    return "Image (%(name)s)\n  W x H: %(width)d x %(height)d\n  Objects:\n %(objects_table)s" % self.__dict__
 
   def display_image(self):
     "Display the image using skimage."
@@ -35,55 +35,51 @@ class Image(object):
       return None
     return imread(self.filename)
 
-  def compute_sift(self):
-    "Return SIFT features on the image."
-    # TODO
-    None
-
-  def get_objects_df(self,with_diff=False,with_trun=True):
-    "Return objects_df filtered with the parameters."
-    df = self.objects_df
-    df = df if with_diff else df[df['diff']==0] 
-    df = df if with_trun else df[df['trun']==0]
+  def get_objects(self,with_diff=False,with_trun=True):
+    "Return Table of objects filtered with the parameters."
+    df = self.objects_table
+    df = df if with_diff else df.filter_on_column('diff',0) 
+    df = df if with_trun else df.filter_on_column('trun',0) 
     return df
 
   def get_det_gt(self, with_diff=False, with_trun=True, cls_name=None):
     """
-    Return DataFrame of detection ground truth.
-    If class_name is given, only includes objects of that class.
+    Return Table of detection ground truth.
+    If class_name is given, only include objects of that class.
     Filter according to with_diff and with_trun.
     """
-    df = self.get_objects_df(with_diff,with_trun)
+    objects = self.get_objects(with_diff,with_trun)
     if cls_name and not cls_name=='all':
       cls_ind = self.classes.index(cls_name)
-      df = df.ix[df['cls_ind']==cls_ind]
-    return df 
+      df = objects.filter_on_column('cls_ind',cls_ind)
+    return objects
 
   def get_cls_counts(self, with_diff=False, with_trun=True):
-    "Return a Series of the counts of each class in the image."
+    "Return an array of the counts of each class in the image."
     counts = np.zeros(len(self.classes))
-    objects_df = self.get_objects_df(with_diff,with_trun)
-    if objects_df.shape[0]>0:
-      cls_inds = objects_df['cls_ind'].astype('int')
+    objects = self.get_objects(with_diff,with_trun)
+    if objects.shape[0]>0:
+      cls_inds = objects.subset_arr('cls_ind').astype('int')
       bincount = np.bincount(cls_inds)
       # need to pad this with zeros for total length of num_classes
       counts[:bincount.size] = bincount
-    return Series(counts,self.classes)
+    return counts
 
   def get_cls_gt(self,with_diff=False,with_trun=False):
-    "Return a Series of class presence (True/False) ground truth."
+    "Return an array of class presence (True/False) ground truth."
     return self.get_cls_counts(with_diff,with_trun)>0
 
   def contains_class(self, cls_name, with_diff=False, with_trun=True):
-    "Return whether the image contains an object of class cls."
-    return self.get_cls_gt(with_diff,with_trun)[cls_name]
+    "Return whether the image contains an object of class cls_name."
+    gt = self.get_cls_gt(with_diff,with_trun)
+    return gt[self.classes.index(cls_name)]
 
   ### 
   # Windows
   ###
   def get_whole_image_bbox(self):
     "Return a BoundingBox with (0,0,width,height) of the image."
-    return BoundingBox((0,0,self.size[0],self.size[1]))
+    return BoundingBox((0,0,self.width,self.height))
 
   def get_windows(self,window_params,with_time=False):
     "Return all windows that can be generated with given params."
@@ -113,9 +109,9 @@ class Image(object):
       trun = obj['trun']
       objects.append(np.hstack((bbox.get_arr(), cls_ind, diff, trun)))
     if len(objects)>0:
-      img.objects_df = DataFrame(objects, columns=cls.columns)
+      img.objects_table = Table(np.array(objects), cls.columns)
     else:
-      img.objects_df = DataFrame(None, columns=cls.columns)
+      img.objects_table = Table(None, cls.columns)
     return img
   
   @classmethod
@@ -157,7 +153,7 @@ class Image(object):
       cls_ind = classes.index(clas)
       objects.append(np.hstack((bbox.get_arr(), cls_ind, diff, trun)))
     if len(objects)>0:
-      img.objects_df = DataFrame(objects, columns=cls.columns)
+      img.objects_table = Table(np.array(objects), cls.columns)
     else:
-      img.objects_df = DataFrame(None, columns=cls.columns)
+      img.objects_table = Table(None, cls.columns)
     return img

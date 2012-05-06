@@ -44,7 +44,7 @@ def test_csc_svm(d_train, d_val):
   return table
 
 def conv(d_train, table_arr):
-  table = ut.Table()
+  table = Table()
   #table_arr = cPickle.load(open('table_linear_5','r'))
   table.arr = np.hstack((table_arr, np.array(np.arange(table_arr.shape[0]),ndmin=2).T))
   table.cols = d_train.classes + ['img_ind']

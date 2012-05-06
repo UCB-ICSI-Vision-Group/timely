@@ -13,15 +13,15 @@ class TestDatasetJson:
 
   def test_get_det_ground_truth(self):
     gt = self.d.get_det_ground_truth(with_diff=True,with_trun=False)
-    df = DataFrame(
-      [[ 0.,  0.,  0.,  0.,  0.,  0, 0, 0.],
+    df = Table(
+      np.array([[ 0.,  0.,  0.,  0.,  0.,  0, 0, 0.],
        [ 1.,  1.,  1.,  1.,  1.,  0, 0, 0.],
        [ 2.,  2.,  2.,  2.,  2.,  0, 0, 0.],
-       [ 1.,  1.,  1.,  1.,  0.,  0, 0, 1.],
+       [ 1.,  1.,  1.,  0.,  0.,  0, 0, 1.],
        [ 0.,  0.,  0.,  0.,  1.,  0, 0, 2.],
        [ 0.,  0.,  0.,  0.,  2.,  0, 0, 3.],
-       [ 1.,  1.,  1.,  1.,  2.,  0, 0, 3.]],
-       columns=['x','y','w','h','cls_ind','diff','trun','img_ind'])
+       [ 1.,  1.,  1.,  1.,  2.,  0, 0, 3.]]),
+       ['x','y','w','h','cls_ind','diff','trun','img_ind'])
     print(gt)
     print(df)
     assert(gt == df)
@@ -36,31 +36,31 @@ class TestDatasetJson:
     assert(np.all(self.d.get_cls_counts() == arr))
 
   def test_get_cls_ground_truth_json(self):
-    df = DataFrame(
-      [ [ True, True, True],
+    df = Table(
+      np.array([ [ True, True, True],
         [ True, False, False],
         [ False, True, False],
-        [ False, False, True] ], columns = ["A","B","C"])
+        [ False, False, True] ]), ["A","B","C"])
     print(df)
     print(self.d.get_cls_ground_truth())
     assert(self.d.get_cls_ground_truth()==df)
 
-  def test_ground_truth_for_class_json(self):
-    gt = self.d.get_ground_truth_for_class("A",include_diff=True,include_trun=True)
+  def test_det_ground_truth_for_class_json(self):
+    gt = self.d.get_det_ground_truth_for_class("A",with_diff=True,with_trun=True)
     arr = np.array(
       [[ 0.,  0.,  0.,  0.,  0., 0., 0, 0.],
-       [ 1.,  1.,  1.,  1.,  0., 0., 0., 1.]])
+       [ 1.,  1.,  1.,  0.,  0., 0., 0., 1.]])
     cols = ['x','y','w','h','cls_ind','diff','trun','img_ind']
     print(gt.arr)
     assert(np.all(gt.arr == arr))
     assert(gt.cols == cols)
 
     # no diff or trun
-    gt = self.d.get_ground_truth_for_class("A",include_diff=False,include_trun=False)
+    gt = self.d.get_det_ground_truth_for_class("A",with_diff=False,with_trun=False)
     arr = np.array(
-      [[ 0.,  0.,  0.,  0.,  0., 0.],
-       [ 1.,  1.,  1.,  1.,  0., 1.]])
-    cols = ['x','y','w','h','cls_ind','img_ind']
+      [[ 0.,  0.,  0.,  0.,  0., 0., 0, 0.],
+       [ 1.,  1.,  1.,  0.,  0., 0., 0., 1.]])
+    cols = ['x','y','w','h','cls_ind','diff','trun','img_ind']
     print(gt.arr)
     assert(np.all(gt.arr == arr))
     assert(gt.cols == cols)

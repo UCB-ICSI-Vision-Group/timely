@@ -1,165 +1,20 @@
+"""
+Various helpful classes and methods.
+"""
+
+# Do not import common_imports here to avoid recursive import.
 import subprocess
 import operator
 import os
 import time
-
-class Table:
-  "An ndarray with associated column names."
-
-  ###################
-  # Init/Copy/Repr
-  ###################
-  def __init__(self,arr=None,cols=None,name=None):
-    """
-    If arr and cols are passed in, initialize with them by reference. 
-    If nothing is passed in, set them to None.
-    name is just a place to keep some identifying information about this data.
-    """
-    self.arr = arr
-    self.cols = cols
-    self.name = name
-
-  def set_arr(self,arr):
-    "Make sure that arr is at least 2d and set self.arr to it."
-    self.arr = np.atleast_2d(arr)
-
-  def __deepcopy__(self):
-    "Make a deep copy of the Table and return it."
-    ret = Table()
-    ret.arr = self.arr.copy() if not self.arr == None else None
-    ret.cols = list(self.cols) if not self.cols == None else None
-    return ret
-
-  def __repr__(self):
-    return """
-Table name: %(name)s | size: %(shape)s
-%(cols)s
-%(arr)s
-"""%dict(self.__dict__.items()+{'shape':self.shape()}.items())
-
-  def __eq__(self,other):
-    "Two Tables are equal if all columns and their names are equal, in order."
-    return np.all(self.arr==other.arr) and self.cols == other.cols
-
-  def shape(self):
-    return self.arr.shape
-
-  def ind(self,col_name):
-    return self.cols.index(col_name)
-
-  ###################
-  # Save/Load
-  ###################
-  def save_csv(self,filename):
-    """Writes array out in csv format, with cols on the first row."""
-    with open(filename,'w') as f:
-      f.write("%s\n"%','.join(self.cols))
-      f.write("%s\n"%self.name)
-      np.savetxt(f, self.arr, delimiter=',')
-
-  @classmethod
-  def load_from_csv(cls,filename):
-    """Creates a new Table object by reading in a csv file with header."""
-    table = Table()
-    with open(filename) as f:
-      table.cols = f.readline().strip().split(',')
-      table.name = f.readline().strip()
-    table.arr = np.loadtxt(filename, delimiter=',', skiprows=2)
-    assert(len(table.cols) == table.arr.shape[1])
-    return table
-
-  def save(self,filename):
-    """
-    Writes array out in numpy format, with cols in a separate file.
-    Filename should not have an extension; the data will be saved in
-    filename.npy and filename_cols.txt.
-    """
-    # strip extension from filename
-    filename, ext = os.path.splitext(filename)
-    with open(filename+'_cols.txt','w') as f:
-      f.write("%s\n"%','.join(self.cols))
-      f.write("%s\n"%self.name)
-    np.save(filename,self.arr)
-
-  @classmethod
-  def load(cls,filename):
-    """
-    Create a new Table object, and populate its cols and arr by reading in
-    from filename (and derived _cols filename.
-    """
-    table = Table()
-    filename, ext = os.path.splitext(filename)
-    with open(filename+'_cols.txt') as f:
-      table.cols = f.readline().strip().split(',')
-      table.name = f.readline().strip()
-    table.arr = np.load(filename+'.npy')
-    assert(len(table.cols) == table.arr.shape[1])
-    return table
-
-  ###################
-  # Filtering
-  ###################
-  def row_subset(self,row_inds):
-    "Return Table with only the specified rows."
-    return Table(arr=self.row_subset_arr(row_inds), cols=self.cols)
-
-  def row_subset_arr(self,row_inds):
-    "Return self.arr with only the specified rows."
-    if isinstance(row_inds,np.ndarray):
-      row_inds = row_inds.tolist()
-    return self.arr[row_inds,:]
-
-  def subset(self,col_names):
-    "Return Table with only the specified col_names, in order."
-    return Table(arr=self.subset_arr(col_names), cols=col_names)
-
-  def subset_arr(self,col_names):
-    "Return self.arr for only the columns that are specified."
-    if not isinstance(col_names, types.ListType):
-      inds = self.cols.index(col_names)
-    else:
-      inds = [self.cols.index(col_name) for col_name in col_names]
-    return self.arr[:,inds]
-
-  def sort_by_column(self,ind_name,descending=False):
-    """
-    Modify self to sort arr by column. Return self.
-    """
-    if descending:
-      sorted_inds = np.argsort(-self.arr[:,self.cols.index(ind_name)])
-    else:
-      sorted_inds = np.argsort(self.arr[:,self.cols.index(ind_name)])
-    self.arr = self.arr[sorted_inds,:]
-    return self
-
-  def filter_on_column(self,ind_name,val,op=operator.eq,omit=False):
-    """
-    Take name of column to index by and value to filter by.
-    By providing an operator, more than just equality filtering can be done.
-    """
-    if ind_name not in self.cols:
-      return self
-    table = Table(cols=self.cols,arr=self.arr)
-    table.arr = filter_on_column(table.arr,table.cols.index(ind_name),val,op,omit)
-    if omit:
-      table.cols = list(table.cols)
-      table.cols.remove(ind_name)
-    return table
-
-  def with_column_omitted(self,ind_name):
-    "Return Table with given column omitted. Name stays the same."
-    ind = self.cols.index(ind_name)
-    # TODO: why use hstack?
-    arr = np.hstack((self.arr[:,:ind], self.arr[:,ind+1:]))
-    cols = list(self.cols)
-    cols.remove(ind_name)
-    return Table(arr,cols,self.name)
+import numpy as np
+#from synthetic.table import Table
 
 ###################
 # Ndarray manipulations
 ###################
 def append_index_column(arr, index):
-  """ Take an m x n array, and appends a column containing index. """
+  "Take an m x n array, and appends a column containing index."
   ind_vector = np.ones((np.shape(arr)[0],1)) * index
   arr = np.hstack((arr, ind_vector))
   return arr
@@ -180,38 +35,43 @@ def filter_on_column(arr, ind, val, op=operator.eq, omit=False):
     arr = arr[:,final_ind]
   return arr
 
-def collect(seq, func, kwargs=None, with_index=False):
+def collect(seq, func, kwargs=None, with_index=False, index_col_name=None):
   """
   Take a sequence seq of arguments to function func.
-    - func should return an np.array.
-    - kwargs is a dictionary of arguments that will be passed to func if given
+    - func should return a Table or an ndarray.
+    - kwargs is a dictionary of arguments that will be passed to func.
+
   Return the outputs of func concatenated vertically into an np.array
   (thereby making copies of the collected data).
-  If with_index is True, append index column to the outputs.
+  If the outputs are Tables, concatenate the arrays and return a Table.
+
+  If with_index is True, append index column to outputs.
+  If the outputs are Tables, index_col_name must be provided for this purpose.
   """
   all_results = []
+  cols = None
   for index,image in enumerate(seq):
     results = func(image, **kwargs) if kwargs else func(image)
-    if results != None and max(results.shape)>0:
+    if results != None and results.shape[0]>0:
+      from synthetic.table import Table
+      if isinstance(results,Table):
+        cols = results.cols
+        results = results.arr
       if with_index:
         all_results.append(append_index_column(results,index))
       else:
         all_results.append(results)
-  if len(all_results)<1:
-    return np.array([])
-  return np.vstack(all_results)
+  ret = np.array([])
+  if len(all_results)>0:
+    ret = np.vstack(all_results)
+  if cols:
+    assert(index_col_name)
+    ret = Table(ret, list(cols+[index_col_name]))
+  return ret
 
-def collect_with_index(seq, func, kwargs=None):
-  """See collect()."""
-  return collect(seq,func,kwargs,with_index=True)
-
-def sort_by_column(arr, ind, mode='ascend'):
-  """Return the array row-sorted by column at ind."""
-  if mode == 'descend':
-    arr = arr[np.argsort(-arr[:,ind]),:]
-  else:
-    arr = arr[np.argsort(arr[:,ind]),:]
-  return arr
+def collect_with_index(seq, func, kwargs=None, index_col_name=None):
+  "See collect()."
+  return collect(seq,func,kwargs,True,index_col_name)
 
 ###################
 # Misc

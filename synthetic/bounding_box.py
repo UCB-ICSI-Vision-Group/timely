@@ -29,6 +29,14 @@ class BoundingBox:
         h = float(seq[3]-y+1)
       self.arr = np.array([x,y,w,h])
 
+  def __repr__(self):
+    return "BoundingBox: %s" % self.get_arr()
+
+  def __eq__(self,other):
+    return np.all(self.arr == other.arr)
+  def __ne__(self,other):
+    return not __eq__(self,other)
+
   def area(self):
     "Return area."
     return self.arr[2]*self.arr[3]
@@ -150,6 +158,3 @@ class BoundingBox:
       if iw>0 and ih>0:
         ov = iw*ih/ua
     return ov
-
-  def __repr__(self):
-    return "BoundingBox: %s" % self.get_arr()

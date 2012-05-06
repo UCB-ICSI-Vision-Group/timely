@@ -16,7 +16,6 @@ from IPython import embed
 from os.path import join as opjoin
 from os.path import exists as opexists
 from pprint import pprint
-from pandas import Series,DataFrame,Panel
 
 import numpy as np
 import matplotlib as mpl
@@ -26,5 +25,5 @@ import matplotlib.ticker
 from mpl_toolkits.axes_grid import make_axes_locatable
 
 import synthetic.util as ut
-
+from synthetic.table import Table
 from synthetic.common_mpi import *

@@ -187,8 +187,8 @@ def main():
           pos_arr = pos_arr[rand]
           rand = np.random.random_integers(0, neg_arr.shape[0] - 1, size=num_pos)
           neg_arr = neg_arr[rand]     
-      pos_table = ut.Table(pos_arr, ['x','y','w','h','img_ind'])
-      neg_table = ut.Table(neg_arr, pos_table.cols)      
+      pos_table = Table(pos_arr, ['x','y','w','h','img_ind'])
+      neg_table = Table(neg_arr, pos_table.cols)      
       train_with_hard_negatives(d, dtest,  num_words,codebook_samples,codebook,\
                                 cls, pos_table, neg_table,feature_type, \
                                 iterations=iters, kernel=kernel, L=2, \

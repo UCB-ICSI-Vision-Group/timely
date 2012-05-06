@@ -33,12 +33,12 @@ class TestEvaluationPerfect:
     arr = np.array(
         [ [0,0,10,10,0,0,0],
           [10,10,10,10,1,0,0] ])
-    gt = ut.Table(arr,cols)
+    gt = Table(arr,cols)
 
     dets_arr = np.array(
         [ [0,0,10,10,-1,-1,0,0],
           [10,10,10,10,-1,-1,1,0] ]) 
-    dets = ut.Table(dets_arr,dets_cols)
+    dets = Table(dets_arr,dets_cols)
     
     # make sure gt and gt_cols aren't modified
     gt_arr_copy = gt.arr.copy()
@@ -61,7 +61,7 @@ class TestEvaluationPerfect:
           [0,0,10,10,0,-1,0,0],
           [10,10,10,10,0,-1,1,0],
           [10,10,10,10,-1,-1,1,0] ]) 
-    dets = ut.Table(dets_arr,dets_cols)
+    dets = Table(dets_arr,dets_cols)
 
     ap,rec,prec = self.evaluation.compute_det_pr(dets, gt)
     correct_rec = np.array([0.5,1,1,1])
@@ -84,7 +84,7 @@ class TestEvaluationPerfect:
           [10,10,10,10,1,0,0],
           [20,20,10,10,2,0,0],
           [30,30,10,10,2,0,0] ])
-    gt = ut.Table(arr,cols)
+    gt = Table(arr,cols)
     ap,rec,prec = self.evaluation.compute_det_pr(dets, gt)
     correct_rec = np.array([0.25,0.5,0.5,0.5])
     correct_prec = np.array([1,1,2./3,0.5])
@@ -94,7 +94,7 @@ class TestEvaluationPerfect:
 
     # now call it with empty detections
     dets_arr = np.array([])
-    dets = ut.Table(dets_arr,dets_cols)
+    dets = Table(dets_arr,dets_cols)
     ap,rec,prec = self.evaluation.compute_det_pr(dets, gt)
     correct_ap = 0
     correct_rec = np.array([0])
@@ -109,7 +109,7 @@ class TestEvaluationPerfect:
     assert(round(res,11) == 0.47206391958)
     
   def test_compute_cls_map_half(self):
-    table_csc_half = ut.Table()
+    table_csc_half = Table()
     table_csc_half.cols = list(self.csc_trainval.cols)
     for _ in range(10):
       rand_inds = np.random.permutation(range(5011))[:2500]
@@ -123,7 +123,7 @@ class TestEvaluationPerfect:
     
   def test_compute_cls_map_gt_half(self):
     rand_inds = np.random.permutation(range(5011))[:2500]
-    table_gt_half = ut.Table()
+    table_gt_half = Table()
     table_gt_half.arr = np.hstack((self.trainval_gt.arr,np.array(np.arange(5011), ndmin=2).T))
     table_gt_half.arr = table_gt_half.arr[rand_inds,:]
     table_gt_half.cols = list(self.trainval_gt.cols) + ['img_ind']
@@ -131,7 +131,7 @@ class TestEvaluationPerfect:
     assert(round(res,6) == 1)
   
   def test_compute_cls_map_random_clf(self):
-    clf_table = ut.Table()
+    clf_table = Table()
     num_test = 10
     ress = np.zeros((num_test,))
     for idx in range(num_test):

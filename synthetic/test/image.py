@@ -1,9 +1,8 @@
 from synthetic.common_imports import *
-from synthetic.common_mpi import *
-import synthetic.config as config
 
-from synthetic.image import *
-from synthetic.sliding_windows import *
+from synthetic.image import Image
+from synthetic.bounding_box import BoundingBox
+from synthetic.sliding_windows import WindowParams
 
 class TestImage:
   def setup(self):
@@ -25,64 +24,66 @@ class TestImage:
     assert(image.classes == ['A','B','C'])
     assert(image.name == 'test_image')
 
+  def test_get_whole_image_bbox(self):
+    image = Image(20,10,[],'test_image')
+    assert(image.get_whole_image_bbox() == BoundingBox((0,0,20,10)))
+    image = Image(2,100,[],'test_image')
+    assert(image.get_whole_image_bbox() == BoundingBox((0,0,2,100)))
+
   def test_load_json_data(self):
     image = Image.load_from_json_data(self.classes,self.data)
     assert(image.width == 640 and image.height == 480)
     assert(image.classes == ['A','B','C'])
     assert(image.name == 'test_image')
-    objects_df = DataFrame(np.array([
+    objects_table = Table(np.array([
       [0,0,0,0,0,0,0],
       [1,1,1,1,1,0,0],
-      [2,2,2,2,2,0,0]]), columns=self.columns)
-    assert(image.objects_df == objects_df)
+      [2,2,2,2,2,0,0]]), self.columns)
+    assert(image.objects_table == objects_table)
 
   def test_get_det_gt(self):
     image = Image.load_from_json_data(self.classes,self.data)
-    objects_df = DataFrame(np.array([
+    objects_table = Table(np.array([
       [0,0,0,0,0,0,0],
       [1,1,1,1,1,0,0],
-      [2,2,2,2,2,0,0]]), columns=self.columns)
-    assert(image.get_objects_df() == objects_df)
+      [2,2,2,2,2,0,0]]), self.columns)
+    assert(image.get_objects() == objects_table)
 
     data = self.data.copy()
     data['objects'][0]['diff'] = 1
     data['objects'][1]['trun'] = 1
     image = Image.load_from_json_data(self.classes,data)
-    objects_df = DataFrame(np.array([
+    objects_table = Table(np.array([
       [0,0,0,0,0,1,0],
       [1,1,1,1,1,0,1],
-      [2,2,2,2,2,0,0]]), columns=self.columns)
-    assert(image.get_objects_df(with_diff=True,with_trun=True) == objects_df)
+      [2,2,2,2,2,0,0]]), self.columns)
+    assert(image.get_objects(with_diff=True,with_trun=True) == objects_table)
 
-    objects_df = DataFrame(np.array([
+    objects_table = Table(np.array([
       [1,1,1,1,1,0,1],
-      [2,2,2,2,2,0,0]]), 
-      index=[1,2], columns=self.columns)
-    assert(image.get_objects_df(with_diff=False,with_trun=True) == objects_df)
+      [2,2,2,2,2,0,0]]),self.columns)
+    assert(image.get_objects(with_diff=False,with_trun=True) == objects_table)
 
     # this should be default behavior
-    assert(image.get_objects_df() == objects_df)
+    assert(image.get_objects() == objects_table)
 
-    objects_df = DataFrame(np.array([
-      [2,2,2,2,2,0,0]]), 
-      index=[2], columns=self.columns)
-    assert(image.get_objects_df(with_diff=False,with_trun=False) == objects_df)
+    objects_table = Table(np.array([
+      [2,2,2,2,2,0,0]]),self.columns)
+    assert(image.get_objects(with_diff=False,with_trun=False) == objects_table)
 
-    objects_df = DataFrame(np.array([
+    objects_table = Table(np.array([
       [0,0,0,0,0,1,0],
-      [2,2,2,2,2,0,0]]), 
-      index=[0,2], columns=self.columns)
-    assert(image.get_objects_df(with_diff=True,with_trun=False) == objects_df)
+      [2,2,2,2,2,0,0]]), self.columns)
+    assert(image.get_objects(with_diff=True,with_trun=False) == objects_table)
 
     # What if everything is filtered out?
     data['objects'] = data['objects'][:-1]
-    objects_df = DataFrame(np.array([
+    objects_table = Table(np.array([
       [0,0,0,0,0,1,0],
-      [1,1,1,1,1,0,1]]),
-      index=[0,1], columns=self.columns)
+      [1,1,1,1,1,0,1]]), self.columns)
     image = Image.load_from_json_data(self.classes,data)
-    assert(image.get_objects_df(with_diff=True,with_trun=True) == objects_df)
-    assert(image.get_objects_df(with_diff=False,with_trun=False).shape[0] == 0)
+    assert(image.get_objects(with_diff=True,with_trun=True) == objects_table)
+    assert(image.get_objects(with_diff=False,with_trun=False).shape[0] == 0)
 
   def test_get_cls_counts_and_gt(self):
     data = self.data.copy()

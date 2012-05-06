@@ -200,7 +200,7 @@ class SlidingWindows:
     dirname = config.get_sliding_windows_metaparams_dir(self.train_name)
     table_filename = os.path.join(dirname,'table.csv')
     if os.path.exists(table_filename):
-      table = ut.Table.load_from_csv(table_filename)
+      table = Table.load_from_csv(table_filename)
     else:
       grid_vals = [x for x in itertools.product(
         samples_per_500px_vals,num_scales_vals,num_ratios_vals,mode_vals,priority_vals,classes)]
@@ -247,7 +247,7 @@ class SlidingWindows:
         grid_all = None
       safebarrier(comm)
       comm.Reduce(grid,grid_all)
-      table = ut.Table(grid_all,cols)
+      table = Table(grid_all,cols)
       table.save_csv(table_filename)
 
     # print the winning parameters in the table
@@ -311,7 +311,7 @@ class SlidingWindows:
         arr = np.array((np.array(window_intervals),
           recalls[:,min_overlaps.index(min_overlap)])).T
         label = '%s, %s, ov=%.2f'%(cls,mode,min_overlap)
-        tables.append(ut.Table(arr,cols,label))
+        tables.append(Table(arr,cols,label))
         np.save(filename,tables)
     if plot:
       try:
