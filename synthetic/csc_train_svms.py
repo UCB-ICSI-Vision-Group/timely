@@ -6,7 +6,6 @@ from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.ext_detector import ExternalDetector
 from synthetic.csc_classifier import CSCClassifier
-from IPython import embed
 from synthetic.evaluation import Evaluation
 
 def train_csc_svms(d_train, d_val, kernel, C):

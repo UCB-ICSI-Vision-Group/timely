@@ -16,7 +16,6 @@ from IPython import embed
 from os.path import join as opjoin
 from os.path import exists as opexists
 from pprint import pprint
-from sklearn.cross_validation import KFold
 from pandas import Series,DataFrame,Panel
 
 import numpy as np

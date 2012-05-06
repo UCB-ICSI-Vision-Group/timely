@@ -2,7 +2,6 @@ import datetime
 import scipy.io
 import sklearn
 
-from common_mpi import *
 from common_imports import *
 import synthetic.config as config
 

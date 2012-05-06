@@ -1,6 +1,5 @@
 from os.path import join,exists
 import getpass
-from IPython import embed
 
 from synthetic.util import makedirs
 

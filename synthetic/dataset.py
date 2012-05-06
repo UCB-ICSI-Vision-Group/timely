@@ -27,6 +27,9 @@ class Dataset(object):
     assert(len(self.image_names)==len(np.unique(self.image_names)))
     self.cached_det_ground_truth = {}
 
+  def __repr__(self):
+    return self.get_name()
+
   def get_name(self):
     return "%s_%s"%(self.name,self.num_images())
 
