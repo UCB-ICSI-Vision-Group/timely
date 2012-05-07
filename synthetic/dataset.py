@@ -443,8 +443,8 @@ class Dataset(object):
   def get_neg_samples_for_fold_class(self, cls, num_samples, with_diff=False,
       with_trun=True):
     if not hasattr(self, 'train'):
-      return self.get_neg_samples_for_class(cls, with_diff, with_trun)
-    all_neg = self.get_neg_samples_for_class(cls, with_diff, with_trun)
+      return self.get_neg_samples_for_class(cls, num_samples, with_diff, with_trun)
+    all_neg = self.get_neg_samples_for_class(cls, None, with_diff, with_trun)
     intersect = np.intersect1d(all_neg, self.train)
     if intersect.size == 0:
       return np.array([])
