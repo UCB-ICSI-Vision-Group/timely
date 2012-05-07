@@ -40,8 +40,11 @@ class Dataset(object):
   # Loaders / Generators
   ###
   def generate_synthetic(self):
-    "Generate a synthetic dataset that follows some simple cooccurence rules."
-    # hard-coded 4-class generation
+    """
+    Generate a synthetic dataset of 4 classes that follows some simple
+    but strong cooccurence rules.
+    """
+    num_images = 1000
     choice_probs = {
       (1,0,0,0):2,
       (0,1,0,0):1,
@@ -60,7 +63,6 @@ class Dataset(object):
     probs = np.array(choice_probs.values())
     cum_probs = np.cumsum(1.*probs/np.sum(probs))    
     self.classes = ['A','B','C','D']
-    num_images = 1000
     for i in range(0,num_images):
       image = Image(100,100,self.classes,str(i))
       choice = np.where(cum_probs>np.random.rand())[0][0]
@@ -208,7 +210,7 @@ class Dataset(object):
     arr = self.get_cls_counts(with_diff,with_trun)>0
     return Table(arr,self.classes)
 
-  def get_det_ground_truth(self, with_diff=True, with_trun=True):
+  def get_det_gt(self, with_diff=True, with_trun=True):
     """
     Return Table of detection ground truth.
     Cache the results for the given parameter settings.
@@ -221,11 +223,11 @@ class Dataset(object):
       self.cached_det_ground_truth[name] = table
     return self.cached_det_ground_truth[name]
 
-  def get_det_ground_truth_for_class(self, class_name, with_diff=True, with_trun=True):
+  def get_det_gt_for_class(self, class_name, with_diff=True, with_trun=True):
     """
     Return Table of detection ground truth, filtered for the given class.
     """
-    gt = self.get_det_ground_truth(with_diff,with_trun)
+    gt = self.get_det_gt(with_diff,with_trun)
     return gt.filter_on_column('cls_ind',self.classes.index(class_name))
 
   ###
@@ -245,34 +247,38 @@ class Dataset(object):
 
     Return the figure.
     """
-    from pandas import DataFrame
-    # Construct the conditional co-occurence
-    table = self.get_cls_ground_truth() # TODO: with_diff, with_trun here
-    combinations = [x for x in itertools.combinations(table.cols,2)]
-    combination_strs = ['%s, %s'%(x[0],x[1]) for x in combinations]
+    # Construct the conditional co-occurence table
+    table = self.get_cls_ground_truth(with_diff=False,with_trun=True)
+
+    # This takes care of most of the difference between normal and second_order
+    # In the former case, a "combination" is just one class to condition on.
+    combinations = combination_strs = table.cols
+    if second_order: 
+      combinations = [x for x in itertools.combinations(table.cols,2)]
+      combination_strs = ['%s, %s'%(x[0],x[1]) for x in combinations]
 
     total = table.shape[0]
     N = len(table.cols)
-    K = len(combinations) if second_order else len(table.cols)
-    data = np.zeros((K,N+1))
+    K = len(combinations)
+    data = np.zeros((K,N+2)) # extra columns are for P("nothing"|C) and P(C)
     prior = np.zeros(K)
-    for i in range(0,K):
-      if not second_order:
-        cls = table.cols[i]
-        conditioned = table.filter_on_column(cls,True)
+    for combination in combinations:
+      if second_order:
+        cls1 = combination[0]
+        cls2 = combination[1]
+        conditioned = table.filter_on_column(cls1).filter_on_column(cls2)
       else:
-        cls1 = combinations[i][0]
-        cls2 = combinations[i][1]
-        conditioned = table.filter_on_column(cls1,True).filter_on_column(cls2,True)
+        conditioned = table.filter_on_column(combination)
 
       # count all the classes
-      data[i,:-1] = conditioned.sum()
+      data[i,:-2] = conditioned.sum()
 
-      # count the number of times that cls was the only one present
-      if not second_order:
-        data[i,-1] = ((conditioned.sum(1)-1)==0).sum()
+      # count the number of times that cls was the only one present to get
+      # P("nothing"|C)
+      if second_order:
+        data[i,-2] = ((conditioned.sum(1)-2)==0).sum()
       else:
-        data[i,-1] = ((conditioned.sum(1)-2)==0).sum()
+        data[i,-2] = ((conditioned.sum(1)-1)==0).sum()
 
       # normalize
       max_val = np.max(data[i,:])
@@ -280,19 +286,14 @@ class Dataset(object):
       data[i,:][data[i,:]==1]=np.nan
 
       # use the max count to compute the prior
-      prior[i] = max_val / total
+      data[i,-1] = max_val / total
 
-      index = combination_strs if second_order else table.cols
-      columns = table.cols+['nothing']
-      m = DataFrame(data,index=index,columns=columns)
-
-    # Insert P(X) as the last column
-    m.insert(N+1,'prior',prior)
+      m = Table(data,table.cols+['nothing','prior'],index=combination_strs)
 
     # If second_order, sort by prior and remove rows with 0 prior
     if second_order:
-      m = m.sort('prior',ascending=False)
-      m = m[m['prior']>0]
+      m = m.filter_on_column('prior',0,operator.gt).\
+            sort_by_column('prior',descending=True)
 
     if size:
       fig = plt.figure(figsize=size)
@@ -314,7 +315,7 @@ class Dataset(object):
     #Formatting:
     ax = ax_im
     ax.set_xticks(np.arange(m.shape[1]))
-    ax.set_xticklabels(m.columns)
+    ax.set_xticklabels(m.cols)
     for tick in ax.xaxis.iter_ticks():
       tick[0].label2On = True
       tick[0].label1On = False
@@ -399,13 +400,11 @@ class Dataset(object):
     Dataset has an inner state about current fold (This is like an implicit 
     generator).
     """
-    folds = KFold(len(self.images), numfolds)
-    self.folds = []
-    for fold in folds:
-      self.folds.append(fold)
+    self.folds = KFold(len(self.images), numfolds)
     self.current_fold = 0
     
   def next_folds(self):
+    # TODO: check that correct
     if self.current_fold < len(self.folds):
       fold = self.folds[self.current_fold]
       self.current_fold += 1
@@ -414,7 +413,7 @@ class Dataset(object):
         self.train = np.where(self.train)[0]
         self.val = np.where(self.val)[0]
       return fold
-    if self.current_fold >= len(self.folds):
+    else:
       self.current_fold = 0
       return 0
   

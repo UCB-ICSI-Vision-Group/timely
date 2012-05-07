@@ -88,8 +88,8 @@ class TestImage:
   def test_get_cls_counts_and_gt(self):
     data = self.data.copy()
     image = Image.load_from_json_data(self.classes,data)
-    assert(np.all(image.get_cls_counts() == Series([1,1,1],self.classes)))
-    assert(np.all(image.get_cls_gt() == Series([True,True,True],self.classes)))
+    assert(np.all(image.get_cls_counts() == np.array([1,1,1])))
+    assert(np.all(image.get_cls_gt() == np.array([True,True,True])))
     assert(image.contains_class('A') == True)
     assert(image.contains_class('B') == True)
 

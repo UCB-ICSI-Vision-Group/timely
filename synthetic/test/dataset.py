@@ -11,8 +11,8 @@ class TestDatasetJson:
     assert(self.d.num_images() == 4)
     assert(self.d.classes == self.classes)
 
-  def test_get_det_ground_truth(self):
-    gt = self.d.get_det_ground_truth(with_diff=True,with_trun=False)
+  def test_get_det_gt(self):
+    gt = self.d.get_det_gt(with_diff=True,with_trun=False)
     df = Table(
       np.array([[ 0.,  0.,  0.,  0.,  0.,  0, 0, 0.],
        [ 1.,  1.,  1.,  1.,  1.,  0, 0, 0.],
@@ -46,7 +46,7 @@ class TestDatasetJson:
     assert(self.d.get_cls_ground_truth()==df)
 
   def test_det_ground_truth_for_class_json(self):
-    gt = self.d.get_det_ground_truth_for_class("A",with_diff=True,with_trun=True)
+    gt = self.d.get_det_gt_for_class("A",with_diff=True,with_trun=True)
     arr = np.array(
       [[ 0.,  0.,  0.,  0.,  0., 0., 0, 0.],
        [ 1.,  1.,  1.,  0.,  0., 0., 0., 1.]])
@@ -56,7 +56,7 @@ class TestDatasetJson:
     assert(gt.cols == cols)
 
     # no diff or trun
-    gt = self.d.get_det_ground_truth_for_class("A",with_diff=False,with_trun=False)
+    gt = self.d.get_det_gt_for_class("A",with_diff=False,with_trun=False)
     arr = np.array(
       [[ 0.,  0.,  0.,  0.,  0., 0., 0, 0.],
        [ 1.,  1.,  1.,  0.,  0., 0., 0., 1.]])
@@ -76,7 +76,7 @@ class TestDatasetPascal:
   def test_ground_truth_for_class_pascal(self):
     correct = np.array(
       [[  48.,  240.,  148.,  132.,    11.,    1., 0.]])
-    ans = self.d.get_ground_truth_for_class("dog").arr
+    ans = self.d.get_det_gt_for_class("dog").arr
     print ans
     assert np.all(ans == correct)
       
