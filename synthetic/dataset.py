@@ -27,6 +27,9 @@ class Dataset(object):
     assert(len(self.image_names)==len(np.unique(self.image_names)))
     self.cached_det_ground_truth = {}
 
+  def num_classes(self):
+    return len(self.classes)
+
   def __repr__(self):
     return self.get_name()
 
@@ -400,7 +403,7 @@ class Dataset(object):
     Dataset has an inner state about current fold (This is like an implicit 
     generator).
     """
-    self.folds = KFold(len(self.images), numfolds)
+    self.folds = [fold for fold in KFold(len(self.images), numfolds)]
     self.current_fold = 0
     
   def next_folds(self):
@@ -428,6 +431,7 @@ class Dataset(object):
   
   def get_pos_samples_for_fold_class(self, cls, with_diff=False,
       with_trun=True):
+    # TODO: reimplement
     if not hasattr(self, 'train'):
       return self.get_pos_samples_for_class(cls, with_diff, with_trun)
     all_pos = self.get_pos_samples_for_class(cls, with_diff, with_trun)
@@ -437,7 +441,31 @@ class Dataset(object):
       with_trun=True):
     if not hasattr(self, 'train'):
       return self.get_neg_samples_for_class(cls, with_diff, with_trun)
+    all_neg = self.get_neg_samples_for_class(cls, with_diff, with_trun)
     intersect = np.intersect1d(all_neg, self.train)
     if intersect.size == 0:
       return np.array([])
     return np.array(ut.random_subset(intersect, num_samples))
+
+  def get_pos_samples_for_class(self, cls, with_diff=False,
+      with_trun=True):
+    """
+    Return array of indices of self.images that contain at least one object of
+    this class.
+    """
+    # TODO: this can be much faster! dont use det_gt
+    cls_gt = self.get_det_gt_for_class(cls,with_diff,with_trun)
+    img_indices = cls_gt.subset_arr('img_ind')
+    return np.sort(np.unique(img_indices)).astype(int)
+
+  def get_neg_samples_for_class(self, cls, number=None,
+      with_diff=False, with_trun=True):
+    """
+    Return array of indices of self.images that contain no objects of this class.
+    """
+    if number == 0:
+      return np.array([])
+    pos_indices = self.get_pos_samples_for_class(cls,with_diff,with_trun)
+    neg_indices = np.setdiff1d(np.arange(len(self.images)),pos_indices,assume_unique=True)
+    # TODO tobi: why do these have to be ordered?
+    return ut.random_subset(neg_indices, number, ordered=True)

@@ -24,6 +24,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker
 from mpl_toolkits.axes_grid import make_axes_locatable
 
+from sklearn.cross_validation import KFold
+
 import synthetic.util as ut
 from synthetic.table import Table
 from synthetic.common_mpi import *

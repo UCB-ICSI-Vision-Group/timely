@@ -75,19 +75,19 @@ class TestDatasetPascal:
 
   def test_ground_truth_for_class_pascal(self):
     correct = np.array(
-      [[  48.,  240.,  148.,  132.,    11.,    1., 0.]])
-    ans = self.d.get_det_gt_for_class("dog").arr
+      [[  48.,  240.,  148.,  132.,    11.,  0., 1., 0.]])
+    ans = self.d.get_det_gt_for_class("dog")
     print ans
-    assert np.all(ans == correct)
+    assert np.all(ans.arr == correct)
       
   def test_neg_samples(self):
     # unlimited negative examples
-    indices = self.d.get_neg_samples_for_class("dog",include_diff=True,include_trun=True)
+    indices = self.d.get_neg_samples_for_class("dog",with_diff=True,with_trun=True)
     correct = np.array([1,2])
     assert(np.all(indices == correct))
 
     # maximum 1 negative example
-    indices = self.d.get_neg_samples_for_class("dog",1,include_diff=True,include_trun=True)
+    indices = self.d.get_neg_samples_for_class("dog",1,with_diff=True,with_trun=True)
     correct1 = np.array([1])
     correct2 = np.array([2])
     print(indices)
@@ -100,13 +100,13 @@ class TestDatasetPascal:
     
   def test_ground_truth_test(self):
     d = Dataset('test_pascal_val')
-    gt = d.get_ground_truth(include_trun=False).arr
+    gt = d.get_det_gt(with_diff=False,with_trun=False)
     correct = np.matrix(
-        [ [ 139.,  200.,   69.,  102.,   18.,   0.],
-          [ 123.,  155.,   93.,   41.,   17.,   1.],
-          [ 239.,  156.,   69.,   50.,    8.,   1.]])
+        [ [ 139.,  200.,   69.,  102.,   18.,   0., 0., 0.],
+          [ 123.,  155.,   93.,   41.,   17.,   0., 0., 1.],
+          [ 239.,  156.,   69.,   50.,    8.,   0., 0., 1.]])
     print(gt)
-    assert np.all(gt == correct)
+    assert np.all(gt.arr == correct)
 
   def test_get_pos_windows(self):
     d = Dataset('test_pascal_val')
