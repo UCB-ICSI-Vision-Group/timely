@@ -30,6 +30,9 @@ class Dataset(object):
   def num_classes(self):
     return len(self.classes)
 
+  def get_ind(self,cls):
+    return self.classes.index(cls)
+
   def __repr__(self):
     return self.get_name()
 

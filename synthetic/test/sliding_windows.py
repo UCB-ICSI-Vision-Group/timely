@@ -6,7 +6,7 @@ import synthetic.config as config
 
 class TestSlidingWindows:
   def test_get_windows(self):
-    image = Image(size=(3,2))
+    image = Image(3,2,['whatever'],'test')
     window_params = WindowParams(
         min_width=2,stride=1,scales=[1,0.5],aspect_ratios=[0.5])
     windows = image.get_windows(window_params)
