@@ -285,7 +285,7 @@ class Dataset(object):
     K = len(combinations)
     data = np.zeros((K,N+2)) # extra columns are for P("nothing"|C) and P(C)
     prior = np.zeros(K)
-    for combination in combinations:
+    for i,combination in enumerate(combinations):
       if second_order:
         cls1 = combination[0]
         cls2 = combination[1]
@@ -332,7 +332,7 @@ class Dataset(object):
     fig.add_axes(ax_cb)
 
     #The call to imshow produces the matrix plot:
-    im = ax_im.imshow(m, origin='upper', interpolation='nearest',
+    im = ax_im.imshow(m.arr, origin='upper', interpolation='nearest',
             vmin=color_anchor[0], vmax=color_anchor[1], cmap=cmap)
 
     #Formatting:
@@ -369,8 +369,8 @@ class Dataset(object):
     #Set the ticks - if 0 is in the interval of values, set that, as well
     #as the maximal and minimal values:
     #Extract the minimum and maximum values for scaling
-    max_val = np.nanmax(m)
-    min_val = np.nanmin(m)
+    max_val = np.nanmax(m.arr)
+    min_val = np.nanmin(m.arr)
     if min_val < 0:
       ticks = [color_anchor[0], min_val, 0, max_val, color_anchor[1]]
     #Otherwise - only set the maximal value:
@@ -387,7 +387,7 @@ class Dataset(object):
     if plot_vals:
       for i in xrange(0, m.shape[0]):
         for j in xrange(0,m.shape[1]):
-          val = m.as_matrix()[i,j]
+          val = m.arr[i,j]
           if not np.isnan(val):
             ax.text(j-0.2,i+0.1,'%.2f'%val)
 
