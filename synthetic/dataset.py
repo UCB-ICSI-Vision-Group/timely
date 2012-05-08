@@ -26,6 +26,7 @@ class Dataset(object):
     self.image_names = [image.name for image in self.images]
     assert(len(self.image_names)==len(np.unique(self.image_names)))
     self.cached_det_ground_truth = {}
+    self.set_values('uniform')
 
   def num_classes(self):
     return len(self.classes)
@@ -41,6 +42,21 @@ class Dataset(object):
 
   def num_images(self):
     return len(self.images)
+
+  ###
+  # Class Values
+  ###
+  def set_values(self,mode='uniform'):
+    "Set all class values to be uniform or inversely proportional to priors."
+    if mode=='uniform':
+      self.values = np.ones(len(self.classes))
+    elif mode=='inverse_prior':
+      gt = self.get_cls_ground_truth(with_diff=False,with_trun=True)
+      prior = 1.*gt.sum(0)/gt.shape[0]
+      self.values = 1./prior
+      self.values /= np.max(self.values)
+    else:
+      raise RuntimeError("Unknown mode")
 
   ###
   # Loaders / Generators
@@ -125,7 +141,8 @@ class Dataset(object):
     print("  ...done in %.2f s\n"%tt.qtoc())
 
   ###
-  # Assemble data for training
+  # Pos/Neg Windows
+  # TODO: this stuff is out of data
   ###
   def get_pos_windows(self, cls=None, window_params=None, min_overlap=0.7):
     """

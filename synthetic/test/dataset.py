@@ -16,7 +16,6 @@ class TestDatasetJson:
     df = Table(
       np.array([[ 0.,  0.,  0.,  0.,  0.,  0, 0, 0.],
        [ 1.,  1.,  1.,  1.,  1.,  0, 0, 0.],
-       [ 2.,  2.,  2.,  2.,  2.,  0, 0, 0.],
        [ 1.,  1.,  1.,  0.,  0.,  0, 0, 1.],
        [ 0.,  0.,  0.,  0.,  1.,  0, 0, 2.],
        [ 0.,  0.,  0.,  0.,  2.,  0, 0, 3.],
@@ -28,7 +27,7 @@ class TestDatasetJson:
 
   def test_get_cls_counts_json(self):
     arr = np.array(
-      [ [ 1, 1, 1],
+      [ [ 1, 1, 0],
         [ 1, 0, 0],
         [ 0, 1, 0],
         [ 0, 0, 2]])
@@ -36,14 +35,12 @@ class TestDatasetJson:
     assert(np.all(self.d.get_cls_counts() == arr))
 
   def test_get_cls_ground_truth_json(self):
-    df = Table(
-      np.array([ [ True, True, True],
+    table = Table(
+      np.array([ [ True, True, False],
         [ True, False, False],
         [ False, True, False],
         [ False, False, True] ]), ["A","B","C"])
-    print(df)
-    print(self.d.get_cls_ground_truth())
-    assert(self.d.get_cls_ground_truth()==df)
+    assert(self.d.get_cls_ground_truth()==table)
 
   def test_det_ground_truth_for_class_json(self):
     gt = self.d.get_det_gt_for_class("A",with_diff=True,with_trun=True)
@@ -64,6 +61,14 @@ class TestDatasetJson:
     print(gt.arr)
     assert(np.all(gt.arr == arr))
     assert(gt.cols == cols)
+
+  def test_set_values(self):
+    assert(np.all(self.d.values == np.ones(len(self.classes))))
+    self.d.set_values('uniform')
+    assert(np.all(self.d.values == np.ones(len(self.classes))))
+    self.d.set_values('inverse_prior')
+    print(self.d.values)
+    assert(np.all(self.d.values == np.array([0.5,0.5,1])))
 
 class TestDatasetPascal:
   def setup(self):

@@ -55,9 +55,8 @@ class DatasetPolicy:
         self.suffix])
     return name
 
-  @classmethod
-  def get_det_cols(cls):
-    return Detector.get_cols() + ['cls_ind','img_ind','time']
+  ### Column names
+  det_columns = Detector.columns + ['cls_ind','img_ind','time']
 
   def get_cls_cols(self):
     return self.dataset.classes + ['img_ind','time']
@@ -304,7 +303,7 @@ class DatasetPolicy:
       # all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
     # Save if root
     if comm_rank==0:
-      dets_table = Table(cols=self.get_det_cols())
+      dets_table = Table(cols=self.det_columns())
       final_dets = [det for det in final_dets if det.shape[0]>0]
       if not len(final_dets) == 0:
         dets_table.arr = np.vstack(final_dets)
@@ -483,7 +482,7 @@ class DatasetPolicy:
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
-    alphas = [0.0001, 0.001, 0.01, 0.1, 1]
+    alphas = [0.0001, 0.001, 0.01, 0.1, 1, 100, 1000, 10000]
     for alpha in alphas:
       clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=2000)
       errors = []
@@ -587,7 +586,7 @@ class DatasetPolicy:
   def run_on_image(self, image, dataset, verbose=False):
     """
     Return
-    - list of detections in the image, with each row as self.get_det_cols()
+    - list of detections in the image, with each row as self.det_columns()
     - list of multi-label classification outputs, with each row as self.get_cls_cols()
     - list of <s,a,r,s',dt> samples.
     """
@@ -654,7 +653,7 @@ class DatasetPolicy:
           detections = np.hstack((detections, c_vector, i_vector))
         else:
           detections = np.array([])
-        dets_table = Table(detections,det.get_cols()+['cls_ind','img_ind'])
+        dets_table = Table(detections,det.columns+['cls_ind','img_ind'])
 
         # compute the 'naive' det AP increase: adding dets to empty set
         ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)

@@ -20,9 +20,7 @@ class Detector(object):
     'avg_time': 10 # in seconds, specified w.r.t Detector.AVG_IMAGE_SIZE
   }
 
-  @classmethod
-  def get_cols(cls):
-    return ['x','y','w','h','score']
+  columns = ['x','y','w','h','score']
 
   def __init__(self, dataset, train_dataset, cls, detname='perfect', detector_config=None):
     self.dataset = dataset
