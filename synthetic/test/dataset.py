@@ -1,33 +1,33 @@
-import numpy as np
+from synthetic.common_imports import *
 
 from synthetic.dataset import Dataset
 
-class TestDataset:
+class TestDatasetJson:
   def setup(self):
-    self.d = Dataset('data1',force=True)
-    self.d2 = Dataset('test_pascal_train',force=True)
+    self.d = Dataset('test_data1',force=True)
+    self.classes = ["A","B","C"]
 
-  def test_load_from_json(self):
+  def test_load(self):
     assert(self.d.num_images() == 4)
-    assert(self.d.classes == ["A","B","C"])
+    assert(self.d.classes == self.classes)
 
-  def test_ground_truth_json(self):
-    gt = self.d.get_ground_truth(include_trun=False)
-    arr = np.array(
-      [[ 0.,  0.,  0.,  0.,  0.,  0.],
-       [ 1.,  1.,  1.,  1.,  1.,  0.],
-       [ 2.,  2.,  2.,  2.,  2.,  0.],
-       [ 1.,  1.,  1.,  1.,  0.,  1.],
-       [ 0.,  0.,  0.,  0.,  1.,  2.],
-       [ 0.,  0.,  0.,  0.,  2.,  3.],
-       [ 1.,  1.,  1.,  1.,  2.,  3.]])
-    cols = ['x','y','w','h','cls_ind','img_ind']
-    assert(np.all(gt.arr == arr))
-    assert(gt.cols == cols)
+  def test_get_det_gt(self):
+    gt = self.d.get_det_gt(with_diff=True,with_trun=False)
+    df = Table(
+      np.array([[ 0.,  0.,  0.,  0.,  0.,  0, 0, 0.],
+       [ 1.,  1.,  1.,  1.,  1.,  0, 0, 0.],
+       [ 1.,  1.,  1.,  0.,  0.,  0, 0, 1.],
+       [ 0.,  0.,  0.,  0.,  1.,  0, 0, 2.],
+       [ 0.,  0.,  0.,  0.,  2.,  0, 0, 3.],
+       [ 1.,  1.,  1.,  1.,  2.,  0, 0, 3.]]),
+       ['x','y','w','h','cls_ind','diff','trun','img_ind'])
+    print(gt)
+    print(df)
+    assert(gt == df)
 
   def test_get_cls_counts_json(self):
     arr = np.array(
-      [ [ 1, 1, 1],
+      [ [ 1, 1, 0],
         [ 1, 0, 0],
         [ 0, 1, 0],
         [ 0, 0, 2]])
@@ -35,77 +35,87 @@ class TestDataset:
     assert(np.all(self.d.get_cls_counts() == arr))
 
   def test_get_cls_ground_truth_json(self):
-    arr = np.array(
-      [ [ True, True, True],
+    table = Table(
+      np.array([ [ True, True, False],
         [ True, False, False],
         [ False, True, False],
-        [ False, False, True]])
-    cols = ["A","B","C"]
-    print(self.d.get_cls_ground_truth())
-    assert(np.all(self.d.get_cls_ground_truth().arr == arr))
-    assert(np.all(self.d.get_cls_ground_truth().cols == cols))
+        [ False, False, True] ]), ["A","B","C"])
+    assert(self.d.get_cls_ground_truth()==table)
 
-  def test_ground_truth_for_class_json(self):
-    gt = self.d.get_ground_truth_for_class("A",include_diff=True,include_trun=True)
+  def test_det_ground_truth_for_class_json(self):
+    gt = self.d.get_det_gt_for_class("A",with_diff=True,with_trun=True)
     arr = np.array(
       [[ 0.,  0.,  0.,  0.,  0., 0., 0, 0.],
-       [ 1.,  1.,  1.,  1.,  0., 0., 0., 1.]])
+       [ 1.,  1.,  1.,  0.,  0., 0., 0., 1.]])
     cols = ['x','y','w','h','cls_ind','diff','trun','img_ind']
     print(gt.arr)
     assert(np.all(gt.arr == arr))
     assert(gt.cols == cols)
 
     # no diff or trun
-    gt = self.d.get_ground_truth_for_class("A",include_diff=False,include_trun=False)
+    gt = self.d.get_det_gt_for_class("A",with_diff=False,with_trun=False)
     arr = np.array(
-      [[ 0.,  0.,  0.,  0.,  0., 0.],
-       [ 1.,  1.,  1.,  1.,  0., 1.]])
-    cols = ['x','y','w','h','cls_ind','img_ind']
+      [[ 0.,  0.,  0.,  0.,  0., 0., 0, 0.],
+       [ 1.,  1.,  1.,  0.,  0., 0., 0., 1.]])
+    cols = ['x','y','w','h','cls_ind','diff','trun','img_ind']
     print(gt.arr)
     assert(np.all(gt.arr == arr))
     assert(gt.cols == cols)
+
+  def test_set_values(self):
+    assert(np.all(self.d.values == np.ones(len(self.classes))))
+    self.d.set_values('uniform')
+    assert(np.all(self.d.values == np.ones(len(self.classes))))
+    self.d.set_values('inverse_prior')
+    print(self.d.values)
+    assert(np.all(self.d.values == np.array([0.5,0.5,1])))
+
+class TestDatasetPascal:
+  def setup(self):
+    self.d = Dataset('test_pascal_train',force=True)
     
   def test_ground_truth_pascal_train(self):
-    assert(self.d2.num_classes() == 20)
-    assert('dog' in self.d2.classes)
+    assert(self.d.num_classes() == 20)
+    assert('dog' in self.d.classes)
 
   def test_ground_truth_for_class_pascal(self):
     correct = np.array(
-      [[  48.,  240.,  148.,  132.,    11.,    1., 0.]])
-    ans = self.d2.get_ground_truth_for_class("dog").arr
+      [[  48.,  240.,  148.,  132.,    11.,  0., 1., 0.]])
+    ans = self.d.get_det_gt_for_class("dog")
     print ans
-    assert np.all(ans == correct)
+    assert np.all(ans.arr == correct)
       
   def test_neg_samples(self):
     # unlimited negative examples
-    indices = self.d2.get_neg_samples_for_class("dog",include_diff=True,include_trun=True)
+    indices = self.d.get_neg_samples_for_class("dog",with_diff=True,with_trun=True)
     correct = np.array([1,2])
     assert(np.all(indices == correct))
 
     # maximum 1 negative example
-    indices = self.d2.get_neg_samples_for_class("dog",1,include_diff=True,include_trun=True)
+    indices = self.d.get_neg_samples_for_class("dog",1,with_diff=True,with_trun=True)
     correct1 = np.array([1])
     correct2 = np.array([2])
     print(indices)
     assert(np.all(indices == correct1) or np.all(indices == correct2))
 
   def test_pos_samples(self):
-    indices = self.d2.get_pos_samples_for_class("dog")
+    indices = self.d.get_pos_samples_for_class("dog")
     correct = np.array([0])
     assert(np.all(indices == correct))
     
   def test_ground_truth_test(self):
     d = Dataset('test_pascal_val')
-    gt = d.get_ground_truth(include_trun=False).arr
+    gt = d.get_det_gt(with_diff=False,with_trun=False)
     correct = np.matrix(
-        [ [ 139.,  200.,   69.,  102.,   18.,   0.],
-          [ 123.,  155.,   93.,   41.,   17.,   1.],
-          [ 239.,  156.,   69.,   50.,    8.,   1.]])
+        [ [ 139.,  200.,   69.,  102.,   18.,   0., 0., 0.],
+          [ 123.,  155.,   93.,   41.,   17.,   0., 0., 1.],
+          [ 239.,  156.,   69.,   50.,    8.,   0., 0., 1.]])
     print(gt)
-    assert np.all(gt == correct)
+    assert np.all(gt.arr == correct)
 
   def test_get_pos_windows(self):
     d = Dataset('test_pascal_val')
+    # TODO
     
   def test_kfold(self):
     """

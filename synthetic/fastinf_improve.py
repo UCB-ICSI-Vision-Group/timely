@@ -3,7 +3,6 @@ from common_imports import *
 import synthetic.config as config
 from synthetic.dataset import Dataset
 from synthetic.fastinf_model import FastinfModel
-from IPython import embed
 import matplotlib.pyplot as plt
 
 def compute_score(desired, ranking, num_classes):

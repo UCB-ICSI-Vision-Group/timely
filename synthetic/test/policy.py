@@ -83,8 +83,10 @@ class TestDatasetPolicy:
     dets = dets.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
     gt = self.dataset.get_ground_truth()
     gt = gt.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
-    dets.arr = ut.sort_by_column(dets.arr, 0)
-    gt.arr = ut.sort_by_column(gt.arr, 0)
+
+    # TODO: does this make sense?
+    dets.sort_by_column('x')
+    gt.sort_by_column('x')
     assert(dets == gt)
 
   def test_load_dpm_detections(self):
@@ -98,7 +100,7 @@ class TestDatasetPolicy:
     # load the ground truth dets, processed in Matlab
     # (timely/data/test_support/concat_dets.m)
     filename = os.path.join(config.test_support_dir, 'val_dets.mat')
-    dets_correct = ut.Table(
+    dets_correct = Table(
         scipy.io.loadmat(filename)['dets'],
         ['x1','y1','x2','y2','dummy','dummy','dummy','dummy','score','cls_ind','img_ind'],
         'dets_correct')

@@ -2,7 +2,6 @@ import datetime
 import scipy.io
 import sklearn
 
-from common_mpi import *
 from common_imports import *
 import synthetic.config as config
 
@@ -56,9 +55,8 @@ class DatasetPolicy:
         self.suffix])
     return name
 
-  @classmethod
-  def get_det_cols(cls):
-    return Detector.get_cols() + ['cls_ind','img_ind','time']
+  ### Column names
+  det_columns = Detector.columns + ['cls_ind','img_ind','time']
 
   def get_cls_cols(self):
     return self.dataset.classes + ['img_ind','time']
@@ -305,11 +303,11 @@ class DatasetPolicy:
       # all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
     # Save if root
     if comm_rank==0:
-      dets_table = ut.Table(cols=self.get_det_cols())
+      dets_table = Table(cols=self.det_columns())
       final_dets = [det for det in final_dets if det.shape[0]>0]
       if not len(final_dets) == 0:
         dets_table.arr = np.vstack(final_dets)
-      clses_table = ut.Table(cols=self.get_cls_cols())
+      clses_table = Table(cols=self.get_cls_cols())
       clses_table.arr = np.vstack(final_clses)
       if dets_table.arr == None:
         print("Found 0 dets")
@@ -484,7 +482,7 @@ class DatasetPolicy:
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
-    alphas = [0.0001, 0.001, 0.01, 0.1, 1]
+    alphas = [0.0001, 0.001, 0.01, 0.1, 1, 100, 1000, 10000]
     for alpha in alphas:
       clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=2000)
       errors = []
@@ -518,7 +516,7 @@ class DatasetPolicy:
     if comm_rank==0:
       cols = ['action_ind','dt','det_naive_ap','det_actual_ap','img_ind']
       sample_array = np.array([[getattr(s,col) for s in all_samples] for col in cols]).T
-      table = ut.Table(sample_array,cols)
+      table = Table(sample_array,cols)
 
       # go through actions
       for ind,action in enumerate(self.actions):
@@ -588,7 +586,7 @@ class DatasetPolicy:
   def run_on_image(self, image, dataset, verbose=False):
     """
     Return
-    - list of detections in the image, with each row as self.get_det_cols()
+    - list of detections in the image, with each row as self.det_columns()
     - list of multi-label classification outputs, with each row as self.get_cls_cols()
     - list of <s,a,r,s',dt> samples.
     """
@@ -655,7 +653,7 @@ class DatasetPolicy:
           detections = np.hstack((detections, c_vector, i_vector))
         else:
           detections = np.array([])
-        dets_table = ut.Table(detections,det.get_cols()+['cls_ind','img_ind'])
+        dets_table = Table(detections,det.columns+['cls_ind','img_ind'])
 
         # compute the 'naive' det AP increase: adding dets to empty set
         ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)
@@ -664,9 +662,9 @@ class DatasetPolicy:
         # TODO: am I needlessly recomputing this table?
         all_detections.append(detections)
         nonempty_dets = [dets for dets in all_detections if dets.shape[0]>0]
-        all_dets_table = ut.Table(np.array([]),dets_table.cols)
+        all_dets_table = Table(np.array([]),dets_table.cols)
         if len(nonempty_dets)>0:
-          all_dets_table = ut.Table(np.concatenate(nonempty_dets,0),dets_table.cols)
+          all_dets_table = Table(np.concatenate(nonempty_dets,0),dets_table.cols)
 
         # compute the actual AP increase: addings dets to dets so far
         ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
@@ -841,7 +839,7 @@ class DatasetPolicy:
       final_dets = comm.reduce(all_dets,op=MPI.SUM,root=0)
       all_dets_table = None
       if comm_rank == 0:
-        all_dets_table = ut.Table()
+        all_dets_table = Table()
         all_dets_table.name = suffix
         all_dets_table.cols = ['x', 'y', 'w', 'h', 'score', 'time', 'cls_ind', 'img_ind']
         all_dets_table.arr = np.vstack(final_dets)
@@ -980,7 +978,7 @@ if __name__=='__main__':
         test_table += np.loadtxt(filename)
       dirname = ut.makedirs(os.path.join(config.get_ext_dets_foldname(eval_d), 'dp'))
       filename = os.path.join(dirname,'table_linear_20')
-      tab_test_table = ut.Table()
+      tab_test_table = Table()
       tab_test_table.cols = list(eval_d.classes) + ['img_ind']
       
       tab_test_table.arr = np.hstack((test_table, np.array(np.arange(test_table.shape[0]),ndmin=2).T))

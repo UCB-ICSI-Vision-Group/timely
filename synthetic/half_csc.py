@@ -12,7 +12,7 @@ def half_csc(dets_table):
       take_ind = np.random.rand(dets_for_img.shape[0],1)>=p
       if np.any(take_ind):
         all_dets.append(dets_for_img[take_ind[:,0],:])
-  return ut.Table(np.concatenate(all_dets,0), dets_table.cols, name='csc_half')
+  return Table(np.concatenate(all_dets,0), dets_table.cols, name='csc_half')
 
 if __name__ == '__main__':
   for sett in ['train', 'val', 'trainval']:

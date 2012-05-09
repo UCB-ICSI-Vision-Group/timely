@@ -1,15 +1,11 @@
-from common_imports import *
-from common_mpi import *
+from synthetic.common_imports import *
 import synthetic.config as config
-from IPython import embed
 
 from synthetic.classifier import Classifier
 from synthetic.dataset import Dataset
 from synthetic.training import svm_predict, svm_proba
-#import synthetic.config as config
 from synthetic.config import get_ext_dets_filename
 from synthetic.image import Image
-from synthetic.util import Table
 from synthetic.evaluation import Evaluation
 #from synthetic.dpm_classifier import create_vector
 

@@ -20,9 +20,7 @@ class Detector(object):
     'avg_time': 10 # in seconds, specified w.r.t Detector.AVG_IMAGE_SIZE
   }
 
-  @classmethod
-  def get_cols(cls):
-    return ['x','y','w','h','score']
+  columns = ['x','y','w','h','score']
 
   def __init__(self, dataset, train_dataset, cls, detname='perfect', detector_config=None):
     self.dataset = dataset
@@ -105,6 +103,10 @@ class Detector(object):
     # look at some quick statistics to get an estimate of its complexity
     avg_area = np.prod(Detector.AVG_IMAGE_SIZE)
     bbox = image.get_whole_image_bbox()
+    print bbox
+    print bbox.area()
+    print avg_area
+    print self.config['avg_time']
     expected_time = self.config['avg_time'] * 1.*bbox.area()/avg_area 
     return expected_time
 

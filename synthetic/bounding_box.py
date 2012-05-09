@@ -10,6 +10,8 @@ class BoundingBox:
   The native storage format is np.array([x,y,w,h]).
   """
 
+  columns = ['x','y','w','h']
+
   def __init__(self, seq=None, format='width'):
     """
     Instantiate from a sequence containing either 
@@ -27,8 +29,16 @@ class BoundingBox:
         h = float(seq[3]-y+1)
       self.arr = np.array([x,y,w,h])
 
+  def __repr__(self):
+    return "BoundingBox: %s" % self.get_arr()
+
+  def __eq__(self,other):
+    return np.all(self.arr == other.arr)
+  def __ne__(self,other):
+    return not __eq__(self,other)
+
   def area(self):
-    """Return area."""
+    "Return area."
     return self.arr[2]*self.arr[3]
 
   @classmethod
@@ -148,10 +158,3 @@ class BoundingBox:
       if iw>0 and ih>0:
         ov = iw*ih/ua
     return ov
-
-  @classmethod
-  def get_cols(cls):
-    return ['x','y','w','h']
-
-  def __repr__(self):
-    return "BoundingBox: %s" % self.get_arr()

@@ -144,8 +144,8 @@ def get_test_windows(testsize,dtest,e,pyr_size,L,codebook,feature_type,cls,\
       pos_test_arr = pos_test_arr[:testsize]
       neg_test_arr = neg_test_arr[:testsize]
   
-  pos_test_table = ut.Table(pos_test_arr, cols)
-  neg_test_table = ut.Table(neg_test_arr, cols)
+  pos_test_table = Table(pos_test_arr, cols)
+  neg_test_table = Table(neg_test_arr, cols)
   
   print 'get pos test pyrs'
   pos_test_pyr = get_pyr(dtest,e,pos_test_table,pyr_size,L,codebook,feature_type,cls)
@@ -345,8 +345,8 @@ if __name__=='__main__':
         neg_arr = neg_arr[rand]   
     
 
-    pos_table = ut.Table(pos_arr, ['x','y','w','h','img_ind'])
-    neg_table = ut.Table(neg_arr, pos_table.cols)
+    pos_table = Table(pos_arr, ['x','y','w','h','img_ind'])
+    neg_table = Table(neg_arr, pos_table.cols)
     
     train_with_hard_negatives(d, dtest,  num_words,codebook_samples,codebook,\
                               cls, pos_table, neg_table,feature_type, iterations=iters, \

@@ -62,6 +62,7 @@ def main():
     args.priors = args.priors.split(',')
   if args.bounds:
     args.bounds = [float(x) for x in re.findall(r'\d+', args.bounds)]
+    assert(len(args.bounds)==2)
   print(args)
 
   # Load the dataset
@@ -102,9 +103,7 @@ def main():
     return
 
   if args.mode=='window_stats':
-    """
-    Compute and plot the statistics of ground truth window parameters.
-    """
+    "Compute and plot the statistics of ground truth window parameters."
     results = SlidingWindows.get_dataset_window_stats(train_dataset,plot=True)
 
   if args.mode=='ctfdet':
@@ -188,8 +187,8 @@ def main():
           pos_arr = pos_arr[rand]
           rand = np.random.random_integers(0, neg_arr.shape[0] - 1, size=num_pos)
           neg_arr = neg_arr[rand]     
-      pos_table = ut.Table(pos_arr, ['x','y','w','h','img_ind'])
-      neg_table = ut.Table(neg_arr, pos_table.cols)      
+      pos_table = Table(pos_arr, ['x','y','w','h','img_ind'])
+      neg_table = Table(neg_arr, pos_table.cols)      
       train_with_hard_negatives(d, dtest,  num_words,codebook_samples,codebook,\
                                 cls, pos_table, neg_table,feature_type, \
                                 iterations=iters, kernel=kernel, L=2, \

@@ -1,22 +1,31 @@
-from IPython import embed
+import os,sys,time
 import copy
-from abc import abstractmethod
-import os
-from os.path import join as opjoin
-from os.path import exists as opexists
-import sys
-import time
 import types
 import math
 import re
 import operator
-from pprint import pprint
+
+from abc import abstractmethod
+
 import json
 import itertools
 import cPickle
 import pickle
 
-import numpy as np
-import scipy.stats as st
+from IPython import embed
+from os.path import join as opjoin
+from os.path import exists as opexists
+from pprint import pprint
 
-import util as ut
+import numpy as np
+import matplotlib as mpl
+import scipy.stats as st
+import matplotlib.pyplot as plt
+import matplotlib.ticker
+from mpl_toolkits.axes_grid import make_axes_locatable
+
+from sklearn.cross_validation import KFold
+
+import synthetic.util as ut
+from synthetic.table import Table
+from synthetic.common_mpi import *
