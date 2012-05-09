@@ -6,18 +6,10 @@ and PASCAL datasets.
 from synthetic.common_imports import *
 from synthetic.dataset import Dataset
 
-d = Dataset('synthetic') 
-f = d.plot_coocurrence()
-f = d.plot_coocurrence(second_order=True)
+datasets = ['synthetic','full_pascal_train','full_pascal_val','full_pascal_test']
 
-d = Dataset('full_pascal_train')
-f = d.plot_coocurrence()
-f = d.plot_coocurrence(second_order=True)
-
-d = Dataset('full_pascal_val')
-f = d.plot_coocurrence()
-f = d.plot_coocurrence(second_order=True)
-
-d = Dataset('full_pascal_test')
-f = d.plot_coocurrence()
-f = d.plot_coocurrence(second_order=True)
+for dataset in datasets:
+  d = Dataset(dataset) 
+  f = d.plot_coocurrence()
+  f = d.plot_coocurrence(second_order=True)
+  f = d.plot_distribution()

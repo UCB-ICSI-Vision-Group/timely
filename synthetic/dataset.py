@@ -142,7 +142,7 @@ class Dataset(object):
 
   ###
   # Pos/Neg Windows
-  # TODO: this stuff is out of data
+  # TODO: this stuff is out of date
   ###
   def get_pos_windows(self, cls=None, window_params=None, min_overlap=0.7):
     """
@@ -256,12 +256,27 @@ class Dataset(object):
   ###
   # Statistics
   ###
+  def plot_distribution(self):
+    "Plot histogram of # classes in an image. Return the figure."
+    table = self.get_cls_ground_truth(with_diff=False,with_trun=True)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    bins = np.arange(1,max(table.sum(1))+2)
+    ax.hist(table.sum(1),bins,align='left',normed=True)
+    ax.set_xticks(bins)
+    ax.set_xlabel('Number of classes present in the image')
+    ax.grid(False)
+
+    dirname = config.get_dataset_stats_dir(self)
+    filename = opjoin(dirname,'num_classes.png')
+    fig.savefig(filename)
+    return fig
+
   def plot_coocurrence(self, cmap=plt.cm.Reds, color_anchor=[0,1],
     x_tick_rot=90, size=None, title=None, plot_vals=True,
     second_order=False):
     """
-    Construct a DataFrame of class occurence ground truth, and plot 
-    a heat map of conditional occurence, where cell (i,j) means
+    Plot a heat map of conditional occurence, where cell (i,j) means
     P(C_j|C_i). The last column in the K x (K+2) heat map corresponds
     to the prior P(C_i).
 
@@ -270,7 +285,6 @@ class Dataset(object):
 
     Return the figure.
     """
-    # Construct the conditional co-occurence table
     table = self.get_cls_ground_truth(with_diff=False,with_trun=True)
 
     # This takes care of most of the difference between normal and second_order
@@ -315,7 +329,7 @@ class Dataset(object):
 
     # If second_order, sort by prior and remove rows with 0 prior
     if second_order:
-      m = m.filter_on_column('prior',0,operator.gt).\
+      m = m.filter_on_column('prior',0.001,operator.gt).\
             sort_by_column('prior',descending=True)
 
     if size:
