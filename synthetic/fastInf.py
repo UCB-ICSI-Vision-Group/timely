@@ -299,7 +299,7 @@ def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
       if not os.path.exists(filename_csc):
         raise RuntimeWarning('The csc classification could not be loaded from %s'%filename_csc)
       orig_table = cPickle.load(open(filename_csc,'r'))
-      if isinstance(orig_table, ut.Table):
+      if isinstance(orig_table, Table):
         orig_table = orig_table.arr[:,:-1]
       bounds, discr_table = discretize_table(orig_table, num_bins)
       table = np.hstack((table_gt, discr_table))
@@ -309,7 +309,7 @@ def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
       if not os.path.exists(filename_csc):
         raise RuntimeWarning('The csc classification could not be loaded from %s'%filename_csc)
       orig_table = cPickle.load(open(filename_csc,'r'))
-      if isinstance(orig_table, ut.Table):
+      if isinstance(orig_table, Table):
         orig_table = orig_table.arr[:,:-1]
       bounds, discr_table = discretize_table(orig_table, num_bins)      
       table = np.hstack((table_gt, discr_table))

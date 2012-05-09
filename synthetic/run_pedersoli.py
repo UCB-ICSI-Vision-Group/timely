@@ -124,7 +124,7 @@ def main():
         all_dets = np.concatenate(all_dets,0)
       else:
         all_dets = np.array([])
-      table = ut.Table(all_dets,cols)
+      table = Table(all_dets,cols)
       np.save(filename,table)
 
 if __name__ == '__main__':

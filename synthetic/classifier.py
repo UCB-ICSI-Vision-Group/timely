@@ -63,5 +63,5 @@ class Classifier(object):
       
   def get_best_table(self):
     svm_save_dir = config.get_classifier_learning_dirname(self)
-    return ut.Table.load(opjoin(svm_save_dir,'best_table'))
+    return Table.load(opjoin(svm_save_dir,'best_table'))
     

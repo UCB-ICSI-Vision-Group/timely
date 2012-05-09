@@ -86,7 +86,7 @@ class Evaluation:
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
         if dets.arr == None:
-          detections = ut.Table() 
+          detections = Table() 
         else:
           detections = dets.filter_on_column('img_ind',img_ind)
         img_dets_list.append(detections)
@@ -125,7 +125,7 @@ class Evaluation:
       safebarrier(comm)
       comm.Reduce(det_arr,det_arr_all)
       if comm_rank==0:
-        dets_table = ut.Table(det_arr_all, ['time','ap_mean','ap_std'], self.name)
+        dets_table = Table(det_arr_all, ['time','ap_mean','ap_std'], self.name)
         np.save(self.det_apvst_data_fname,dets_table)
     # Plot the table
     if plot and comm_rank==0:
@@ -214,7 +214,7 @@ class Evaluation:
             clses_to_this_point_all_imgs.append(clses_to_this_point.arr[-1,:])
         
         # turn into a Table, compute the mAP, and store it
-        clses_to_this_point_all_imgs = ut.Table(
+        clses_to_this_point_all_imgs = Table(
           arr=np.array(clses_to_this_point_all_imgs), cols=clses.cols)
         cls_arr[i,:] = \
           [point, self.compute_cls_map(clses_to_this_point_all_imgs, cls_gt)]
@@ -233,9 +233,9 @@ class Evaluation:
       comm.Reduce(det_arr,det_arr_all)
       comm.Reduce(cls_arr,cls_arr_all)
       if comm_rank==0:
-        dets_table = ut.Table(det_arr_all, ['time','ap'], self.name)
+        dets_table = Table(det_arr_all, ['time','ap'], self.name)
         np.save(self.det_apvst_data_whole_fname,dets_table)
-        clses_table = ut.Table(cls_arr_all, ['time','ap'], self.name)
+        clses_table = Table(cls_arr_all, ['time','ap'], self.name)
         np.save(self.cls_apvst_data_whole_fname,clses_table)
     # Plot the table
     if plot and comm_rank==0:
@@ -478,7 +478,7 @@ class Evaluation:
     cols = list(gt.cols) + ['matched']
     arr = np.zeros((gt.arr.shape[0],gt.arr.shape[1]+1))
     arr[:,:-1] = gt.arr
-    gt = ut.Table(arr,cols)
+    gt = Table(arr,cols)
 
     # sort detections by confidence
     dets.sort_by_column('score',descending=True)

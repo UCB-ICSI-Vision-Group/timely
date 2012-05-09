@@ -6,7 +6,6 @@ from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy
 from synthetic.ext_detector import ExternalDetector
 from synthetic.csc_classifier import CSCClassifier
-from IPython import embed
 from synthetic.evaluation import Evaluation
 
 def train_csc_svms(d_train, d_val, kernel, C):
@@ -45,7 +44,7 @@ def test_csc_svm(d_train, d_val):
   return table
 
 def conv(d_train, table_arr):
-  table = ut.Table()
+  table = Table()
   #table_arr = cPickle.load(open('table_linear_5','r'))
   table.arr = np.hstack((table_arr, np.array(np.arange(table_arr.shape[0]),ndmin=2).T))
   table.cols = d_train.classes + ['img_ind']
