@@ -38,7 +38,6 @@ def evaluate_matlab_jws(dataset, suffix):
     print x, y ,' are the x ys' 
     auc += np.dot(x,y)/np.sum(x)*nsamples
     print auc, 'for rank %d'%comm_rank    
-    #break
   
   print 'auc on rank %d is %f'%(comm_rank, auc)
   nsamples_total = comm.reduce(nsamples_total)
