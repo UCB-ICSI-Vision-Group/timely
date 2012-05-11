@@ -148,7 +148,7 @@ lists of tuples (grid-position, root window)"""
     topK = np.hstack((x,y))
     return topK
   
-  def get_top_windows(self, K, annotations, cls_ind):
+  def get_top_windows(self, K, annotations, cls_ind, bounds, outside_overlaps_thresh=0.5):
     positions = annotations[:,:2]
     words = annotations[:,3].tolist()
     topK = self.get_ranked_word_grid(words, cls_ind)
@@ -173,6 +173,16 @@ lists of tuples (grid-position, root window)"""
         except:
           embed()
           raise RuntimeError('break it')
+        # A little heuristic to improve everything:
+        # - take only boxes that overlap with the image by at least THRESH %
+        overlaps = BoundingBox.get_overlap(add_wins, bounds)
+        actual_overlaps = np.multiply(bounds[2]*bounds[3],np.divide(overlaps,add_wins[:,2]*add_wins[:,3]))
+        indices = np.where(actual_overlaps>outside_overlaps_thresh)[0]
+        if len(indices) == 0:
+          continue
+        add_wins = add_wins[indices, :]        
+        add_wins = BoundingBox.clipboxes_arr(add_wins, bounds)       
+        
         all_wins.append(add_wins)
         insert_count += add_wins.shape[0]
       if insert_count >= K:
@@ -196,45 +206,28 @@ def run(force=False):
   e = Extractor()
   codebook = e.get_codebook(d, 'sift')
   t_train = time.time()
-  if comm_rank == 0:
+  if comm_rank == 0: # Could I also parallelize training?
     t = LookupTable(config.pascal_classes, codebook)  
     gt = d.get_ground_truth()
     filename_lookuptable = config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl'
     
-    if not os.path.exists(filename_lookuptable):
-        
-      filename_bfr_ms = config.get_jumping_windows_dir(dataset) + 'lookup_table_bfore_mshift.pkl'
-      if not os.path.exists(filename_bfr_ms) or force:
-        filename_bfr_wghts = config.get_jumping_windows_dir(dataset) + ' lookup_table_bfore_wghts.pkl'
-        print 'searching lookup table weight file'
-        if not os.path.exists(filename_bfr_wghts) or force:
-          for rowdex, row in enumerate(gt.arr):
-            bbox = row[0:4]
-            print 'add row %d of %d'%(rowdex, gt.shape()[0])
-            image = d.images[int(row[gt.cols.index('img_ind')])]
-            features = e.get_assignments(bbox, 'sift', codebook, image)
-            cls_ind = int(row[gt.cols.index('cls_ind')])
-            t.add_features(features, bbox, cls_ind)    
-            
-          t.save_table(filename_bfr_wghts)
-        else:
-          print 'found weight file: %s'%filename_bfr_wghts
-          t = LookupTable(config.pascal_classes, codebook, filename_bfr_wghts)
-          print 'lookup table before comp weights loaded...'      
-        t.compute_all_weights()
-        # Now also compute the cluster means
-        # t.save_table(filename_bfr_ms) # For now skip this step
-      else:
-        t = LookupTable(config.pascal_classes, codebook, filename_bfr_ms)
-        print 'lookup table before comp ms loaded...'
-        
+    if not os.path.exists(filename_lookuptable) and not force:
+      for rowdex, row in enumerate(gt.arr):
+        bbox = row[0:4]
+        print 'add row %d of %d'%(rowdex, gt.shape()[0])
+        image = d.images[int(row[gt.cols.index('img_ind')])]
+        features = e.get_assignments(bbox, 'sift', codebook, image)
+        cls_ind = int(row[gt.cols.index('cls_ind')])
+        t.add_features(features, bbox, cls_ind)  
+              
+      t.compute_all_weights()
+      # Now also compute the cluster means
       t.perform_mean_shifts()   
       
       t.save_table(filename_lookuptable)
       outfile = open('times','w')
       t_train = time.time() - t_train
-      outfile.writelines('train took %f secs\n'%t_train)
-  
+      outfile.writelines('train took %f secs\n'%t_train)  
   
   safebarrier(comm) 
   ###############################################################
@@ -254,11 +247,12 @@ def run(force=False):
   for img_ind in range(comm_rank, len(d.images), comm_size):
     img = d.images[img_ind]  
     annotations = e.get_assignments(None, 'sift', codebook, img)
+    bounds = [0, 0, img.size[0], img.size[1]]
     for cls_ind, cls in enumerate(config.pascal_classes):
       if not img.get_cls_ground_truth()[cls_ind]:
         continue
       print 'machine %d on %s for %s'%(comm_rank, img.name, cls)
-      top_wins = t.get_top_windows(K, annotations, cls_ind)
+      top_wins = t.get_top_windows(K, annotations, cls_ind, bounds)
       savename = os.path.join(ut.makedirs(os.path.join(config.res_dir, 'jumping_windows','bboxes')), '%s_%s.mat'%(cls,img.name[:-4]))
       sio.savemat(savename, {'bboxes':top_wins})              
   

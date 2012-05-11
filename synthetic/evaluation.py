@@ -425,15 +425,13 @@ class Evaluation:
     return ap
   
   def plot_recall_vs_windows(self, det, gt, filename):
-    res = self.evaluate_recall_vs_jws(det, gt)
-    num_bins = res.shape[0]
-    x = np.linspace(0, 10000,num_bins)
-    y = res
+    (x, y) = self.evaluate_recall_vs_jws(det, gt)
     plt.plot(x, y)
     plt.xlabel('num windows')
     plt.ylabel('recall')
     plt.savefig(filename)
     return (x, y)
+  
   
   def evaluate_recall_vs_jws(self, det, gt): 
     images = np.unique(det.subset_arr('img_ind'))
@@ -471,8 +469,14 @@ class Evaluation:
     for bindex in range(num_bins):
       rec_vs_numwin[bindex] = np.sum(tp_array[dat[hist == bindex]])
       
-    res = np.cumsum(rec_vs_numwin)/float(num_obs)      
-    return res
+    res = np.cumsum(rec_vs_numwin)/float(num_obs)
+    print 'obs:', num_obs
+    if num_obs == 0:
+      res = np.zeros(res.shape)  
+    num_bins = res.shape[0]
+    x = np.linspace(0, 10000,num_bins)
+    y = res    
+    return (x, y)
 
   def plot_pr(self, ap, rec, prec, name, filename, force=False):
     """Plot the Precision-Recall curve, saving png to filename."""

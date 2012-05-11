@@ -14,9 +14,8 @@ from scipy import io
 
 from synthetic.extractor import Extractor
 from synthetic.dataset import Dataset
-from synthetic.pyramid import *
 import synthetic.util as ut
-from synthetic.jumping_windows import *
+from synthetic.pyramid import extract_pyramid
 
 def save_to_mat(filename, X, Y, testX):
   Y = Y.astype('float64')
