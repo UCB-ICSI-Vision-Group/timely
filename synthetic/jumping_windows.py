@@ -1,644 +1,269 @@
-from common_imports import *
-from common_mpi import *
-import synthetic.config as config
+""" Implementation of Viajayanarasimhan and Graumann's Jumping Windows for
+window candidate selection
+@author: Tobias Baumgartner
+@contact: tobi.baum@gmail.com
+"""
 
-import Image
-from numpy.numarray.numerictypes import Int
+from synthetic.common_imports import *
+from synthetic.common_mpi import *
+
 import scipy.io as sio
-from os.path import join
-
+from dataset import *
 from synthetic.extractor import Extractor
-from synthetic.dataset import Dataset
-
-from numpy.ma.core import ceil
 from synthetic.mean_shift import MeanShiftCluster
-from synthetic.evaluate_matlab_jws import *
 
-# -------------------------------------------------- RootWindow
-class RootWindow():
-  """ A root window containing NxM grid cells, position and size"""
-  def __init__(self, bbox, image, M):
-    self.x = bbox[0]
-    self.y = bbox[1] 
-    self.M = M
-    self.image = image
-    self.width = bbox[2]
-    self.height = bbox[3]
-    self.cell_width = bbox[2]/float(self.M)
-    self.cell_height = bbox[3]/float(self.M)
-    self.scale = bbox[3]/image.size[1]
-    self.ratio = bbox[2]/bbox[3]
-  
-  def add_feature(self, positions):
-    """ We expect a 1x2 positions here: x y """
-    # First compute the bin in which this positions belongs. We need the relative
-    # coordinates of this feat to the RootWindow. 
-    x = positions[:,0] - self.x
-    y = positions[:,1] - self.y
-    x_pos = (x/(self.width+1)*self.M).astype(Int)
-    y_pos = (y/(self.height+1)*self.M).astype(Int)
-    # return the grid cell it belongs to.
-    return self.convert_tuple_to_num((x_pos, y_pos))
-  
-  def convert_tuple_to_num(self, intuple):
-    return self.M*intuple[1] + intuple[0]
-  
-  def convert_num_to_tuple(self, num):
-    m = num%self.M
-    n = num/self.M
-    return (m, n)
+# Gridding factors: NxM grids per window. Good Values are still tbd.
+N = 4
+M = 4
 
-         
-def display_bounding_boxes(bbxs, name, d,K):
-  """ Draw and display bounding boxes.
-  bbxs are samples X (x, y, w, h)
-  """  
-  image_filename = d.config.VOC_dir + '/JPEGImages/' + name
-  os.system('convert ' + image_filename + ' bbox_tmp_img.png')   
-  im = Image.open('bbox_tmp_img.png')
-  draw = ImageDraw.Draw(im)    
-  for k in range(K):
-    draw.rectangle(((bbxs[k,0],bbxs[k,1]),(bbxs[k, 2] + bbxs[k, 0], \
-                                           (bbxs[k, 3] + bbxs[k, 1]))))
-  del draw    
-  im.show()
-  os.remove('bbox_tmp_img.png')
-  
-
-def get_back_indices(num, myM, myN):
-  m = num%myM
-  n = num/myM
-  return (n, m)
-
-
-def unify_rows(arr):
-  return np.array([np.array(x) for x in set(tuple(x) for x in arr)])
-
-
-class LookupTable:
-  def __init__(self, grids, num_words, clswords, wordprobs, numcenters, cls):
-    self.grids = grids
-    self.size = grids*grids*num_words
-    self.bb = {}
-    self.clusters = {}
-    self.clswords = clswords
-    self.cls = cls
-    self.wordprobs = wordprobs 
-    self.numcenters = numcenters
-   
-  def insert(self, word, bb):    
-    wordid = np.where(self.clswords == word)[0][0,0]
-    if not wordid in bb:
-      self.bb[wordid] = bb
+class LookupTable():
+  """ Data structure for storing the trained lookup table. It's values are
+lists of tuples (grid-position, root window)"""
+  def __init__(self, classes = config.pascal_classes, codebook = None, filename=None):
+    self.classes = classes
+    self.codebook = codebook
+    if filename:
+      self.read_table(filename)
+    # no file given, we train a new lookup table
     else:
-      self.bb[wordid] = np.vstack((self.bb[wordid],bb))
+      self.tables = [{} for _ in range(len(self.classes))]
+      self.weights = [np.matrix([]) for _ in range(len(self.classes))]
+    
+    
+  def compute_all_weights(self):
+    for i in range(len(self.classes)):
+      print 'compute weights for class %s...'%(self.classes[i])
+      tab = self.tables[i]
+      weights = self.weights[i]
+      weights = np.zeros((len(self.codebook), N*M))
+      for idx in tab:
+        grid_win = tab[idx]  
+        for g in grid_win:     
+          weights[idx, g] = len(grid_win[g])
+        normalize = np.sum(weights[idx, :])
+        weights[idx,:] /= normalize
+      self.weights[i] = weights
       
   def perform_mean_shifts(self):
-    # same bandwidth as Grauman
-    for bb_all in self.bb.iteritems():            
-      bb_mat = bb_all[1]
-      bb_key = bb_all[0]
-      bb_all = np.asmatrix(bb_mat)
-
-      mat = np.matrix(bb_all)
-
-      if bb_all.shape[0] < 2:
-        self.clusters[bb_key] = mat 
-        continue
-      centers = MeanShiftCluster(mat, 0.25)
-      self.clusters[bb_key] = centers
+    '''Perform mean_shift of windows for all (cls, v, g) combinations'''
+    for cls_ind in range(len(self.classes)):
+      print 'perform meanshifts for class %s'%(self.classes[cls_ind])
+      table = self.tables[cls_ind]
+      for v_ind in table:
+        win_grids = table[v_ind]
+        for windex in win_grids:
+          wins = win_grids[windex]
+          wins = np.vstack(wins)
+          centers = MeanShiftCluster(wins, 0.25)
+          win_grids[windex] = centers
+            
+  def get_gridcell(self,positions, bbox):
+    '''
+    Compute the gridcell that these positions fall into within the box and 
+    convert it to one number between 0, N*M. Here we numerate the gridcells
+    in a row-wise order
+    '''
+    x = positions[:,0] - bbox[0]
+    y = positions[:,1] - bbox[1]
+    x_pos = (x/(bbox[2]/M)).astype(int)
+    y_pos = (y/(bbox[3]/N)).astype(int)    
+    return N*y_pos + x_pos
       
-  def save(self):
-    filename_lookup = join(config.data_dir, 'jumping_window','lookup', self.cls)
-    store_file = open(filename_lookup, 'w')
-    print 'save ', filename_lookup 
-    cPickle.dump(self, store_file)
-  
-  def compute_top_boxes(self, img, annots, positions, K, cut_tolerance,feature_type='sift'):
-    """ compute the top K boxes in the sense of weights"""
-    word_idx = 0    
-    top_boxes = np.zeros((K, 4))
-    insert_count = 0    
-    go_on = True
-    width = img.size[0]
-    height = img.size[1]
-    #annots = unify_rows(annots)
-    num_windows=0
-    while go_on:
-      if word_idx >= self.top_words.shape[0]:
-        go_on = False
-        continue
-      
-      word = self.clswords[word_idx][0]
-      
-      if feature_type=='sift':
-        test_annos = np.where(annots[:,3] == word)[0]
-        test_positions = annots[test_annos][:, 0:3]
+  def add_features(self, features, bbox, cls_ind):
+    # First translate features to codebook assignments.
+    self.cls_ind = cls_ind
+    positions = features[:,0:2]
+    assignments = features[:,3]
+    assignments = assignments.reshape(features.shape[0], 1)
+    grid_cell = self.get_gridcell(positions, bbox)
+    grid_cell = grid_cell.reshape(features.shape[0], 1)
+    ass_cell = np.hstack((assignments, grid_cell))
+    for rowdex, row in enumerate(ass_cell):
+      pos = positions[rowdex]
+      nbbox = np.copy(bbox)
+      nbbox[:2] -= pos
+      self.add_value(row[0], row[1], nbbox)
+          
+  def add_value(self, v, g, win):
+    '''
+    Add one sample point to the lookup table. 
+    word v, grid g, bbox win
+    Lookuptable schema: {v: {g: [win]}}
+    '''
+    table = self.tables[self.cls_ind]
+    if table.has_key(v):
+      tab = table[v]
+      if tab.has_key(g):
+        tab[g].append(win)
       else:
-        word = word%self.numcenters
-        test_annos = np.where(annots[:,2] == word)[0]
-        test_positions = positions[test_annos][:, 0:2]      
-
-      if test_positions.size == 0:
-        word_idx += 1
-        continue
-      # find the root windows that have ann at position grid
-#      embed()
-#      return
-      if not word in self.clusters:
-        # we haven't never seen this annotations before. skip it
-        word_idx += 1
-        continue
-     
-      windows = self.clusters[word]
-      num_windows += windows.shape[0]
-      for pos in test_positions[0]:
-        pos = np.array(pos)[0]
-        if go_on:
-          for windex in range(windows.shape[0]):
-            win = np.array(windows[windex,:])[0]           
-            insert_box = [pos[0] + win[0], pos[1] + win[1], pos[0] + win[2], pos[1] + win[3]]
-            if insert_box[0] > 0 and insert_box[1] > 0 and insert_box[2] < width \
-              and insert_box[3] < height:
-              top_boxes[insert_count,:] =  insert_box
-              #embed()
-              insert_count += 1
-#              if insert_count == K:
-#                go_on = False
-#                break        
-        else:
-          break
-
-      word_idx += 1
-    print 'num_windows: %d'%num_windows
-    return top_boxes    
-
-def get_indices_for_pos(positions, xmin, xmax, ymin, ymax):
-  indices = np.matrix(np.arange(positions.shape[0]))
-  indices = indices.reshape(positions.shape[0], 1)
-  positions = np.asarray(np.hstack((positions, indices)))
-  if not positions.size == 0:  
-    positions = positions[positions[:, 0] >= xmin, :]
-  if not positions.size == 0:
-    positions = positions[positions[:, 0] <= xmax, :]
-  if not positions.size == 0:  
-    positions = positions[positions[:, 1] >= ymin, :]
-  if not positions.size == 0:
-    positions = positions[positions[:, 1] <= ymax, :]
-  return np.asarray(positions[:, 2], dtype='int32')
-
-def sub2ind(A, x, y):
-  return (y-1)*A[0] + x
-
-def ind2sub(width, ind):
-  x = ind%width - 1
-  y = ind/width   
-  y -= x==-1
-  return [x, y]    
-
-def sort_cols(A,top_k=None):
-  """
-  Sort a matrix column-wise. Return sorted matrix and permuted indices
-  """
-  n_rows = A.shape[0]
-  if not top_k == None:
-    min(top_k, n_rows)    
-  I = np.argsort(-A, axis=0, kind='mergesort')[:top_k]  
-  b = mat_from_col_idx(A, I)
-  return [b, I]
-
-def mat_from_col_idx(A, I):
-  """
-  Generate Submatrix from column index
-  """
-  n_rows = I.shape[0]
-  n_cols = A.shape[1]
-  b =  np.asmatrix(np.zeros((n_rows, n_cols)))
-  for col in range(n_cols):
-    idc = np.asanyarray(I.T[col,:]).tolist()[0]
-    if type(A[idc,col]) == type(np.array(None)):
-      b[:,col] = np.asmatrix(A[idc,col]).T
+        tab[g] = [win]
     else:
-      b[:,col] = A[idc,col]
-  return b
-
-def line_up_cols(A):
-  return np.reshape(A.T,(A.size,1))
-
-def get_selbins(grids, inds, c_pts, bbox):
-  return np.minimum(  grids, 
-    np.maximum(  1,
-          ceil(
-               (c_pts[inds,:] - 
-               np.tile(np.matrix([bbox[0], bbox[1]]),(len(inds),1)))/ 
-               np.tile(np.matrix([(bbox[2]-1)/grids, (bbox[3]-1)/grids]),(len(inds),1))
-              )
-        )
-  );  
-  
-def get_idx(inds, codes, c_shape, feats, binidx):
-  # Compute grid that each point falls into
-  if feats == 'llc':
-    ind = np.where(codes[:,inds].data > 0)[0]
-    words = np.transpose(np.asmatrix(codes[:,inds].nonzero()[0][ind]))
-    words += np.ones(words.shape)
-    ind = codes.nonzero()[1][ind]
-    
-  elif feats == 'sift':
-    ind = range(binidx.size)
-    words = codes[ind]
-    #words = np.ones(words.shape)
-  if binidx.size == 0:
-    return []
-  
-  idx = sub2ind(c_shape, words, binidx[ind])
-
-  #idx = np.unique(np.asarray(idx))
-  idx = idx.astype('int32')
-  
-  return idx
-
-class JWTraining:
-  def __init__(self, d, codebook, feature='sift'):
-    self.d = d
-    self.e = Extractor()
-    self.codebook = codebook
-    self.feature = feature
-    self.tocer = ut.TicToc()
-    self.jw_test_dir = join(config.test_support_dir, 'jumping_windows')  
-    self.llc_dir = join(self.jw_test_dir, 'llc')
-    self.featdir = join(self.jw_test_dir, 'sift')
-  
-  def get_pts_codes(self, filename):
-    if self.feature == 'sift':
-      filename = filename[:-1] + '.jpg'
-      assignment = self.e.get_assignments(np.asarray([0,0,100000,1000000]), 'sift', self.codebook, self.d.get_image_by_filename(filename))
-      pts = assignment[:,0:2]
-      codes = assignment[:,2]
+      table[v] = {g: [win]}
       
-    elif self.feature == 'llc':
-      feaSet = sio.loadmat(join(self.featdir,filename))['feaSet']
-      x = feaSet['x'][0][0]
-      y = feaSet['y'][0][0]    
-      pts = np.hstack((x,y))
-      codes = sio.loadmat(join(self.llc_dir,filename))['codes']
+  def get_value(self, key):
+    if self.table.has_key(key):
+      return self.table[key]
+    else:
+      return None
     
-    return (pts, codes)
+  def save_table(self, filename):
+    # we also save a just plain file to make search for existence easier. 
+    # (I'm lazy)
+    open(filename,'w').close()
+    for cls_ind, cls in enumerate(self.classes):
+      outfile = open(filename+'_'+cls, 'w')
+      print 'save %s'%(filename+'_'+cls)
+      pickle.dump(self.tables[cls_ind], outfile)
+      outfile.close()
       
+    outfile = open(filename+'_weights', 'w')
+    print 'save %s'%(filename+'_weights')
+    pickle.dump(self.weights, outfile)
+    outfile.close()
   
+  def read_table(self, filename):
+    self.tables=[]
+    for cls in self.classes:
+      infile = open(filename+'_'+cls, 'r')
+      print 'read %s'%(filename+'_'+cls)
+      table = pickle.load(infile)
+      self.tables.append(table)
+      infile.close()      
+    infile = open(filename+'_weights', 'r')
+    print 'read %s'%(filename+'_weights')
+    self.weights = pickle.load(infile)
+    infile.close()     
+  
+  def get_ranked_word_grid(self, words, cls_ind):
+    mask = np.zeros((self.codebook.shape[0],M*N))
+    mask[words,:] = 1
+    weights = self.weights[cls_ind]
+    weights = np.multiply(weights, mask)
+    shape_orig = weights.shape
+    weights = weights.reshape(weights.size,1)
+    ranks = np.argsort(-weights, 0)
+    width = shape_orig[1]
+    x = ranks/width  
+    y = ranks%width
+    topK = np.hstack((x,y))
+    return topK
+  
+  def get_top_windows(self, K, annotations, cls_ind, bounds, outside_overlaps_thresh=0.5):
+    positions = annotations[:,:2]
+    words = annotations[:,3].tolist()
+    topK = self.get_ranked_word_grid(words, cls_ind)
+    insert_count = 0    
+    all_wins = []
+    for [word, grid] in topK:
+      # First get the windows for this beast.
+      table = self.tables[cls_ind]
+      if not word in table:
+        continue
+      win_grid = table[word]
+      if not grid in win_grid:
+        continue  
+      wins = win_grid[grid]
+      
+      # Now add all those windows for each point that has this annotation
+      poss = positions[np.where(annotations[:,3] == word)]
+      for pos in poss:
+        add_pos = np.hstack((pos, [0,0]))
+        try: 
+          add_wins = wins + np.tile(add_pos, (wins.size/4.,1))
+        except:
+          embed()
+          raise RuntimeError('break it')
+        # A little heuristic to improve everything:
+        # - take only boxes that overlap with the image by at least THRESH %
+        overlaps = BoundingBox.get_overlap(add_wins, bounds)
+        actual_overlaps = np.multiply(bounds[2]*bounds[3],np.divide(overlaps,add_wins[:,2]*add_wins[:,3]))
+        indices = np.where(actual_overlaps>outside_overlaps_thresh)[0]
+        if len(indices) == 0:
+          continue
+        add_wins = add_wins[indices, :]        
+        add_wins = BoundingBox.clipboxes_arr(add_wins, bounds)       
+        
+        all_wins.append(add_wins)
+        insert_count += add_wins.shape[0]
+      if insert_count >= K:
+        break
+    # is this usual except for testing data :/ NO: just if none of these objects
+    # has been seen during training time
+    if len(all_wins) == 0:
+      print '##### WARNING: FOUND NO WINS FOR object of class %s ####'%self.classes[cls_ind]
+      return all_wins    
+    all_wins = np.vstack(all_wins)
+    return all_wins      
+
+def run(force=False):
   ###############################################################
   ######################### Training ############################
   ###############################################################
-  def train_jumping_windows(self, trun=False, diff=False):
-       
-    if self.feature == 'sift':
-      trainfile = join(config.VOC_dir, 'ImageSets','Main', self.d.name.split('_')[-1]+'.txt')
-      trainfiles = open(trainfile,'r').readlines()
-    elif self.feature == 'llc':
-      trainfiles = os.listdir(self.llc_dir)
-      
-    grids = 4
-    if self.feature == 'sift':
-      numcenters = self.codebook.shape[0]
-    elif self.feature == 'llc':
-      a = sio.loadmat(join(self.llc_dir,trainfiles[0]))['codes']
-      numcenters = a.shape[0]
-    ccmat = np.zeros((numcenters, len(self.d.classes)*grids*grids+1))
-    
   
-    #first_visit = True
-    print 'Read all features to create weights'
+  # Dataset
+  dataset = 'full_pascal_trainval'
+  d = Dataset(dataset)  
+  e = Extractor()
+  codebook = e.get_codebook(d, 'sift')
+  t_train = time.time()
+  if comm_rank == 0: # Could I also parallelize training?
+    t = LookupTable(config.pascal_classes, codebook)  
+    gt = d.get_ground_truth()
+    filename_lookuptable = config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl'
     
-    self.tocer.tic()  
-    ccmat_file = config.get_ccmat_file(self.d, self.feature)
-    
-    force_ccmat = False
-    print ccmat_file
-    if not os.path.exists(ccmat_file+'.mat') or force_ccmat:  
-      #trainfiles = ['000753.mat', '000750.mat']
-      for filename in trainfiles:
-        print filename
-    
-        # Load feature positions
-        (pts, codes) = self.get_pts_codes(filename)
-          
-        bg = np.ones((pts.shape[0], 1))        
-        
-        image = self.d.get_image_by_filename(filename[:-4]+'.jpg')
-        gt = image.get_ground_truth(include_diff=True)      
-        
-        for row in gt.arr:
-        #for row in gt.arr[0,:]:
-          cls = row[gt.cols.index('cls_ind')]
-          #print d.classes[int(cls)]
-          bbox = row[0:4]
-          #print bbox[0], bbox[0]+bbox[2]-1, bbox[1], bbox[1]+bbox[3]-1
-          inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2]-1, bbox[1], bbox[1]+bbox[3]-1)
-          bg[inds] = 0
-          
-          selbins = get_selbins(grids, inds, pts, bbox)
-          binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
-              + cls*grids*grids);
-          if self.feature == 'sift':
-            binidx -= np.tile(grids, binidx.shape)
-               
-          idx = get_idx(inds, codes, ccmat.shape, self.feature, binidx)
-            
-          indics = ind2sub(ccmat.shape[0], idx)
-        
-          ccmat[indics] += 1
-          
-        # Now record background features
-        cls = len(self.d.classes)*grids*grids
-        inds = np.where(bg > 0)[0]
-    
-        if inds.size == 0:
-          continue
-        if self.feature == 'llc':
-          ind = np.where(codes[:,inds].data > 0)[0]      
-          words = codes[:,inds].nonzero()[0][ind]
-          words = np.unique(words)
-        elif self.feature == 'sift':
-          words = codes[inds]
-          
-        for w in words:
-          ccmat[w, cls] = ccmat[w, cls] + 1
-        
-      
-      sio.savemat(ccmat_file, {'ccmat':ccmat})
-        
-    else:
-      print 'load ccmat'
-      ccmat = sio.loadmat(ccmat_file)['ccmat']
-    
-    if self.feature == 'llc':
-      ccmat_orig = sio.loadmat(join(self.jw_test_dir,'cooccurrence.mat'))['ccmat']
-      # ========= ASSSERT
-      sio.savemat('ccmat',{'ccmat2':ccmat})
-      np.testing.assert_equal(ccmat, ccmat_orig)
-      print 'llc test for ccmat passed...'
-    
-    print 'features counted'
-    self.tocer.toc()
-    self.tocer.tic()
-    
-    # counted all words for all images&object, now compute weights
-    ####################
-    ##### WEIGHTS ######
-    ####################
-    div = np.sum(ccmat,1)
-    # Do this better
-    for didx in range(len(div)):
-      ta = div[didx]
-      if ta == 0:
-        ccmat[didx, :] = 0 # TODO: I change this.
-        continue
-      ccmat[didx, :] /= float(ta)
-    
-    sio.savemat('ccmat2',{'ccmat2':ccmat})
-    print 'computed weights'
-    #return
-    self.tocer.toc()
-    
-    self.tocer.tic()
-    numwords = 500
-    [sortedprob, discwords] = sort_cols(ccmat, numwords)
-    
-    # Lookup for every class
-    for cls_idx in range(len(self.d.classes)):
-    #for cls_idx in [14]:
-      
-      cls = self.d.classes[cls_idx]
-      print cls
-      clswords = discwords[:, cls_idx*grids*grids:(cls_idx+1)*grids*grids]
-      binidx, _ = np.meshgrid(range(grids*grids), np.zeros((clswords.shape[0],1)))
-      
-      #embed()
-      clswords = sub2ind([numcenters, grids*grids], line_up_cols(clswords), line_up_cols(binidx)+1)
-      ################### HERE ON 04/29    
-      
-      # === GOOD! ===
-      wordprobs = sortedprob[:, cls_idx*grids*grids:(cls_idx+1)*grids*grids];
-      wordprobs = line_up_cols(wordprobs);
-      [wordprobs, idx] = sort_cols(wordprobs);
-        
-      clswords = mat_from_col_idx(clswords, idx);
-          
-      bbinfo = LookupTable(grids, numwords, clswords, wordprobs, numcenters, cls)
-      
-      fileids = self.d.get_ground_truth_for_class(cls)    
-      last_filename = '000000'    
-      
-      for row_idx in range(fileids.shape()[0]):
-        row = fileids.arr[row_idx, :]
-        filename = self.d.images[row[fileids.cols.index('img_ind')].astype('int32')].name[:-4]
-      
-        if not os.path.isfile(join(self.llc_dir, filename+'.mat')):
-          continue
-        print filename
-        if not last_filename == filename:
-          # This is a new filename. Load codes and pts.
-          feaSet = sio.loadmat(join(self.featdir,filename))['feaSet']
-          x = feaSet['x'][0][0]
-          y = feaSet['y'][0][0]    
-          pts = np.hstack((x,y))
-          bg = np.ones((pts.shape[0], 1))
-          codes = sio.loadmat(join(self.llc_dir,filename))['codes']
-          last_filename = filename
+    if not os.path.exists(filename_lookuptable) and not force:
+      for rowdex, row in enumerate(gt.arr):
         bbox = row[0:4]
-        
-        inds = get_indices_for_pos(pts, bbox[0], bbox[0]+bbox[2], bbox[1], bbox[1]+bbox[3])
+        print 'add row %d of %d'%(rowdex, gt.shape()[0])
+        image = d.images[int(row[gt.cols.index('img_ind')])]
+        features = e.get_assignments(bbox, 'sift', codebook, image)
+        cls_ind = int(row[gt.cols.index('cls_ind')])
+        t.add_features(features, bbox, cls_ind)  
               
-        # Compute grid that each point falls into      
-        selbins = get_selbins(grids, inds, pts, bbox)
-        binidx = np.transpose(sub2ind([grids, grids], selbins[:,0]-1, selbins[:,1]-1))          
-        selbins = get_selbins(grids, inds, pts, bbox)-1 
-        
-        binidx = np.transpose(sub2ind([grids, grids], selbins[:,0], selbins[:,1]) \
-            + cls_idx*grids*grids);      
-        idx = get_idx(inds, codes, ccmat.shape, self.feature, binidx)
-              
-        if self.feature == 'llc':
-          ind = np.where(codes[:,inds].data > 0)[0]
-          ind = codes.nonzero()[1][ind]
-        elif self.feature == 'sift':
-          ind = inds
-        #intersect idx and clswords
-              
-        clswords = np.unique(np.asarray(clswords))
-        I = np.sort(idx)
-  #      J = np.sort(ind)
-        idx = np.unique(np.asarray(idx))
-        imgwords = np.unique(np.intersect1d(np.asarray(idx), np.asarray(clswords), assume_unique=True))
-        for c in imgwords:
-          idc = np.where(I == c)[0]        
-          featidx = inds[ind[idc]]
-          featpts = pts[featidx]
-          featpts = np.hstack((featpts, featpts))
-          ins = np.tile(bbox, (featpts.shape[0],1)) - featpts + np.matrix([0,0,bbox[0]-1,bbox[1]-1])
-          bbinfo.insert(c, ins)         
-        
-      bbinfo.perform_mean_shifts()
-      bbinfo.top_words = np.asarray(bbinfo.wordprobs.argsort(axis=0))[::-1]
-      bbinfo.save()
-      #embed()
-      #break
+      t.compute_all_weights()
+      # Now also compute the cluster means
+      t.perform_mean_shifts()   
       
-    print 'computed all lookup tables' 
-    self.tocer.toc()
-    
-  def generate_jwin(self, bbinfo, im, cls, codes, pts, feature = 'sift'):
-    if feature == 'llc':
-      ind = np.where(codes.data > 0)[0]
-      
-      I = np.transpose(np.asmatrix(codes.nonzero()[0][ind]))
-      J = np.transpose(np.asmatrix(codes.nonzero()[1][ind]))
-      annots = np.hstack((pts[J.T.tolist()[0]], I))
-      
-    elif feature == 'sift':
-      annots = codes
-   
-    return bbinfo.compute_top_boxes(im, annots, annots[:,0:2], K=3000, cut_tolerance = 0.5, feature_type = 'llc')
+      t.save_table(filename_lookuptable)
+      outfile = open('times','w')
+      t_train = time.time() - t_train
+      outfile.writelines('train took %f secs\n'%t_train)  
   
-              
-def mpi_get_sublist(rank, size, all_classes):
-  # instead of mpiing with for and lists, create sublists right away
-  mpi_bin_size = len(all_classes)/size
-  all_nu_classes = all_classes[rank*mpi_bin_size:(rank+1)*mpi_bin_size]    
-  if mpi_bin_size*size < len(all_classes):
-    missing_size = len(all_classes)-mpi_bin_size*size
-    missing_items = all_classes[(-missing_size):(len(all_classes))]
-    if rank < missing_size:      
-      all_nu_classes.append(missing_items[rank])  
-  return all_nu_classes
-
-def load_lookuptable(cls):
-  filename_lookup = join(config.data_dir, 'jumping_window','lookup', cls)
-  bbinfo = cPickle.load(open(filename_lookup,'r'))
-  return bbinfo
-
-def load_lookuptable_from_matlab(cls):
-  filename = '/home/tobibaum/Documents/Vision/research/jumping_windows/data/%s-boxes'%cls
-  loadinfo = sio.loadmat(filename)
-  # grids, words, clswords, wordprobs, numcenters, cls
-  grids = loadinfo['grids'][0,0]
-  clswords = loadinfo['clswords']
-  numwords = clswords.shape[0]/(grids**2)
-  wordprobs = loadinfo['wordprobs']
-  numcenters = loadinfo['numcentres'][0][0]  
-  bbinfo = LookupTable(grids, numwords, clswords, wordprobs, numcenters, cls)
-  for idx in range(clswords.shape[0]):
-    word = clswords[idx, 0]
-    bbinfo.bb[word] = loadinfo['bbinfo'][0][idx][0]
-    bbinfo.clusters[word] = np.matrix(loadinfo['bbinfo'][0][idx][1])
-  bbinfo.top_words = np.asarray(bbinfo.wordprobs.argsort(axis=0))[::-1]
+  safebarrier(comm) 
+  ###############################################################
+  ######################### Testing #############################
+  ###############################################################
+  # We now have a LookupTable and want to determine the root windows
+  # in a new image.
   
-  return bbinfo
+  print 'Jumping Window Testing ...'
+    # Dataset
+  d = Dataset('full_pascal_test')
+  del t
+  t = LookupTable(config.pascal_classes, codebook, config.get_jumping_windows_dir(dataset) + 'lookup_table.pkl')
 
-
-def store_boundingboxes(jw, suffix):
-  classes = config.pascal_classes
-  jw_test_dir = join(config.test_support_dir, 'jumping_windows')
-  llc_dir = join(jw_test_dir, 'llc')
-  sift_dir = join(jw_test_dir, 'sift')
-  
-  files = os.listdir(llc_dir)
-  images = [jw.d.get_image_by_filename(x[:-4]+'.jpg') for x in files]
-  for cls_ind, cls in enumerate(classes):
-    #bbinfo = load_lookuptable(cls)
-    bbinfo = load_lookuptable_from_matlab(cls)
-    
-    for img in images:
+  K = 10000
+  t_test = time.time()
+  for img_ind in range(comm_rank, len(d.images), comm_size):
+    img = d.images[img_ind]  
+    annotations = e.get_assignments(None, 'sift', codebook, img)
+    bounds = [0, 0, img.size[0], img.size[1]]
+    for cls_ind, cls in enumerate(config.pascal_classes):
       if not img.get_cls_ground_truth()[cls_ind]:
         continue
-      print '%s on %s'%(cls, img.name)
-      filename = img.name[:-4]+'.mat'
-      feaSet = sio.loadmat(join(sift_dir,filename))['feaSet']
-      x = feaSet['x'][0][0]
-      y = feaSet['y'][0][0]    
-      pts = np.hstack((x,y))
-      codes = sio.loadmat(join(llc_dir,filename))['codes']
-      
-      bboxes = jw.generate_jwin(bbinfo, img, bbinfo.cls, codes, pts, feature=jw.feature)
-      embed()
-      savename = os.path.join(ut.makedirs(os.path.join(config.res_dir, 'jumping_windows','bboxes_'+suffix)), '%s_%s.mat'%(cls,img.name[:-4]))
-      sio.savemat(savename, {'bboxes':bboxes})   
-      return   
-     
-def run():
-  all_classes = config.pascal_classes
-  train_set = 'full_pascal_trainval'
-  val_set = 'full_pascal_test'
-  K = 3000
-  num_pos = 'max'
-  feature = 'llc'
-  e = Extractor()
-  d = Dataset(train_set)
-  codebook = e.get_codebook(d, 'sift')
-  jw = JWTraining(d, codebook, feature)
+      print 'machine %d on %s for %s'%(comm_rank, img.name, cls)
+      top_wins = t.get_top_windows(K, annotations, cls_ind, bounds)
+      savename = os.path.join(ut.makedirs(os.path.join(config.res_dir, 'jumping_windows','bboxes')), '%s_%s.mat'%(cls,img.name[:-4]))
+      sio.savemat(savename, {'bboxes':top_wins})              
   
-  #return
-  suffix = 'small_their_bbinfo2'
-  train = False
-  if train:
-    feature = 'llc'
+  safebarrier(comm)
+  if comm_rank == 0:
+    t_test = time.time() - t_test
+    outfile.writelines('test took %f secs\n'%t_test)
+    outfile.close()
     
-    ut.makedirs(join(config.data_dir, 'jumping_window','lookup'))
-    jw.train_jumping_windows(trun=True,diff=False)
-
-  store_boundingboxes(jw, suffix)
-  auc = evaluate_matlab_jws(train_set, suffix)
+  return
   
-  print 'the auc is %f'%auc
-  
-  just_eval = False
-
-  if just_eval:
-    basedir = join(config.data_dir, 'jumping_window')
-    foldname_det = join(basedir, 'detections')    
-    foldname_lookup = join(basedir, 'lookup')
-    ut.makedirs(foldname_det)
-    
-    print 'start testing on node', comm_rank
-    d_val = Dataset('full_pascal_val')
-    #for cls_idx, cls in enumerate(all_classes):
-    for cls_idx, cls in enumerate([all_classes[0]]):
-      #cls=all_classes
-      gt_t = d_val.get_ground_truth_for_class(cls, include_diff=False,
-          include_trun=True)
-      e = Extractor()
-      codebook = e.get_codebook(d_val, 'sift')
-            
-      filename_lookup = join(foldname_lookup,cls)
-      store_file = open(filename_lookup, 'r')
-      bbinfo = cPickle.load(store_file)
-            
-      test_gt = gt_t.arr
-      npos = test_gt.shape[0]
-      test_imgs = test_gt[:,gt_t.cols.index('img_ind')]
-      
-      #test_imgs = np.unique(test_imgs)
-      test_imgs = np.unique(test_imgs)[:1]
-          
-      for i in range(comm_rank, len(test_imgs), comm_size):
-        img_ind = int(test_imgs[i])
-        image = d_val.images[img_ind]
-        codes = e.get_assignments(np.array([0,0,100000,100000]), 'sift', codebook, image)
-        dets = jw.generate_jwin(bbinfo, image, cls, codes, codes[:,0:2])
-      
-        bbox_curr = np.zeros((dets.shape[0], 7))
-        ent_idx = 0
-        num_rows = dets.shape[0]
-        print dets
-        for i, det in enumerate(dets):
-          bbox_curr[i,:] = np.hstack((det, 1 - i/float((num_rows - 1)), cls_idx, img_ind))
-        
-        # save this detections
-        
-        filename = join(foldname_det, image.name + "_" + cls)
-        np.savetxt(filename, bbox_curr)
-
-if __name__=='__main__':    
-  run()     
-
-  
+if __name__=='__main__':
+  force = False
+  run(force)
