@@ -2,16 +2,14 @@
 """
 Script for running experiments and outputting the results.
 """
+from common_imports import *
+import synthetic.config as config
+
 import shutil
 import glob
 import argparse
-import matplotlib.pyplot as plt
 import random
 import string
-
-from common_imports import *
-from common_mpi import *
-import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.dataset_policy import DatasetPolicy

@@ -2,13 +2,14 @@ Schedule
 ---
 
 9 May - Wednesday
+- results for current system with inverse-prior class values @sergey
+- implement and launch run with kernelized regression @sergey
+- launch MRF training with L1 regularization @sergey
 
 11 May - Friday
 - refactor
   - rename 'synthetic' to 'timely' everywhere
 - understand the inference behavior: why linear? @tobi @sergey
-- results for current system with modified class values @sergey
-- finished implementation of "active classification" model @sergey
 - run on PASCAL VOC 2011 (test on val)
 - results with the GIST action @tobi
 - optimized inference of marginals, with controlled caching and potentially regression approximation @tobi @sergey
@@ -25,6 +26,7 @@ Schedule
 - separating actions into regions as well
 
 15 May - Tuesday
+- finished implementation of "active classification" model @sergey
 
 18 May - Friday
 
@@ -35,6 +37,9 @@ Schedule
 
 Tasks
 ---
+## ideas
+
+
 ### assorted
 - check code with pylint and pyflakes
 - include values for object classes (reference some paper by Ashish if can find) @sergey

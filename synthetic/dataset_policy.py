@@ -1,9 +1,9 @@
+from common_imports import *
+import synthetic.config as config
+
 import datetime
 import scipy.io
 import sklearn
-
-from common_imports import *
-import synthetic.config as config
 
 from synthetic.dataset import Dataset
 from synthetic.sample import Sample
@@ -61,6 +61,7 @@ class DatasetPolicy:
   def get_cls_cols(self):
     return self.dataset.classes + ['img_ind','time']
 
+  ### Init
   def __init__(self, test_dataset, train_dataset, weights_dataset_name=None, **kwargs):
     """
     Initialize the DatasetPolicy, getting it ready to run on the whole dataset
@@ -437,7 +438,6 @@ class DatasetPolicy:
 
   def compute_reward_from_samples(self, samples, mode='greedy',
     discount=0.4, attr=None):
-
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action
