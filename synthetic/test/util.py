@@ -1,4 +1,5 @@
 from synthetic.common_imports import *
+from synthetic.tictoc import TicToc
 
 from nose.tools import *
 
