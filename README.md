@@ -40,13 +40,3 @@ Goal is to be able to learn a closed-loop policy
 
   - Given a detector for each class, what is the most efficient way to search through the classes?
   - What if there are multiple detectors per class (use the DPM detector as one of them, and ours as another)
-
-Ideas
----
-- using a saliency map:
-  - generate sliding window proposals by combining a saliency map with the object likelihood map
-  - score jumping window proposals with a saliency map
-- plot recall vs. #windows for a class given other class presence or scene prior--to show that single-class detector efficiency improves with additional data received--which reduces its expected time
-- general philosophy of particle filtering/coarse-to-fine vs. cascade: instead of rejecting regions a priori, look only in a few regions and let that guide the next places you look
-- evaluate the "valley" of detectors: what's the minimal overlap required to successfully get the detection?
-  : in terms of pascal overlap, for example

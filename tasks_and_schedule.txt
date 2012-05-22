@@ -1,44 +1,58 @@
-Schedule
+Unscheduled
 ---
-
-9 May - Wednesday
-- results for current system with inverse-prior class values @sergey
-- implement and launch run with kernelized regression @sergey
-- launch MRF training with L1 regularization @sergey
-
-11 May - Friday
-- refactor
-  - rename 'synthetic' to 'timely' everywhere
+- implement and launch run with support vector regression @sergey
 - understand the inference behavior: why linear? @tobi @sergey
 - run on PASCAL VOC 2011 (test on val)
-- results with the GIST action @tobi
 - optimized inference of marginals, with controlled caching and potentially regression approximation @tobi @sergey
-- implementation of inverse RL to learn policy @sergey
 - more proper entropy computation, probably by sampling @tobi
 - paper draft with the above things and tighter story/intro @sergey
 - finished paper draft with the following improvements over eccv12:
-  - active classification model baseline
   - modified class value results
   - discussion of inference time and tradeoffs
   - better entropy calculation
   - inverse RL from oracle to learn the policy
   - LSPI?
-- separating actions into regions as well
+- separating actions by region
 
-15 May - Tuesday
-- finished implementation of "active classification" model @sergey
+Schedule
+---
+22 May - Tuesday
+- launch run of current system with inverse-prior class values @sergey
+- launch run of current system with the GIST action @sergey
+- launch MRF training with L1 regularization @tobi or @sergey
+- implement region-splitting for the external detector, expanding the action space, and launch training of corresponding SVMs and MRF model. @tobi
 
-18 May - Friday
+23 May - Wednesday
 
-25 May - Tuesday
+24 May - Thursday
+
+25 May - Friday
+
+26 May - Saturday
+
+27 May - Sunday
+
+28 May - Monday
+
+29 May - Tuesday
+
+30 May - Wednesday
+
+31 May - Thursday
 
 1 Jun - Friday
-- polish paper, pretty up figures
+- polish paper
 
 Tasks
 ---
 ## ideas
-
+- using a saliency map:
+  - generate sliding window proposals by combining a saliency map with the object likelihood map
+  - score jumping window proposals with a saliency map
+- plot recall vs. #windows for a class given other class presence or scene prior--to show that single-class detector efficiency improves with additional data received--which reduces its expected time
+- general philosophy of particle filtering/coarse-to-fine vs. cascade: instead of rejecting regions a priori, look only in a few regions and let that guide the next places you look
+- evaluate the "valley" of detectors: what's the minimal overlap required to successfully get the detection?
+  : in terms of pascal overlap, for example
 
 ### assorted
 - check code with pylint and pyflakes
