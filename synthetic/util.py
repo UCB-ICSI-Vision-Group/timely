@@ -9,8 +9,8 @@ import os
 import time
 import numpy as np
 import scipy.stats as st
-from skpyutils.table import Table
-from skpyutils.tictoc import TicToc
+from synthetic.table import Table
+from synthetic.tictoc import TicToc
 
 ###################
 # Ndarray manipulations

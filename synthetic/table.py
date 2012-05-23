@@ -43,7 +43,7 @@ class Table:
     "Make a copy of the Table and return it."
     arr = self.arr.copy() if not self.arr == None else None
     cols = list(self.cols) if not self.cols == None else None
-    index = list(self.index) if not self.index == None else None
+    index = list(self.index) if hasattr(self,'index') and not self.index == None else None
     return Table(arr,cols,index,self.name) 
   def copy(self):
     return self.__copy__()
@@ -58,9 +58,12 @@ Table name: %(name)s | size: %(shape)s
 
   def __eq__(self,other):
     "Two Tables are equal if all columns and their names are equal, in order."
-    return np.all(self.arr==other.arr) and \
-          self.cols == other.cols and \
-          self.index == other.index
+    ret = np.all(self.arr==other.arr) and \
+          (self.cols == other.cols)
+    # TODO
+    #if hasattr(self,'index') and hasattr(other,'index'):
+      #ret = ret and (self.index == other.index)
+    return ret
 
   def sum(self,dim=0):
     "Return sum of the array along given dimension."

@@ -21,6 +21,10 @@ class Image(object):
     self.objects_table = None
     # the above Table is constructed by the loader class
 
+  @property
+  def size(self):
+    return (self.width,self.height)
+
   def __repr__(self):
     return "Image (%(name)s)\n  W x H: %(width)d x %(height)d\n  Objects:\n %(objects_table)s" % self.__dict__
 
