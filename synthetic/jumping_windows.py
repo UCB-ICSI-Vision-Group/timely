@@ -150,7 +150,6 @@ lists of tuples (grid-position, root window)"""
     topK = np.hstack((x,y))
     return topK
   
-
   def get_top_windows(self, K, annotations, cls_ind, bounds, outside_overlaps_thresh=0.5, clipped=True):
     positions = annotations[:,:2]
     words = annotations[:,3].tolist()
@@ -178,7 +177,6 @@ lists of tuples (grid-position, root window)"""
           raise RuntimeError('break it')
         # A little heuristic to improve everything:
         # - take only boxes that overlap with the image by at least THRESH %
-
         if clipped:
           overlaps = BoundingBox.get_overlap(add_wins, bounds)
           actual_overlaps = np.multiply(bounds[2]*bounds[3],np.divide(overlaps,add_wins[:,2]*add_wins[:,3]))

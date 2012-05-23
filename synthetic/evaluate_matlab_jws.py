@@ -15,18 +15,7 @@ def evaluate_matlab_jws(dataset, suffix):
   e = Evaluation(dp, d)
   jwdir = os.path.join(config.res_dir, 'jumping_windows')
   gt = d.get_ground_truth(include_diff=True)
-        
-#  # No point in pickling this....to big!
-#  picklename = os.path.join(jwdir, 'all_bboxes_'+suffix)  
-#  if not os.path.exists(picklename):
-#    bboxes_table = pickle_matlab_jws(d, e, picklename, suffix)
-#  else:
-#    print 'loading boxes...'
-#    t.tic()
-#    bboxes_table = cPickle.load(open(picklename, 'r'))
-#    t.toc()
-  
-  
+    
   filename = os.path.join(jwdir, 'recall_vs_jws_'+suffix)
   nsamples_total = 0
   auc = 0
@@ -38,7 +27,7 @@ def evaluate_matlab_jws(dataset, suffix):
     print x, y ,' are the x ys' 
     auc += np.dot(x,y)/np.sum(x)*nsamples
     print auc, 'for rank %d'%comm_rank    
-  
+
   print 'auc on rank %d is %f'%(comm_rank, auc)
   nsamples_total = comm.reduce(nsamples_total)
   auc = comm.reduce(auc)
