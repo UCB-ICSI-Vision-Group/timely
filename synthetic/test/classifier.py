@@ -27,7 +27,7 @@ class TestClassifier:
       hist = csc.compute_histogram(img_dpm.arr, csc.intervals, csc.lower, csc.upper)
       vector = np.zeros((1, csc.intervals+1))
       vector[0,0:-1] = hist
-      vector[0,-1] = img_dpm.shape()[0]
+      vector[0,-1] = img_dpm.shape[0]
       print vector
 
     

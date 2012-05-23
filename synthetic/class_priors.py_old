@@ -82,7 +82,7 @@ class ClassPriors:
         errors.append(error)
         if pred_prob == 0:
           num_unknown += 1
-      print("Num unknown: %d/%d"%(num_unknown,val_model.shape()[0]))
+      print("Num unknown: %d/%d"%(num_unknown,val_model.shape[0]))
     filename = config.class_priors_plot%'marginal_prob_error'
     title = "Error of predicted vs. true marginal probability for 4-fold validation on the trainval set"
     self.plot_dist(errors,filename,title=title)
@@ -193,7 +193,7 @@ class NGramModel:
     Return list of the loss function values (always 20, because every element
     is investigated.
     """
-    num_actions = self.shape()[1]
+    num_actions = self.shape[1]
     actions = list(range(num_actions))
     taken = []
     observed_inds = []

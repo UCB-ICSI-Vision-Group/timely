@@ -78,7 +78,7 @@ class Evaluation:
       # do this now to save time in the inner loop later
       gt_for_image_list = []
       img_dets_list = []
-      gt = self.dataset.get_ground_truth(include_diff=True)
+      gt = self.dataset.get_ground_truth(with_diff=True)
       
       for black in blacklist:
         gt = gt.filter_on_column('cls_ind', black, op=operator.ne)   
@@ -113,7 +113,7 @@ class Evaluation:
             det_ap = 0
           else:
             dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
-            num_dets += dets_to_this_point.shape()[0]
+            num_dets += dets_to_this_point.shape[0]
             det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
           det_aps.append(det_ap)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
@@ -177,7 +177,7 @@ class Evaluation:
         all_times = dets.subset_arr('time')
       points = self.determine_time_points(all_times,bounds)
       num_points = points.shape[0]
-      cls_gt = self.dataset.get_cls_ground_truth(include_diff=False)
+      cls_gt = self.dataset.get_cls_ground_truth(with_diff=False)
       
       # TODO: WRONG, REMOVE COLS INSTEAD
       cls_gt_classes = list(cls_gt.cols)
@@ -196,7 +196,7 @@ class Evaluation:
           dets_to_this_point = dets.filter_on_column('time',point,operator.le)
 
           #img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
-          #gt = self.dataset.get_ground_truth_for_img_inds(img_inds, include_diff=True)
+          #gt = self.dataset.get_ground_truth_for_img_inds(img_inds, with_diff=True)
           # TODO: fuck it!
           #ap,_,_ = self.compute_det_pr(dets_to_this_point,gt)
           ap = 0
@@ -209,7 +209,7 @@ class Evaluation:
           img_clses = clses.filter_on_column('img_ind',img_ind)
           clses_to_this_point = img_clses.filter_on_column('time',
             point,operator.le)
-          if clses_to_this_point.shape()[0]>0:
+          if clses_to_this_point.shape[0]>0:
             clses_to_this_point = clses_to_this_point.sort_by_column('time')
             clses_to_this_point_all_imgs.append(clses_to_this_point.arr[-1,:])
         
@@ -221,7 +221,7 @@ class Evaluation:
         
         if not dets_to_this_point.arr == None and not det_arr==None:
           print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
-            det_arr[i,1],dets_to_this_point.shape()[0],point,tt.qtoc()))
+            det_arr[i,1],dets_to_this_point.shape[0],point,tt.qtoc()))
         else:
           print("We are in gist, calculating AP of detection makes no sense.")
       det_arr_all = None
@@ -358,7 +358,7 @@ class Evaluation:
     for cls_ind in range(comm_rank, num_classes, comm_size):
       cls = self.dataset.classes[cls_ind] 
       cls_dets = dets.filter_on_column('cls_ind',cls_ind)
-      cls_gt = self.dataset.get_ground_truth_for_class(cls,include_diff=True)
+      cls_gt = self.dataset.get_ground_truth_for_class(cls,with_diff=True)
       cls_gt_classes = list(cls_gt.cols)
       for black in blacklist:
         cls_gt = cls_gt.with_column_omitted(cls_gt_classes[black])
@@ -372,12 +372,12 @@ class Evaluation:
     # the rest is done by rank==0
     if comm_rank == 0:
       # Multi-class
-      gt = self.dataset.get_ground_truth(include_diff=True)
+      gt = self.dataset.get_ground_truth(with_diff=True)
       for black in blacklist:
         gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
       filename = opjoin(self.results_path, 'pr_whole_multiclass')
       if force or not opexists(filename):
-        print("Evaluating %d dets in the multiclass setting..."%dets.shape()[0])
+        print("Evaluating %d dets in the multiclass setting..."%dets.shape[0])
         ap_mc = self.compute_and_plot_pr(dets, gt, 'multiclass')
 
       # Write out the information to a single overview file
@@ -467,7 +467,7 @@ class Evaluation:
     """
     # if dets or gt are empty, return 0's
     nd = dets.arr.shape[0]
-    if nd < 1 or gt.shape()[0] < 1:
+    if nd < 1 or gt.shape[0] < 1:
       ap = 0
       rec = np.array([0])
       prec = np.array([0])
@@ -484,7 +484,7 @@ class Evaluation:
     dets.sort_by_column('score',descending=True)
 
     # match detections to ground truth objects
-    npos = gt.filter_on_column('diff',0).shape()[0]
+    npos = gt.filter_on_column('diff',0).shape[0]
     tp = np.zeros(nd)
     fp = np.zeros(nd)
     hard_neg = np.zeros(nd)
@@ -557,7 +557,7 @@ class Evaluation:
     Ground truth should be of the format in Dataset.get_cls_ground_truth().
     NOTE: ground truth must be for the whole dataset!
     """
-    if not clses.shape()[0]>0:
+    if not clses.shape[0]>0:
       return 0
     if 'img_ind' in clses.cols:
       img_inds = clses.subset_arr('img_ind')

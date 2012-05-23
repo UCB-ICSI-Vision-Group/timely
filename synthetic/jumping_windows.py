@@ -382,7 +382,7 @@ def train_jumping_windows(d, codebook, use_scale=True, trun=False, diff=False, f
     fileids = d.get_ground_truth_for_class(cls)    
     last_filename = '000000'    
     
-    for row_idx in range(fileids.shape()[0]):
+    for row_idx in range(fileids.shape[0]):
       row = fileids.arr[row_idx, :]
       filename = d.images[row[fileids.cols.index('img_ind')].astype('int32')].name[:-4]
     
@@ -504,8 +504,8 @@ if __name__=='__main__':
     #for cls_idx, cls in enumerate(all_classes):
     for cls_idx, cls in enumerate([all_classes[0]]):
       #cls=all_classes
-      gt_t = dtest.get_ground_truth_for_class(cls, include_diff=False,
-          include_trun=True)
+      gt_t = dtest.get_ground_truth_for_class(cls, with_diff=False,
+          with_trun=True)
       e = Extractor()
       codebook = e.get_codebook(dtest, 'sift')
             

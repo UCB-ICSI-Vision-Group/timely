@@ -28,7 +28,7 @@ class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
     'suffix': 'default', # use this to re-run on same params after changing code
-    'detectors': ['perfect'], # perfect,perfect_with_noise,dpm,csc_default,csc_half
+    'detectors': ['perfect'], # perfect,dpm,csc_default,csc_half
     'policy_mode': 'random',
       # policy mode can be one of random, oracle, fixed_order,
       # no_smooth, backoff, fastinf
@@ -133,13 +133,6 @@ class DatasetPolicy:
       if detector=='perfect':
         for cls in dataset.classes:
           det = PerfectDetector(dataset, self.train_dataset, cls)
-          actions.append(ImageAction('%s_%s'%(detector,cls), det))
-
-      # synthetic perfect detector with noise in the detections
-      elif detector=='perfect_with_noise':
-        sw = SlidingWindows(self.train_dataset,dataset)
-        for cls in dataset.classes:
-          det = PerfectDetectorWithNoise(dataset, self.train_dataset, cls, sw)
           actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
       # GIST classifier
@@ -313,7 +306,7 @@ class DatasetPolicy:
       if dets_table.arr == None:
         print("Found 0 dets")
       else:
-        print("Found %d dets"%dets_table.shape()[0])
+        print("Found %d dets"%dets_table.shape[0])
 
       # Only save results if we are not collecting samples
       if not sample_size > 0:
@@ -590,7 +583,7 @@ class DatasetPolicy:
     - list of multi-label classification outputs, with each row as self.get_cls_cols()
     - list of <s,a,r,s',dt> samples.
     """
-    gt = image.get_ground_truth(include_diff=True)
+    gt = image.get_det_gt(with_diff=True)
     for ind in self.blacklist:
       gt = gt.filter_on_column('cls_ind',ind,op=operator.ne)
 
@@ -845,7 +838,7 @@ class DatasetPolicy:
         all_dets_table.cols = ['x', 'y', 'w', 'h', 'score', 'time', 'cls_ind', 'img_ind']
         all_dets_table.arr = np.vstack(final_dets)
         np.save(filename,all_dets_table)
-        print("Found %d dets"%all_dets_table.shape()[0])
+        print("Found %d dets"%all_dets_table.shape[0])
       all_dets_table = comm.bcast(all_dets_table,root=0)
     time_elapsed = time.time()-t
     print("DatasetPolicy.load_ext_detections took %.3f"%time_elapsed)

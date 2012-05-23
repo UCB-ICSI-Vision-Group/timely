@@ -74,6 +74,10 @@ class Image(object):
     gt = self.get_cls_gt(with_diff,with_trun)
     return gt[self.classes.index(cls_name)]
 
+  def contains_cls_ind(self,cls_ind):
+    gt = self.get_cls_gt()
+    return gt[cls_ind]
+
   ### 
   # Windows
   ###

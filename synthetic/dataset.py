@@ -43,6 +43,9 @@ class Dataset(object):
   def num_images(self):
     return len(self.images)
 
+  def get_img_ind(self,image):
+    return self.images.index(image)
+
   ###
   # Class Values
   ###

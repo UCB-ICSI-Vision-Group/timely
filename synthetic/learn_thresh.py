@@ -26,7 +26,7 @@ if __name__=='__main__':
   classif = Classifier()
   csc_train.arr = classif.normalize_dpm_scores(csc_train.arr)
 
-  numpos = train_dataset.get_ground_truth().shape()[0]
+  numpos = train_dataset.get_ground_truth().shape[0]
   
   threshs = np.arange(0,1.01,0.05)
   

@@ -22,7 +22,7 @@ class DPMClassifier(Classifier):
     hist = self.compute_histogram(cls_dpm.arr, intervals, lower, upper)
     vector = np.zeros((1, intervals+1))
     vector[0,0:-1] = hist
-    vector[0,-1] = img_dpm.shape()[0]
+    vector[0,-1] = img_dpm.shape[0]
     return vector
   
 if __name__=='__main__':

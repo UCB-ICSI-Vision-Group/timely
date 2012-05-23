@@ -28,10 +28,10 @@ class TestDatasetPolicy:
   def test_run_on_dataset(self):
     # run on test dataset
     dets,clses,samples = self.dp.run_on_dataset(force=True) 
-    assert(len(samples) == clses.shape()[0])
+    assert(len(samples) == clses.shape[0])
     assert(len(samples) == self.dp.dataset.num_images()*len(self.dp.actions))
     train_dets,train_clses,train_samples = self.dp.run_on_dataset(train=True,force=True)
-    assert(len(train_samples) == train_clses.shape()[0])
+    assert(len(train_samples) == train_clses.shape[0])
     assert(len(train_samples) == self.dp.train_dataset.num_images()*len(self.dp.actions))
 
   def test_unique_samples(self):

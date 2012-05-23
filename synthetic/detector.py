@@ -182,44 +182,8 @@ class PerfectDetector(Detector):
 
   def detect(self, image):
     """Return the ground truth of the image with perfect confidence."""
-    dets = []
-    for obj in image.objects:
-      if obj.cls_ind == self.cls_ind:
-        dets.append(np.hstack((obj.bbox.get_arr(), 1.)))
-    return (np.array(dets), self.expected_time(image))
-
-class PerfectDetectorWithNoise(SWDetector):
-  """
-  Basically PerfectDetector with additional false positives and false
-  negatives, generated randomly according to a couple of parameters.
-  Still perfect classification!
-  """
-
-  # TODO: detname in __init__ is wrong here
-
-  def detect(self, image):
-    """
-    Return all of the ground truth of the image with some high probability,
-    but also throw in some random false positives.
-    Because of the randomness, needs to generate sliding windows.
-    """
-    dets = []
-    # First, go through all true objects:
-    # - with high probability detect the object
-    # - draw a score from a right-skewed beta distribution
-    for obj in image.objects:
-      if obj.cls_ind == self.cls_ind:
-        if np.random.rand > 0.2:
-          score = np.random.beta(2,1)
-          dets.append(np.hstack((obj.bbox.get_arr(), score)))
-    # Second, get some false positives:
-    # - draw the number of false positives from a Poisson with the expectation
-    # of the number of detections already acquired
-    # - draw a score for each from a left-skewed beta distribution
-    num_true = len(dets)
-    num_false = np.random.poisson(num_true)
-    windows = self.sw.get_windows_new(image, self.cls)
-    for window in windows:
-      score = np.random.beta(1,2)
-      dets.append(np.hstack((window, score)))
-    return (np.array(dets), self.expected_time(image))
+    dets = image.get_det_gt()
+    dets = dets.with_column_omitted('diff')
+    dets = dets.with_column_omitted('trun')
+    dets = np.hstack((dets.arr,np.ones((dets.shape[0],1))))
+    return (dets, self.expected_time(image))

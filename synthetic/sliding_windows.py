@@ -346,7 +346,7 @@ class SlidingWindows:
       # the first interval is 0, so there aren't any window proposals 
       array[i,0,:] = 0
       gts = image.get_ground_truth(cls)
-      num_gt = gts.shape()[0]
+      num_gt = gts.shape[0]
       # the last row of the matrix is the number of ground truth
       array[i,num_intervals,:] = num_gt
       # now get the windows and append the statistics information
@@ -437,7 +437,7 @@ class SlidingWindows:
     else:
       results = {}
       for cls in dataset.classes + ['all']:
-        cls_gt_table = dataset.get_ground_truth_for_class(cls,include_diff=False)
+        cls_gt_table = dataset.get_ground_truth_for_class(cls,with_diff=False)
         bboxes = cls_gt_table.subset_arr(['x','y','w','h'])
         if bboxes.shape[0]<1:
           continue
