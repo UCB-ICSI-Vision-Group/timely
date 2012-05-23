@@ -261,6 +261,7 @@ class DatasetPolicy:
 
     # Check for cached results
     det_filename = config.get_dp_dets_filename(self,train)
+    print det_filename
     cls_filename = config.get_dp_clses_filename(self,train)
     if not force \
         and opexists(det_filename) and opexists(cls_filename):
@@ -297,7 +298,7 @@ class DatasetPolicy:
       # all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
     # Save if root
     if comm_rank==0:
-      dets_table = Table(cols=self.det_columns())
+      dets_table = Table(cols=self.det_columns)
       final_dets = [det for det in final_dets if det.shape[0]>0]
       if not len(final_dets) == 0:
         dets_table.arr = np.vstack(final_dets)
@@ -579,7 +580,7 @@ class DatasetPolicy:
   def run_on_image(self, image, dataset, verbose=False):
     """
     Return
-    - list of detections in the image, with each row as self.det_columns()
+    - list of detections in the image, with each row as self.det_columns
     - list of multi-label classification outputs, with each row as self.get_cls_cols()
     - list of <s,a,r,s',dt> samples.
     """

@@ -55,7 +55,7 @@ class Image(object):
     objects = self.get_objects(with_diff,with_trun)
     if cls_name and not cls_name=='all':
       cls_ind = self.classes.index(cls_name)
-      df = objects.filter_on_column('cls_ind',cls_ind)
+      objects = objects.filter_on_column('cls_ind',cls_ind)
     return objects
 
   def get_cls_counts(self, with_diff=False, with_trun=True):

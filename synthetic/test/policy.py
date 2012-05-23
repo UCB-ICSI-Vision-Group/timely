@@ -79,14 +79,17 @@ class TestDatasetPolicy:
       self.dp.write_weights_image('temp_weights_%s.png'%mode)
 
   def test_perfect_detector(self):
-    dets,clses,samples = self.dp.run_on_dataset()
+    dets,clses,samples = self.dp.run_on_dataset(force=True)
+    #embed()
     dets = dets.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
-    gt = self.dataset.get_ground_truth()
+    gt = self.dataset.get_det_gt()
     gt = gt.subset(['x', 'y', 'w', 'h', 'cls_ind', 'img_ind'])
 
     # TODO: does this make sense?
     dets.sort_by_column('x')
     gt.sort_by_column('x')
+    print dets
+    print gt
     assert(dets == gt)
 
   def test_load_dpm_detections(self):

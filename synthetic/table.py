@@ -20,12 +20,18 @@ class Table:
     - index gives names to the rows.
     - name is a place to keep some optional identifying information.
     """
-    # Passed-in array can be None, or an empty (0,) array, or (M,), or (M,N).
-    # Only the last two cases are good, otherwise we set to empty (0,) array.
+    # Passed-in array can be None, or an empty (0,) array,
+    # or an empty (0,N) array, or (M,), or (M,N).
+    # The last two cases are good.
+    # The (0,N) case is special and we maintain that shape.
+    # Otherwise, we set to empty (0,) array.
     self.arr = np.array([])
-    if arr != None and arr.shape[0]>0:
-      # convert (M,) arrays to (1,M) and leave (M,N) arrays alone
-      self.arr = np.atleast_2d(arr)
+    if arr != None:
+      if arr.ndim == 2 and arr.shape[0]==0:
+        self.arr = arr
+      if arr.shape[0]>0:
+        # convert (M,) arrays to (1,M) and leave (M,N) arrays alone
+        self.arr = np.atleast_2d(arr)
     self.cols = cols
     self.index = index
     self.name = name

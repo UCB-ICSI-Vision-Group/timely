@@ -103,10 +103,6 @@ class Detector(object):
     # look at some quick statistics to get an estimate of its complexity
     avg_area = np.prod(Detector.AVG_IMAGE_SIZE)
     bbox = image.get_whole_image_bbox()
-    print bbox
-    print bbox.area()
-    print avg_area
-    print self.config['avg_time']
     expected_time = self.config['avg_time'] * 1.*bbox.area()/avg_area 
     return expected_time
 
@@ -181,8 +177,11 @@ class PerfectDetector(Detector):
   """
 
   def detect(self, image):
-    """Return the ground truth of the image with perfect confidence."""
-    dets = image.get_det_gt()
+    """
+    Return the ground truth of the image with perfect confidence.
+    """
+    dets = image.get_det_gt(cls_name=self.cls)
+    dets = dets.with_column_omitted('cls_ind')
     dets = dets.with_column_omitted('diff')
     dets = dets.with_column_omitted('trun')
     dets = np.hstack((dets.arr,np.ones((dets.shape[0],1))))
