@@ -40,7 +40,7 @@ def evaluate_matlab_jws(dataset, suffix):
     print x, y ,' are the x ys' 
     auc += np.dot(x,y)/np.sum(x)*nsamples
     print auc, 'for rank %d'%comm_rank    
-    break
+    #break
   
   print 'auc on rank %d is %f'%(comm_rank, auc)
   nsamples_total = comm.reduce(nsamples_total)
@@ -77,6 +77,7 @@ def generate_bboxes(d, e, suffix):
     # if this cls is not in the original image, we are not interested.
     if not img.get_cls_counts()[cls_ind]:
       os.remove(os.path.join(path,filename))
+      print 'class %s is not present in %s'%(cls, imgname)
       continue
     
     # load these bounding boxes
@@ -97,8 +98,17 @@ def generate_bboxes(d, e, suffix):
       cols = ['x','y','w','h','score','cls_ind','img_ind']
       bboxes_table = ut.Table(full_arr, cols, 'all_bboxes')
       full_arr = []
+      max_file_count = 0
       yield bboxes_table      
-            
+  # if this is done yield again goddammit
+  if not max_file_count == 0:
+    full_arr = np.vstack(full_arr)  
+    cols = ['x','y','w','h','score','cls_ind','img_ind']
+    bboxes_table = ut.Table(full_arr, cols, 'all_bboxes')
+    full_arr = []
+    max_file_count = 0
+    yield bboxes_table
+  
 
 if __name__=='__main__':
   dataset = 'full_pascal_test'

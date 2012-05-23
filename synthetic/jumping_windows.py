@@ -148,7 +148,7 @@ lists of tuples (grid-position, root window)"""
     topK = np.hstack((x,y))
     return topK
   
-  def get_top_windows(self, K, annotations, cls_ind, bounds, outside_overlaps_thresh=0.5):
+  def get_top_windows(self, K, annotations, cls_ind, bounds, outside_overlaps_thresh=0.5, clipped=True):
     positions = annotations[:,:2]
     words = annotations[:,3].tolist()
     topK = self.get_ranked_word_grid(words, cls_ind)
@@ -175,12 +175,13 @@ lists of tuples (grid-position, root window)"""
           raise RuntimeError('break it')
         # A little heuristic to improve everything:
         # - take only boxes that overlap with the image by at least THRESH %
-        overlaps = BoundingBox.get_overlap(add_wins, bounds)
-        actual_overlaps = np.multiply(bounds[2]*bounds[3],np.divide(overlaps,add_wins[:,2]*add_wins[:,3]))
-        indices = np.where(actual_overlaps>outside_overlaps_thresh)[0]
-        if len(indices) == 0:
-          continue
-        add_wins = add_wins[indices, :]        
+        if clipped:
+          overlaps = BoundingBox.get_overlap(add_wins, bounds)
+          actual_overlaps = np.multiply(bounds[2]*bounds[3],np.divide(overlaps,add_wins[:,2]*add_wins[:,3]))
+          indices = np.where(actual_overlaps>outside_overlaps_thresh)[0]
+          if len(indices) == 0:
+            continue
+          add_wins = add_wins[indices, :]        
         add_wins = BoundingBox.clipboxes_arr(add_wins, bounds)       
         
         all_wins.append(add_wins)
@@ -252,7 +253,7 @@ def run(force=False):
       if not img.get_cls_ground_truth()[cls_ind]:
         continue
       print 'machine %d on %s for %s'%(comm_rank, img.name, cls)
-      top_wins = t.get_top_windows(K, annotations, cls_ind, bounds)
+      top_wins = t.get_top_windows(K, annotations, cls_ind, bounds, clipped=False)
       savename = os.path.join(ut.makedirs(os.path.join(config.res_dir, 'jumping_windows','bboxes')), '%s_%s.mat'%(cls,img.name[:-4]))
       sio.savemat(savename, {'bboxes':top_wins})              
   
