@@ -1,5 +1,6 @@
 Unscheduled
 ---
+- include discussion of learned weights, with pictures
 - what's up with the curves being slightly different in the figures in the paper, even though they're supposed to be the same thing?
 - implement and launch run with support vector regression @sergey
 - understand the inference behavior: why linear? @tobi @sergey

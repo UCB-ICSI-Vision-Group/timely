@@ -36,7 +36,7 @@ class TestDatasetPolicy:
 
   def test_unique_samples(self):
     "Test the correctness of making a list of samples unique."
-    dets,clses,samples = self.dp.run_on_dataset()
+    dets,clses,samples = self.dp.run_on_dataset(force=True)
     new_sample = copy.deepcopy(samples[11])
     new_sample2 = copy.deepcopy(samples[11])
     new_sample2.dt = -40 # an unreasonable value
@@ -49,22 +49,22 @@ class TestDatasetPolicy:
   def test_learn_weights(self):
     dataset = Dataset('full_pascal_val')
     train_dataset = Dataset('full_pascal_train')
-    dataset.images = dataset.images[:200]
-    train_dataset.images = train_dataset.images[:200]
+    dataset.images = dataset.images[:20]
+    train_dataset.images = train_dataset.images[:20]
     dp = DatasetPolicy(dataset,train_dataset,self.weights_dataset_name,**self.config)
     weights = dp.learn_weights()
 
   def test_regress(self):
-    dets,clses,samples = self.dp.run_on_dataset()
-    weights,error = self.dp.regress(samples)
+    dets,clses,samples = self.dp.run_on_dataset(force=True)
+    weights,error = self.dp.regress(samples,'greedy')
     print "Weights after %d samples:\n %s"%(len(samples),weights)
     print "Error after %d samples: %s"%(len(samples),error)
     samples += samples
-    weights,error = self.dp.regress(samples)
+    weights,error = self.dp.regress(samples,'greedy')
     print "Weights after %d samples:\n %s"%(len(samples),weights)
     print "Error after %d samples: %s"%(len(samples),error)
     samples += samples
-    weights,error = self.dp.regress(samples)
+    weights,error = self.dp.regress(samples,'greedy')
     print "Weights after %d samples:\n %s"%(len(samples),weights)
     print "Error after %d samples: %s"%(len(samples),error)
 

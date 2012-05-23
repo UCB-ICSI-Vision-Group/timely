@@ -269,6 +269,7 @@ class DatasetPolicy:
       dets_table = np.load(det_filename)[()]
       clses_table = np.load(cls_filename)[()]
       samples = None
+      # this will screw up test/policy.py, so make sure force=True there
       print("DatasetPolicy: Loaded dets and clses from cache.")
       return dets_table,clses_table,samples
 
@@ -506,7 +507,7 @@ class DatasetPolicy:
     actual_ap increases for each class, on the train dataset.
     """
     det_configs = {}
-    all_dets,all_clses,all_samples = self.run_on_dataset(train=True)
+    all_dets,all_clses,all_samples = self.run_on_dataset(train=True,force=True)
     if comm_rank==0:
       cols = ['action_ind','dt','det_naive_ap','det_actual_ap','img_ind']
       sample_array = np.array([[getattr(s,col) for s in all_samples] for col in cols]).T
