@@ -82,7 +82,8 @@ Table name: %(name)s | size: %(shape)s
     "Write array to file in csv format."
     with open(filename,'w') as f:
       f.write("%s\n"%','.join(self.cols))
-      f.write("%s\n"%','.join(self.index))
+      if hasattr(self,'index'):
+        f.write("%s\n"%','.join(self.index))
       f.write("%s\n"%self.name)
       np.savetxt(f, self.arr, delimiter=',')
 
@@ -134,6 +135,7 @@ Table name: %(name)s | size: %(shape)s
   def subset_arr_and_cols_and_index(self, names_or_inds_or_mask, axis):
     "Helper method to subset() and subset_arr()."
     # If the argument is not a list or array, make it a list
+    index = None
     if not isinstance(names_or_inds_or_mask, np.ndarray) and \
        not isinstance(names_or_inds_or_mask, types.ListType):
       names_or_inds_or_mask = [names_or_inds_or_mask]
@@ -141,6 +143,9 @@ Table name: %(name)s | size: %(shape)s
     # bool is a subclass of int, so this check gets both ints and booleans
     if isinstance(names_or_inds_or_mask[0],types.IntType):
       inds = names_or_inds_or_mask
+    # we also support floats, for backwards compatibility reasons
+    elif isinstance(names_or_inds_or_mask[0],types.FloatType):
+      inds = [int(x) for x in names_or_inds_or_mask]
     elif isinstance(names_or_inds_or_mask[0],types.StringType):
       if axis==0:
         assert(self.index)
@@ -152,11 +157,13 @@ Table name: %(name)s | size: %(shape)s
 
     if axis==0:
       cols = self.cols
-      index = np.array(self.index)[inds].tolist() if self.index else None
+      if hasattr(self,'index'):
+        index = np.array(self.index)[inds].tolist() if self.index else None
       arr = self.arr[inds,:]
     else:
       cols = np.array(self.cols)[inds].tolist()
-      index = self.index
+      if hasattr(self,'index'):
+        index = self.index
       arr = self.arr[:,inds]
     return (arr,cols,index)
 
@@ -174,7 +181,8 @@ Table name: %(name)s | size: %(shape)s
     col = -col if descending else col
     inds = col.argsort()
     self.arr = self.arr[inds]
-    self.index = np.array(self.index)[inds].tolist() if self.index else None
+    if hasattr(self,'index'):
+      self.index = np.array(self.index)[inds].tolist() if self.index else None
     return self
 
   def filter_on_column(self, col_name, val=True, op=operator.eq, omit=False):

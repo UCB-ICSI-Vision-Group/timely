@@ -78,7 +78,7 @@ class Evaluation:
       # do this now to save time in the inner loop later
       gt_for_image_list = []
       img_dets_list = []
-      gt = self.dataset.get_ground_truth(with_diff=True)
+      gt = self.dataset.get_det_gt(with_diff=True)
       
       for black in blacklist:
         gt = gt.filter_on_column('cls_ind', black, op=operator.ne)   
@@ -358,7 +358,7 @@ class Evaluation:
     for cls_ind in range(comm_rank, num_classes, comm_size):
       cls = self.dataset.classes[cls_ind] 
       cls_dets = dets.filter_on_column('cls_ind',cls_ind)
-      cls_gt = self.dataset.get_ground_truth_for_class(cls,with_diff=True)
+      cls_gt = self.dataset.get_get_gt_for_class(cls,with_diff=True)
       cls_gt_classes = list(cls_gt.cols)
       for black in blacklist:
         cls_gt = cls_gt.with_column_omitted(cls_gt_classes[black])
@@ -372,7 +372,7 @@ class Evaluation:
     # the rest is done by rank==0
     if comm_rank == 0:
       # Multi-class
-      gt = self.dataset.get_ground_truth(with_diff=True)
+      gt = self.dataset.get_det_gt(with_diff=True)
       for black in blacklist:
         gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
       filename = opjoin(self.results_path, 'pr_whole_multiclass')
