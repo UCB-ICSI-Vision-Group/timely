@@ -803,6 +803,7 @@ class DatasetPolicy:
     filename = config.get_ext_dets_filename(dataset, suffix)
     # check for cached full file
     if os.path.exists(filename) and not force:
+      embed()
       all_dets_table = np.load(filename)[()]
     else:
       # TODO also return times, or process them to add to dets?

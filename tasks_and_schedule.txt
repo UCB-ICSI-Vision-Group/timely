@@ -13,10 +13,14 @@ Unscheduled
   - inverse RL from oracle to learn the policy
   - LSPI?
 - separating actions by region
+- running on whole dataset instead of only inside of an image
 
 Schedule
 ---
 22 May - Tuesday
+- put in the prior feature @sergey
+- change evaluation code to not do multi-class detection @sergey
+- change evaluation code to weight mean AP by class values @sergey
 - launch run of current system with inverse-prior class values @sergey
 - launch run of current system with the GIST action @sergey
 - launch MRF training with L1 regularization @tobi or @sergey

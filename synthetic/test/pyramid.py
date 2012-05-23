@@ -38,8 +38,7 @@ def test_compare_to_original_pyramid():
   x = mdict['texton_ind'][0][0][1]
   y = mdict['texton_ind'][0][0][2]
   ass = np.hstack((x,y,data))
-  image = Image()
-  image.size = (640,480)
+  image = Image(640,480)
   
   L = 2
   codebook = np.zeros((200,6))
@@ -63,7 +62,7 @@ def test_extract_horiz_slices():
         ass = 4
       assignments[ind, :] = np.matrix([[i, j, ass]])
       ind += 1
-  image = Image(size=(5,5))
+  image = Image(5,5)
   num_words = 4
   slices = extract_horiz_sclices(3, assignments, image, num_words)
   corr_stack = np.matrix([[.7, .3, 0, 0], [.4, 0, .6, 0], [.7, 0, 0, .3]])

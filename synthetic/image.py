@@ -12,7 +12,7 @@ class Image(object):
 
   columns = BoundingBox.columns + ['cls_ind', 'diff', 'trun']
   
-  def __init__(self,width,height,classes,name):
+  def __init__(self,width,height,classes=None,name=None):
     self.width = width
     self.height = height
     self.classes = classes

@@ -1,5 +1,7 @@
 from synthetic.common_imports import *
 from synthetic.tictoc import TicToc
+from synthetic.table import Table
+# need this for backwards-compatibility!
 
 from nose.tools import *
 
