@@ -3,7 +3,7 @@
   "detectors": ["csc_default"],
   "policy_mode": ["fixed_order"],
   "weights_mode": ["manual_1"],
-  "label": "Manual Fixed",
+  "label": "Manual - Fixed",
   "color": "#4084ff",
   "line": "-"
 }

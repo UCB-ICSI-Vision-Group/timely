@@ -67,6 +67,7 @@ class Evaluation:
 
     dets_table = None
     clses_table = None
+    print self.det_apvst_data_fname
     if opexists(self.det_apvst_data_fname) and not force:
       if comm_rank==0:
         dets_table = np.load(self.det_apvst_data_fname)[()]
@@ -312,8 +313,9 @@ class Evaluation:
       auc = Evaluation.compute_auc(times,vals,bounds)/float(bounds[1]-bounds[0])
 
       high_bound_val = vals[-1]
-      if bounds != None:
-        high_bound_val = vals[times.tolist().index(bounds[1])]
+      
+#      if bounds != None:
+#        high_bound_val = vals[times.tolist().index(bounds[1])]
       
       if not plot_infos == None and "label" in plot_infos[i]:
         label = '%s: %.2f'%(str(plot_infos[i]["label"]), auc)
@@ -335,7 +337,8 @@ class Evaluation:
       plt.setp(ltext, fontsize='small')
     plt.xlabel('Time',size=14)
     plt.ylabel('AP',size=14)
-    plt.ylim(0,.8)
+    plt.ylim(0,1)
+    plt.xlim(0,20)
     plt.grid(True)
     plt.savefig(filename)
 
