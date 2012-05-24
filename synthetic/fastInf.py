@@ -275,10 +275,10 @@ def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
     second_table = None
     setin = settings[setindx]
     suffix = setin[0]
-    m = setin[1]
-    r2 = setin[2]
+    m = str(setin[1])
+    r1 = str(setin[2])
     
-    print 'node %d runs %s, m=%s, r2=%s'%(comm_rank, suffix, m, r2)
+    print 'node %d runs %s, m=%s, r1=%s'%(comm_rank, suffix, m, r1)
 
     filename = config.get_fastinf_mrf_file(d, suffix)
     data_filename = config.get_fastinf_data_file(d, suffix)
@@ -325,13 +325,13 @@ def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
     if not suffix == 'GIST_CSC':
       store_bound(d, suffix, bounds)
     
-    print 'set up table on %d, write out mrf for %s, m=%s, r2=%s'%(comm_rank, suffix, m, r2)   
+    print 'set up table on %d, write out mrf for %s, m=%s, r1=%s'%(comm_rank, suffix, m, r1)   
       
     write_out_mrf(table, num_bins, filename, data_filename, second_table=second_table)
     
     add_sets = ['-m',m]
-    if not r2 == '':
-      add_sets += ['-r2', r2]
+    if not r1 == '':
+      add_sets += ['-r1', r1]
           
     if not second_table == None:
       sec_bound_file = '%s_secbounds'%filename
@@ -339,65 +339,32 @@ def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
         sec_bound_file += '_'+s
       np.savetxt(sec_bound_file, sec_bounds)
       
-    print '%d start running lbp for %s, m=%s, r2=%s'%(comm_rank, suffix, m, r2)
+    print '%d start running lbp for %s, m=%s, r1=%s'%(comm_rank, suffix, m, r1)
     
-    filename_out = config.get_fastinf_res_file(d, suffix, m, r2)
+    filename_out = config.get_fastinf_res_file(d, suffix, m, r1)
     execute_lbp(filename, data_filename, filename_out, add_settings=add_sets)
-
-def run_all_in_3_parts():
-    
-  # I run 3 different experiments to be able to abort them separately...
-  # that a total of 48 experiments
+  
+def simply_run_it(dataset):
   parser = argparse.ArgumentParser(
     description="Run fastInf experiments.")
 
-  parser.add_argument('-e',type=int,
+  parser.add_argument('-m',type=int,
     default=0,
-    choices=[0,1,2],
-    help="""Select which portion of the training is to be run.""")
+    choices=[0,1,2,3,4,5],
+    help="""optimization method 0-FR, 1-PR, 2-BFGS, 3-STEEP, 4-NEWTON, 5-GRADIENT (0).""")
+
+  parser.add_argument('-r',type=int,
+    default=1,
+    help="""parameter of L1 regularization.""")
   
   args = parser.parse_args()
   
-  part = args.e
-  
-  suffixs = ['CSC', 'GIST_CSC', 'perfect', 'GIST']
-  ms = ['0', '2', '5']
-  rs = ['', '0.5', '1']
-  
-  if part == 0:
-    dataset = 'full_pascal_trainval'
-    suffixs = ['CSC', 'GIST_CSC']    
-  elif part == 1:
-    dataset = 'full_pascal_trainval'
-    suffixs = ['perfect', 'GIST']    
-  elif part == 2:
-    dataset = 'full_pascal_train'
-    suffixs = ['CSC', 'GIST_CSC']
-    rs = ['', '1']
-  print 'Execute fastInf part %d'%part
-  print '\tds:', dataset
-  print '\tsuff:', suffixs
-  print '\tms:', ms
-  print '\trs:', rs
-     
-  run_fastinf_different_settings(dataset, ms, rs, suffixs)
-
-def run_fastinf_for_dataset(dataset):
-  
-  suffixs = ['perfect']
-  ms = ['0']
-  rs = ['1']
-  num_bins = 2
-  run_fastinf_different_settings(dataset, ms, rs, suffixs, num_bins)
+  m = args.m
+  r = args.r
+  d = Dataset(dataset)
+  suffixs = ['GIST', 'CSC', 'perfect', 'GIST_CSC']
+  run_fastinf_different_settings(d, [m], [r], suffixs)
 
 if __name__=='__main__':
-  d = Dataset('synthetic')
-  run_fastinf_for_dataset(d)
-  #run_all_in_3_parts()
-  
-#  dataset = 'full_pascal_trainval'
-#  d = Dataset(dataset)
-#  suffix = 'GIST'
-#  fastdiscr = FastinfDiscretizer(d, suffix)
-#  fastdiscr.discretize_value(.2242, clf_idx=0)
-  
+  dataset = 'full_pascal_trainval'
+  simply_run_it(dataset)
