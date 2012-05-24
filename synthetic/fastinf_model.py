@@ -8,17 +8,17 @@ from synthetic.ngram_model import InferenceModel
 from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,model_name,num_actions,m='0',r2='1'):
+  def __init__(self,dataset,model_name,num_actions,m='0',r1='1'):
     # TODO: experiment with different values of fastinf
 
     self.dataset = dataset
     self.fd = FastinfDiscretizer(self.dataset, model_name)
-    self.res_fname = config.get_fastinf_res_file(dataset,model_name,m,r2)
+    self.res_fname = config.get_fastinf_res_file(dataset,model_name,m,r1)
 
     # TODO: experiment with different amounts of smoothing
     # amount of smoothing is correlated with fastinf slowness, values [0,1)
     self.smoothing = 0
-    self.cache_fname = config.get_fastinf_cache_file(dataset,model_name,m,r2,self.smoothing)
+    self.cache_fname = config.get_fastinf_cache_file(dataset,model_name,m,r1,self.smoothing)
 
     if opexists(self.cache_fname):
       with open(self.cache_fname) as f:
