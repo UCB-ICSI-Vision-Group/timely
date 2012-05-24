@@ -1,38 +1,44 @@
 Unscheduled
 ---
+- work out the empirical counts inference model and include in paper as a fast approximation, since the results are so similar
+- change the slide showing "performance metric" to have object models, not actual images--that's confusing
 - include discussion of learned weights, with pictures
 - what's up with the curves being slightly different in the figures in the paper, even though they're supposed to be the same thing?
+- put in discussion of augmented MDPs and POMDPs to address reviewer1 concern @sergey
 - implement and launch run with support vector regression @sergey
 - understand the inference behavior: why linear? @tobi @sergey
 - run on PASCAL VOC 2011 (test on val)
 - optimized inference of marginals, with controlled caching and potentially regression approximation @tobi @sergey
 - more proper entropy computation, probably by sampling @tobi
 - paper draft with the above things and tighter story/intro @sergey
-- finished paper draft with the following improvements over eccv12:
-  - modified class value results
-  - discussion of inference time and tradeoffs
-  - better entropy calculation
-  - inverse RL from oracle to learn the policy
-  - LSPI?
-- separating actions by region
+- discussion of inference time and tradeoffs @sergey
+- better entropy calculation
+- LSPI to learn weights
 - running on whole dataset instead of only inside of an image
 
 Schedule
 ---
 22 May - Tuesday
-- put in the prior feature @sergey
-- change evaluation code to not do multi-class detection @sergey
-- change evaluation code to weight mean AP by class values @sergey
-- launch run of current system with inverse-prior class values @sergey
-- launch run of current system with the GIST action @sergey
-- launch MRF training with L1 regularization @tobi or @sergey
-- implement region-splitting for the external detector, expanding the action space, and launch training of corresponding SVMs and MRF model. @tobi
+x launch MRF training with L1 regularization @tobi
 
 23 May - Wednesday
+x implement region-splitting for the external detector, expanding the action space, and launch training of corresponding SVMs and MRF model. @tobi
 
 24 May - Thursday
+- learn MRF with region-based structure to be able to learn spatial correlations @tobi
+
+- put in the prior feature @sergey
+- put in time-dependent features @sergey
+
+- change evaluation code to not do multi-class detection @sergey
+
+- change evaluation code to weight mean AP by class values @sergey
+- launch run of current system with inverse-prior class values @sergey
+
+- launch run of current system with the GIST action @sergey
 
 25 May - Friday
+- implement the whole-dataset policy simply by keeping the same weights and picking the max across all images @sergey
 
 26 May - Saturday
 
