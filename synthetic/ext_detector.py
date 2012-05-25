@@ -28,14 +28,15 @@ class ExternalDetector(Detector):
     else:
       self.classif = CSCClassifier(suffix, cls, train_dataset, dataset)
 
-  def detect(self, image, astable=False):
+  def detect(self, image, astable=False, dets=None):
     """
     Return the detections that match that image index in cached dets.
     Must return in the same format as the Detector superclass, so we have to
     delete a column.
     """
-    img_ind = self.dataset.get_img_ind(image)
-    dets = self.dets.filter_on_column('img_ind',img_ind,omit=True)
+    if not dets:
+      img_ind = self.dataset.get_img_ind(image)
+      dets = self.dets.filter_on_column('img_ind',img_ind,omit=True)
     time_passed = 0
     if not dets.arr.shape[0]<1:
       time_passed = np.max(dets.subset_arr('time'))
@@ -49,7 +50,7 @@ class ExternalDetector(Detector):
     else:
       return (dets.arr, time_passed) 
 
-  def compute_score(self, image, oracle=False):
+  def compute_score(self, image, oracle=False, dets=None):
     """
     Return the 0/1 decision of whether the cls of this detector is present in
     the image, given the detections table.
@@ -57,8 +58,9 @@ class ExternalDetector(Detector):
     """
     if oracle:
       return Detector.compute_score(self, image, oracle)
-    img_ind = self.dataset.get_img_ind(image)
-    dets = self.dets.filter_on_column('img_ind',img_ind)
+    if not dets:
+      img_ind = self.dataset.get_img_ind(image)
+      dets = self.dets.filter_on_column('img_ind',img_ind)
     scores = dets.subset_arr('score')
     score = self.classif.classify_image(scores)
     dt = 0
