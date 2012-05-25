@@ -37,7 +37,6 @@ class DatasetPolicy:
     # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
     'rewards_mode': 'det_actual_ap',
     # det_actual_ap, entropy, auc_ap, auc_entropy
-    'blacklist': []
   }
 
   def get_config_name(self):
@@ -570,8 +569,6 @@ class DatasetPolicy:
     Return -1 if all actions have been taken.
     """
     taken = copy.deepcopy(b.taken)
-    for ind in self.blacklist:
-      taken[ind] = 1
     if np.all(taken):
       return -1
     untaken_inds = np.flatnonzero(taken==0)
@@ -586,9 +583,6 @@ class DatasetPolicy:
     - list of <s,a,r,s',dt> samples.
     """
     gt = image.get_det_gt(with_diff=True)
-    for ind in self.blacklist:
-      gt = gt.filter_on_column('cls_ind',ind,op=operator.ne)
-
     self.tt.tic('run_on_image')
 
     all_detections = []

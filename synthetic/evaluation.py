@@ -1,8 +1,5 @@
-import operator
-import matplotlib.pyplot as plt
 from mako.template import Template
 
-from common_mpi import *
 from common_imports import *
 import synthetic.config as config
 
@@ -54,7 +51,7 @@ class Evaluation:
   ##############
   # AP vs. Time
   ##############
-  def evaluate_vs_t(self,dets=None,clses=None,plot=True,force=False,blacklist=[]):
+  def evaluate_vs_t(self,dets=None,clses=None,plot=True,force=False):
     """
     Evaluate detections and classifications in the AP vs Time regime,
     and write out plots to canonical places.
@@ -80,9 +77,6 @@ class Evaluation:
       img_dets_list = []
       gt = self.dataset.get_det_gt(with_diff=True)
       
-      for black in blacklist:
-        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)   
-
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
         if dets.arr == None:
@@ -151,7 +145,7 @@ class Evaluation:
       points = np.hstack((0,points))
     return points
 
-  def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False,blacklist=[]):
+  def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False):
     """
     Evaluate detections in the AP vs Time regime and write out plots to
     canonical places.
@@ -178,11 +172,6 @@ class Evaluation:
       points = self.determine_time_points(all_times,bounds)
       num_points = points.shape[0]
       cls_gt = self.dataset.get_cls_ground_truth(with_diff=False)
-      
-      # TODO: WRONG, REMOVE COLS INSTEAD
-      cls_gt_classes = list(cls_gt.cols)
-      for black in blacklist:
-        cls_gt = cls_gt.with_column_omitted(cls_gt_classes[black])
 
       det_arr = np.zeros((num_points,2))
       cls_arr = np.zeros((num_points,2))
@@ -342,7 +331,7 @@ class Evaluation:
     plt.grid(True)
     plt.savefig(filename)
 
-  def evaluate_detections_whole(self,dets=None,force=False,blacklist=[]):
+  def evaluate_detections_whole(self,dets=None,force=False):
     """
     Output detection evaluations over the whole dataset in all formats:
     - multi-class (one PR plot)
@@ -359,9 +348,6 @@ class Evaluation:
       cls = self.dataset.classes[cls_ind] 
       cls_dets = dets.filter_on_column('cls_ind',cls_ind)
       cls_gt = self.dataset.get_get_gt_for_class(cls,with_diff=True)
-      cls_gt_classes = list(cls_gt.cols)
-      for black in blacklist:
-        cls_gt = cls_gt.with_column_omitted(cls_gt_classes[black])
       dist_aps[cls_ind] = self.compute_and_plot_pr(cls_dets, cls_gt, cls, force)
     aps = None
     if comm_rank==0:
@@ -373,8 +359,6 @@ class Evaluation:
     if comm_rank == 0:
       # Multi-class
       gt = self.dataset.get_det_gt(with_diff=True)
-      for black in blacklist:
-        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
       filename = opjoin(self.results_path, 'pr_whole_multiclass')
       if force or not opexists(filename):
         print("Evaluating %d dets in the multiclass setting..."%dets.shape[0])

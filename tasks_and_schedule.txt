@@ -1,5 +1,7 @@
 Unscheduled
 ---
+- put in citation for L1-regularization learning sparse models: http://ai.stanford.edu/~koller/Papers/Lee+al:NIPS06.pdf
+- put in the cooccurence figures in the paper and a couple of sentences explaining the statistics of the dataset and how it's a disadvantaged setting
 - work out the empirical counts inference model and include in paper as a fast approximation, since the results are so similar
 - change the slide showing "performance metric" to have object models, not actual images--that's confusing
 - include discussion of learned weights, with pictures
@@ -25,7 +27,7 @@ x launch MRF training with L1 regularization @tobi
 x implement region-splitting for the external detector, expanding the action space, and launch training of corresponding SVMs and MRF model. @tobi
 
 24 May - Thursday
-- learn MRF with region-based structure to be able to learn spatial correlations @tobi
+x learn MRF with region-based structure to be able to learn spatial correlations @tobi
 
 - put in the prior feature @sergey
 - put in time-dependent features @sergey
@@ -36,6 +38,8 @@ x implement region-splitting for the external detector, expanding the action spa
 - launch run of current system with inverse-prior class values @sergey
 
 - launch run of current system with the GIST action @sergey
+
+- implement epsilon-greedy policy with decreasing epsilon in iterations of training @sergey
 
 25 May - Friday
 - implement the whole-dataset policy simply by keeping the same weights and picking the max across all images @sergey
