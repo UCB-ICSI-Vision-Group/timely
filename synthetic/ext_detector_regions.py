@@ -4,7 +4,6 @@ import synthetic.config as config
 from IPython import embed
 from synthetic.ext_detector import ExternalDetector
 from synthetic.dataset import Dataset
-from synthetic.dataset_policy import DatasetPolicy
 
 class RegionModel():
   '''

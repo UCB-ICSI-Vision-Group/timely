@@ -3,6 +3,7 @@ import synthetic.config as config
 
 from synthetic.ext_detector_regions import *
 from synthetic.image import Image
+from synthetic.dataset_policy import DatasetPolicy
 
 class TestExtDetector(object):
   def setup(self):
