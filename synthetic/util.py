@@ -5,13 +5,12 @@ Sergey Karayev - http://sergeykarayev.com
 
 import subprocess
 import operator
-import os
+import os, sys
 import time
 import numpy as np
 import scipy.stats as st
 from synthetic.table import Table
 from synthetic.tictoc import TicToc
-from synthetic.common_imports import *
 
 ###################
 # Ndarray manipulations

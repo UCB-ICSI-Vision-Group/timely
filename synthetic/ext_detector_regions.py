@@ -4,6 +4,7 @@ import synthetic.config as config
 from IPython import embed
 from synthetic.ext_detector import ExternalDetector
 from synthetic.dataset import Dataset
+from synthetic.bounding_box import BoundingBox
 
 class RegionModel():
   '''
@@ -63,21 +64,26 @@ class RegionModel():
     return result_region
   
   def __which_region_1big_2small(self, image, x, y, scale, aspect_ratio):
+    '''
+    For a window to be on the left side means to overlap with at least 50% with
+    the left half of the window.
+    '''
     scale_thresh = self.args[0]
     img_width, _ = image.size
+    w = img_width*scale
     if scale >= scale_thresh:
       result_region = 0
     else:
-      if x < img_width/2:
+      if img_width - 2*x - w > 0: # This does exactly mean more than half the win is left. Work it out.
         result_region = 1
       else:
         result_region = 2
     return result_region
-
+  
   def get_number_regions(self):
-    return self.num_regions
-  
-  
+    return self.num_regions    
+    
+
 class ExternalDetectorRegions(ExternalDetector):
   '''
   External Detector that also tests for specific regions.
@@ -141,3 +147,25 @@ class ExternalDetectorRegions(ExternalDetector):
   
   def get_number_regions(self):
     return self.region_model.get_number_regions()
+  
+
+def run():
+  dataset = Dataset('full_pascal_test')
+  train_dataset = Dataset('full_pascal_trainval')
+  cls = 'dog'
+  rtype = '1big_2small'
+  args = 0.5
+  detector = 'csc_default'
+  from synthetic.dataset_policy import DatasetPolicy
+  all_dets = DatasetPolicy.load_ext_detections(dataset, detector)
+  cls_ind = dataset.get_ind(cls)
+  dets = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)  
+  ext_det = ExternalDetectorRegions(dataset, train_dataset, cls, dets, detector, rtype, args)
+  img = dataset.images[13]  # Just some random image...where did the get_image_by_name go?
+  print img.size
+  print ext_det.detect(img, 0)
+  print ext_det.detect(img, 1)
+  print ext_det.detect(img, 2)
+
+if __name__=='__main__':
+  run()
