@@ -22,10 +22,10 @@ class RegionModel():
             args: (scale_threshold)
     scale_location - Divide into 4 regions; order: 0-(left small), 1-(right small), 
                      2-(left big), 3-(right big); args: (scale_threshold)
+    1big_2small - There are 3 regions, 1 big, 2 small. The small are divided into
+                  left and right; order: 0-big, 1-(small, left), 2-(small, right)
     '''    
-    if rtype == 'scale':
-      # TODO: this could be done a little cooler.
-      #self.which_region = eval('self.__which_region_%s'%rtype) # :( doesn't work yet      
+    if rtype == 'scale':      
       self.which_region = self.__which_region_scale
       args_needed = 1
       self.num_regions = 2
@@ -33,6 +33,10 @@ class RegionModel():
       self.which_region = self.__which_region_scale_location
       args_needed = 1
       self.num_regions = 4
+    elif rtype == '1big_2small':
+      self.which_region = self.__which_region_1big_2small
+      args_needed = 1
+      self.num_regions = 3
     else:
       raise RuntimeError('Type %s is an unknown RegionModel'%rtype)
     
@@ -57,6 +61,18 @@ class RegionModel():
       result_region += 2
     if x >= img_width/2:
       result_region += 1
+    return result_region
+  
+  def __which_region_1big_2small(self, image, x, y, scale, aspect_ratio):
+    scale_thresh = self.args[0]
+    img_width, _ = image.size
+    if scale >= scale_thresh:
+      result_region = 0
+    else:
+      if x < img_width/2:
+        result_region = 1
+      else:
+        result_region = 2
     return result_region
 
   def get_number_regions(self):
