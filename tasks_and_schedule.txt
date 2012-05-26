@@ -29,24 +29,19 @@ x implement region-splitting for the external detector, expanding the action spa
 24 May - Thursday
 x learn MRF with region-based structure to be able to learn spatial correlations @tobi
 
-- put in the prior feature @sergey
-- put in time-dependent features @sergey
-
-- change evaluation code to not do multi-class detection @sergey
-
-- change evaluation code to weight mean AP by class values @sergey
-- launch run of current system with inverse-prior class values @sergey
-
-- launch run of current system with the GIST action @sergey
-
-- implement epsilon-greedy policy with decreasing epsilon in iterations of training @sergey
-
 25 May - Friday
-- implement the whole-dataset policy simply by keeping the same weights and picking the max across all images @sergey
+x change evaluation code to not do multi-class detection @sergey
+x change reward-computation to weight mean AP by class values @sergey
 
 26 May - Saturday
+- change final evaluation to not be multi-class and to weight mean AP by class values @sergey
+- launch run of current system with inverse-prior class values @sergey
+- launch run of current system with the GIST action @sergey
+- implement epsilon-greedy policy with decreasing epsilon in iterations of training @sergey
 
 27 May - Sunday
+- implement the whole-dataset policy simply by keeping the same weights and picking the max across all images @sergey
+- rework paper and send to mario @sergey
 
 28 May - Monday
 
