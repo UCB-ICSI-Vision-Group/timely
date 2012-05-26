@@ -67,6 +67,7 @@ script_dir = join(repo_dir, 'synthetic')
 # Input data
 test_support_dir = join(script_dir, 'test_support')
 test_data1 = join(test_support_dir,'data1.json')
+test_data2 = join(test_support_dir,'data2.json')
 VOC_dir = join(data_dir, 'VOC%(year)s/')%{'year':VOCyear}
 pascal_paths = {
     'test_pascal_train':    join(test_support_dir,'train.txt'),

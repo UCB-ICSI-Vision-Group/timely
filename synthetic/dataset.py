@@ -19,6 +19,8 @@ class Dataset(object):
       self.load_from_pascal(name,force)
     elif name == 'test_data1':
       self.load_from_json(config.test_data1)
+    elif name == 'test_data2':
+      self.load_from_json(config.test_data2)
     elif name == 'synthetic':
       self.generate_synthetic()
     else:

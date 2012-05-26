@@ -439,8 +439,8 @@ class Evaluation:
       d = dets.filter_on_column('cls_ind',cls_ind)
       g = gt.filter_on_column('cls_ind',cls_ind)
       ap,_,_ = self.compute_det_pr(d,g)
-      aps.append(ap)
-    return np.sum(aps*self.dataset.values)
+      aps.append(ap*self.dataset.values[cls_ind])
+    return np.sum(aps)
 
   def compute_det_pr(self, dets, gt):
     pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)

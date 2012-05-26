@@ -63,12 +63,12 @@ class TestDatasetJson:
     assert(gt.cols == cols)
 
   def test_set_values(self):
-    assert(np.all(self.d.values == np.ones(len(self.classes))))
+    assert(np.all(self.d.values == 1/3. * np.ones(len(self.classes))))
     self.d.set_values('uniform')
-    assert(np.all(self.d.values == np.ones(len(self.classes))))
+    assert(np.all(self.d.values == 1/3. * np.ones(len(self.classes))))
     self.d.set_values('inverse_prior')
     print(self.d.values)
-    assert(np.all(self.d.values == np.array([0.5,0.5,1])))
+    assert(np.all(self.d.values == np.array([0.25,0.25,0.5])))
 
 class TestDatasetPascal:
   def setup(self):
