@@ -52,12 +52,12 @@ class Dataset(object):
   def set_values(self,mode='uniform'):
     "Set all class values to be uniform or inversely proportional to priors."
     if mode=='uniform':
-      self.values = np.ones(len(self.classes))
+      self.values = 1.*np.ones(len(self.classes))/len(self.classes)
     elif mode=='inverse_prior':
       gt = self.get_cls_ground_truth(with_diff=False,with_trun=True)
       prior = 1.*gt.sum(0)/gt.shape[0]
       self.values = 1./prior
-      self.values /= np.max(self.values)
+      self.values /= np.sum(self.values)
     else:
       raise RuntimeError("Unknown mode")
 

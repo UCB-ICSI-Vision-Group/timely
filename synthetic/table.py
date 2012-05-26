@@ -214,3 +214,13 @@ Table name: %(name)s | size: %(shape)s
     cols = list(self.cols)
     cols.remove(col_name)
     return Table(arr,cols,self.index,self.name)
+
+  def append_column(self,col_name,vals):
+    "Return Table that is self with added given column at the end."
+    if isinstance(vals,list):
+      vals = np.array(vals)
+    assert(vals.ndim==1 and vals.shape[0]==self.shape[0])
+    table = self.copy()
+    table.cols = self.cols+[col_name]
+    table.arr = np.hstack((self.arr,np.atleast_2d(vals).T))
+    return table

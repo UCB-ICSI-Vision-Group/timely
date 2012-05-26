@@ -618,6 +618,7 @@ class DatasetPolicy:
       sample.t = b.t
 
       # prepare for AUC reward stuff
+      # TODO: should set time_to_deadline to -Inf if no bounds
       time_to_deadline = 0
       if self.bounds:
         time_to_deadline = max(0,self.bounds[1]-b.t)
@@ -634,18 +635,20 @@ class DatasetPolicy:
       sample.det_actual_ap = 0
       if 'dets' in obs:
         det = action.obj
-        detections = obs['dets']
+        dets = obs['dets']
         cls_ind = dataset.classes.index(det.cls)
-        if detections.shape[0]>0:
-          c_vector = np.tile(cls_ind,(np.shape(detections)[0],1))
-          i_vector = np.tile(img_ind,(np.shape(detections)[0],1))
-          detections = np.hstack((detections, c_vector, i_vector))
+        if dets.shape[0]>0:
+          c_vector = np.tile(cls_ind,(np.shape(dets)[0],1))
+          i_vector = np.tile(img_ind,(np.shape(dets)[0],1))
+          detections = np.hstack((dets, c_vector, i_vector))
         else:
           detections = np.array([])
         dets_table = Table(detections,det.columns+['cls_ind','img_ind'])
 
-        # compute the 'naive' det AP increase: adding dets to empty set
-        ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)
+        # compute the 'naive' det AP increase,
+        # as if we were adding dets to an empty set
+        #ap,rec,prec = self.ev.compute_det_pr(dets_table,gt)
+        ap = self.ev.compute_det_map(dets_table,gt)
         sample.det_naive_ap = ap
 
         # TODO: am I needlessly recomputing this table?
@@ -655,8 +658,9 @@ class DatasetPolicy:
         if len(nonempty_dets)>0:
           all_dets_table = Table(np.concatenate(nonempty_dets,0),dets_table.cols)
 
-        # compute the actual AP increase: addings dets to dets so far
-        ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
+        # compute the actual AP increase: adding dets to dets so far
+        #ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
+        ap = self.ev.compute_det_map(dets_table,gt)
         ap_diff = ap-prev_ap
         sample.det_actual_ap = ap_diff
 
@@ -671,6 +675,7 @@ class DatasetPolicy:
           auc_ap = 0
         if not (auc_ap>=-1 and auc_ap<=1):
           auc_ap = 0
+        # TODO: why now the below assert?
         #assert(auc_ap>=-1 and auc_ap<=1)
         sample.auc_ap = auc_ap
         prev_ap = ap

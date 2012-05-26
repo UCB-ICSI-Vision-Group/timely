@@ -427,19 +427,35 @@ class Evaluation:
   ##############################
   # Computation of Precision-Recall and Average Precision
   ##############################
+  def compute_det_map(self, dets, gt):
+    """
+    Compute average of per-class APs for the given detections.
+    Note that all the classes present in gt are considered.
+    #Note that only the classes present in the detections 
+    """
+    aps = []
+    unique_cls_inds = np.unique(gt.subset_arr('cls_ind'))
+    for cls_ind in unique_cls_inds:
+      d = dets.filter_on_column('cls_ind',cls_ind)
+      g = gt.filter_on_column('cls_ind',cls_ind)
+      ap,_,_ = self.compute_det_pr(d,g)
+      aps.append(ap)
+    return np.sum(aps*self.dataset.values)
+
   def compute_det_pr(self, dets, gt):
     pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)
     return pr_and_hard_neg[:3]
   
   def compute_det_hard_neg(self, dets, gt):
     pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)
+    # BUG TODO: shouldn't this be 3?
     return pr_and_hard_neg[4]
     
   @classmethod
   def compute_det_pr_and_hard_neg(cls, dets, gt):
     """
     Take Table of detections and Table of ground truth.
-    Ground truth can be for a single image or a whole dataset.
+    Ground truth can be for a single image or a whole dataset
     and can contain either all classes or just one class (but the cls_ind col
     must be present in either case).
     Depending on these decisions, the meaning of the PR evaluation is
@@ -528,6 +544,7 @@ class Evaluation:
       if 'img_ind' in gt.cols:
         gt.arr[inds,:] = gt_for_image
 
+    #embed()
     ap,rec,prec = cls.compute_rec_prec_ap(tp,fp,npos)
     return (ap,rec,prec,hard_neg)
 

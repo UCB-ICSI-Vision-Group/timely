@@ -127,6 +127,9 @@ def main():
   parser.add_argument('--det_configs', action='store_true', 
     default=False, help='output detector statistics to det_configs')
 
+  parser.add_argument('--inverse_prior', action='store_true', 
+    default=False, help='use inverse prior class values')
+
   args = parser.parse_args()
   print(args)
 
@@ -151,6 +154,10 @@ def main():
   else:
     None # impossible by argparse settings
   
+  if args.inverse_prior:
+    dataset.set_values('inverse_prior')
+    train_dataset.set_values('inverse_prior')
+
   # TODO: hack
   if args.first_n_train:
     train_dataset.images = train_dataset.images[:args.first_n_train]
