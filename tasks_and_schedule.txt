@@ -35,7 +35,7 @@ x change final evaluation to not be multi-class and to weight mean AP by class v
 - launch run of current system with inverse-prior class values @sergey
 - launch run of current system with the GIST action @sergey
 - rework paper and send to mario @sergey
-  - put in citation for L1-regularization learning sparse models: http://ai.stanford.edu/~koller/Papers/Lee+al:NIPS06.pdf
+  x put in citation for L1-regularization learning sparse models: http://ai.stanford.edu/~koller/Papers/Lee+al:NIPS06.pdf
   - tighter story/intro
   - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
   - rework figure 1 to be more comprehensive and show the whole working of the system
