@@ -19,6 +19,8 @@ class Dataset(object):
       self.load_from_pascal(name,force)
     elif name == 'test_data1':
       self.load_from_json(config.test_data1)
+    elif name == 'test_data2':
+      self.load_from_json(config.test_data2)
     elif name == 'synthetic':
       self.generate_synthetic()
     else:
@@ -52,12 +54,12 @@ class Dataset(object):
   def set_values(self,mode='uniform'):
     "Set all class values to be uniform or inversely proportional to priors."
     if mode=='uniform':
-      self.values = np.ones(len(self.classes))
+      self.values = 1.*np.ones(len(self.classes))/len(self.classes)
     elif mode=='inverse_prior':
       gt = self.get_cls_ground_truth(with_diff=False,with_trun=True)
       prior = 1.*gt.sum(0)/gt.shape[0]
       self.values = 1./prior
-      self.values /= np.max(self.values)
+      self.values /= np.sum(self.values)
     else:
       raise RuntimeError("Unknown mode")
 
@@ -334,6 +336,8 @@ class Dataset(object):
     if second_order:
       m = m.filter_on_column('prior',0.001,operator.gt).\
             sort_by_column('prior',descending=True)
+      # TODO: just take the top K actually, for a side-by-side figure
+      m.arr = m.arr[:len(self.classes),:]
 
     if size:
       fig = plt.figure(figsize=size)
@@ -405,8 +409,12 @@ class Dataset(object):
       for i in xrange(0, m.shape[0]):
         for j in xrange(0,m.shape[1]):
           val = m.arr[i,j]
-          if not np.isnan(val):
-            ax.text(j-0.2,i+0.1,'%.2f'%val)
+          if np.isnan(val):
+            continue
+          if val > 0.5:
+            ax.text(j-0.2,i+0.1,'%.2f'%val,color='w')
+          else:
+            ax.text(j-0.2,i+0.1,'%.2f'%val,color='k')
 
     # Hide the black frame around the plot
     # Doing ax.set_frame_on(False) results in weird thin lines

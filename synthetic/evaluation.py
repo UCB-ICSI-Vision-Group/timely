@@ -1,8 +1,5 @@
-import operator
-import matplotlib.pyplot as plt
 from mako.template import Template
 
-from common_mpi import *
 from common_imports import *
 import synthetic.config as config
 
@@ -54,14 +51,13 @@ class Evaluation:
   ##############
   # AP vs. Time
   ##############
-  def evaluate_vs_t(self,dets=None,clses=None,plot=True,force=False,blacklist=[]):
+  def evaluate_vs_t(self,dets=None,clses=None,plot=True,force=False):
     """
     Evaluate detections and classifications in the AP vs Time regime,
     and write out plots to canonical places.
     We evaluate on the whole dataset instead of averaging per-image,
     and so get rid of error bars.
     Return two tables: one for detection and one for classification evals.
-    This version average per-image results.
     """
     bounds = self.dp.bounds if self.dp and self.dp.bounds else None
 
@@ -80,9 +76,6 @@ class Evaluation:
       img_dets_list = []
       gt = self.dataset.get_det_gt(with_diff=True)
       
-      for black in blacklist:
-        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)   
-
       for img_ind,image in enumerate(self.dataset.images):
         gt_for_image_list.append(gt.filter_on_column('img_ind',img_ind))
         if dets.arr == None:
@@ -114,7 +107,8 @@ class Evaluation:
           else:
             dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
             num_dets += dets_to_this_point.shape[0]
-            det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
+            #det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
+            det_ap = self.compute_det_map(dets_to_this_point, gt_for_image)
           det_aps.append(det_ap)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
@@ -151,7 +145,7 @@ class Evaluation:
       points = np.hstack((0,points))
     return points
 
-  def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False,blacklist=[]):
+  def evaluate_vs_t_whole(self,dets=None,clses=None,plot=True,force=False):
     """
     Evaluate detections in the AP vs Time regime and write out plots to
     canonical places.
@@ -178,11 +172,6 @@ class Evaluation:
       points = self.determine_time_points(all_times,bounds)
       num_points = points.shape[0]
       cls_gt = self.dataset.get_cls_ground_truth(with_diff=False)
-      
-      # TODO: WRONG, REMOVE COLS INSTEAD
-      cls_gt_classes = list(cls_gt.cols)
-      for black in blacklist:
-        cls_gt = cls_gt.with_column_omitted(cls_gt_classes[black])
 
       det_arr = np.zeros((num_points,2))
       cls_arr = np.zeros((num_points,2))
@@ -342,7 +331,7 @@ class Evaluation:
     plt.grid(True)
     plt.savefig(filename)
 
-  def evaluate_detections_whole(self,dets=None,force=False,blacklist=[]):
+  def evaluate_detections_whole(self,dets=None,force=False):
     """
     Output detection evaluations over the whole dataset in all formats:
     - multi-class (one PR plot)
@@ -359,9 +348,6 @@ class Evaluation:
       cls = self.dataset.classes[cls_ind] 
       cls_dets = dets.filter_on_column('cls_ind',cls_ind)
       cls_gt = self.dataset.get_get_gt_for_class(cls,with_diff=True)
-      cls_gt_classes = list(cls_gt.cols)
-      for black in blacklist:
-        cls_gt = cls_gt.with_column_omitted(cls_gt_classes[black])
       dist_aps[cls_ind] = self.compute_and_plot_pr(cls_dets, cls_gt, cls, force)
     aps = None
     if comm_rank==0:
@@ -373,8 +359,6 @@ class Evaluation:
     if comm_rank == 0:
       # Multi-class
       gt = self.dataset.get_det_gt(with_diff=True)
-      for black in blacklist:
-        gt = gt.filter_on_column('cls_ind', black, op=operator.ne)
       filename = opjoin(self.results_path, 'pr_whole_multiclass')
       if force or not opexists(filename):
         print("Evaluating %d dets in the multiclass setting..."%dets.shape[0])
@@ -443,19 +427,35 @@ class Evaluation:
   ##############################
   # Computation of Precision-Recall and Average Precision
   ##############################
+  def compute_det_map(self, dets, gt):
+    """
+    Compute average of per-class APs for the given detections.
+    Note that all the classes present in gt are considered.
+    #Note that only the classes present in the detections 
+    """
+    aps = []
+    unique_cls_inds = np.unique(gt.subset_arr('cls_ind'))
+    for cls_ind in unique_cls_inds:
+      d = dets.filter_on_column('cls_ind',cls_ind)
+      g = gt.filter_on_column('cls_ind',cls_ind)
+      ap,_,_ = self.compute_det_pr(d,g)
+      aps.append(ap*self.dataset.values[cls_ind])
+    return np.sum(aps)
+
   def compute_det_pr(self, dets, gt):
     pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)
     return pr_and_hard_neg[:3]
   
   def compute_det_hard_neg(self, dets, gt):
     pr_and_hard_neg = self.compute_det_pr_and_hard_neg(dets, gt)
+    # BUG TODO: shouldn't this be 3?
     return pr_and_hard_neg[4]
     
   @classmethod
   def compute_det_pr_and_hard_neg(cls, dets, gt):
     """
     Take Table of detections and Table of ground truth.
-    Ground truth can be for a single image or a whole dataset.
+    Ground truth can be for a single image or a whole dataset
     and can contain either all classes or just one class (but the cls_ind col
     must be present in either case).
     Depending on these decisions, the meaning of the PR evaluation is
@@ -544,6 +544,7 @@ class Evaluation:
       if 'img_ind' in gt.cols:
         gt.arr[inds,:] = gt_for_image
 
+    #embed()
     ap,rec,prec = cls.compute_rec_prec_ap(tp,fp,npos)
     return (ap,rec,prec,hard_neg)
 
