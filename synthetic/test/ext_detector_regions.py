@@ -1,4 +1,4 @@
-from common_imports import *
+from synthetic.common_imports import *
 import synthetic.config as config
 
 from synthetic.ext_detector_regions import *
