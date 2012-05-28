@@ -27,22 +27,23 @@ x change reward-computation to weight mean AP by class values @sergey
 26 May - Saturday
 
 27 May - Sunday
-- change final evaluation to not be multi-class and to weight mean AP by class values @sergey
+x change final evaluation to not be multi-class and to weight mean AP by class values @sergey
+- paper:
+  x put in the cooccurence figures in the paper and a couple of sentences explaining the statistics of the dataset
+
+28 May - Monday
 - launch run of current system with inverse-prior class values @sergey
 - launch run of current system with the GIST action @sergey
 - rework paper and send to mario @sergey
   - put in citation for L1-regularization learning sparse models: http://ai.stanford.edu/~koller/Papers/Lee+al:NIPS06.pdf
-  - put in the cooccurence figures in the paper and a couple of sentences explaining the statistics of the dataset and how it's a disadvantaged setting
-  - tighter story/intro @sergey
-  - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern @sergey
-  - change the slide showing "performance metric" to have object models, not actual images--that's confusing
+  - tighter story/intro
+  - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
+  - rework figure 1 to be more comprehensive and show the whole working of the system
   - what's up with the curves being slightly different in the figures in the paper, even though they're supposed to be the same thing? fix
-  - discussion of inference time and tradeoffs @sergey
+  - discussion of inference time and tradeoffs
   - include discussion of learned weights, with pictures
 - implement epsilon-greedy policy with decreasing epsilon in iterations of training @sergey
 - launch run with region-based actions @sergey
-
-28 May - Monday
 - LSPI to learn weights @sergey
 
 29 May - Tuesday

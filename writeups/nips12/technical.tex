@@ -136,16 +136,20 @@ The quantities that may be useful to us for selecting which actions to deploy ar
 These allow us to look for the most probable classes given the observations.
 When the policy starts, the model should present the prior distributions $P(C_k)$; as observations are accrued, the model should present the updated conditionals $P(C_k|\mathbf{o})$.
 
-We employ a fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:model}.
-The $L_i$ variables are discretized from real-valued responses of a classifier on the detections output by the deformable part-model detector we employ (see Section~\ref{sec:tech}).
-
-The classifier is a linear kernel SVM on the top two max detection scores in the list of detections.
-The responses are discretized per variable based on the distribution of the scores on the training dataset.
-
-The MRF is implemented with an open-source graphical model package \cite{Jaimovich2010}.
-The parameters of the model are trained on fully-observed data.
+We employ a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:model}.
+All parameters of the model are trained on fully-observed data.
 Exact inference is generally intractable in this model.
 Instead, we use Loopy Belief Propagation, which does not provide general convergence guarantees but has been shown to work well empirically on similar tasks \cite{Desai2009}.
+
+The $L_i$ variables are discretized from real-valued responses of a classifier on the detections output by the deformable part-model detector we employ (see Section~\ref{sec:tech}).
+The classifier is a linear SVM on the top two max detection scores in the list of detections.
+The responses are discretized per variable based on the distribution of the scores on the training dataset.
+
+The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
+Accordingly, the graph edge weights are learned with L1 regularization, which obtains the desired sparse structure \cite{Lee2006}.
+ is implemented with an open-source graphical model package \cite{Jaimovich2010}.
+
+ \todo{section on a ``fast approximation'' to this based on the n-gram counts we had before?}
 
 \subsection{Learning the Value Function}
 
