@@ -37,6 +37,7 @@ class DatasetPolicy:
     # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
     'rewards_mode': 'det_actual_ap',
     # det_actual_ap, entropy, auc_ap, auc_entropy
+    'values': 'uniform'
   }
 
   def get_config_name(self):
@@ -52,6 +53,8 @@ class DatasetPolicy:
         self.weights_mode,
         self.rewards_mode,
         self.suffix])
+    if self.values != 'uniform':
+      name += '_'+self.values
     return name
 
   ### Column names

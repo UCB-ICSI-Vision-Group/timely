@@ -154,8 +154,8 @@ def main():
   else:
     None # impossible by argparse settings
   
+  # Only need to set training dataset values; evaluation gets it from there
   if args.inverse_prior:
-    dataset.set_values('inverse_prior')
     train_dataset.set_values('inverse_prior')
 
   # TODO: hack
@@ -176,7 +176,9 @@ def main():
       config_f['suffix'] = args.suffix
     if args.bounds10:
       config_f['bounds'] = [0,10]
-      
+    if args.inverse_prior:
+      config_f['values'] = 'inverse_prior'
+
     dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
     ev = Evaluation(dp)
     all_bounds.append(dp.bounds)

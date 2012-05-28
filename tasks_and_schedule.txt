@@ -34,6 +34,7 @@ x change final evaluation to not be multi-class and to weight mean AP by class v
 28 May - Monday
 - launch run of current system with inverse-prior class values @sergey
 - launch run of current system with the GIST action @sergey
+
 - rework paper and send to mario @sergey
   x put in citation for L1-regularization learning sparse models: http://ai.stanford.edu/~koller/Papers/Lee+al:NIPS06.pdf
   - tighter story/intro
@@ -43,10 +44,10 @@ x change final evaluation to not be multi-class and to weight mean AP by class v
   - discussion of inference time and tradeoffs
   - include discussion of learned weights, with pictures
 - implement epsilon-greedy policy with decreasing epsilon in iterations of training @sergey
-- launch run with region-based actions @sergey
 - LSPI to learn weights @sergey
 
 29 May - Tuesday
+- launch run with region-based actions @sergey
 
 30 May - Wednesday
 

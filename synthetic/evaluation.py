@@ -55,8 +55,7 @@ class Evaluation:
     """
     Evaluate detections and classifications in the AP vs Time regime,
     and write out plots to canonical places.
-    We evaluate on the whole dataset instead of averaging per-image,
-    and so get rid of error bars.
+    This one is averaging per-image.
     Return two tables: one for detection and one for classification evals.
     """
     bounds = self.dp.bounds if self.dp and self.dp.bounds else None
@@ -108,7 +107,7 @@ class Evaluation:
             dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
             num_dets += dets_to_this_point.shape[0]
             #det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
-            det_ap = self.compute_det_map(dets_to_this_point, gt_for_image)
+            det_ap = self.compute_det_map(dets_to_this_point, gt_for_image, det_perspective=True)
           det_aps.append(det_ap)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
@@ -178,17 +177,20 @@ class Evaluation:
       for i in range(comm_rank,num_points,comm_size):
         tt = ut.TicToc().tic()
         point = points[i]
-        if not dets.cols == None:
+        if dets.shape[0] < 1:
           dets_to_this_point = dets
           ap = 0
         else:
           dets_to_this_point = dets.filter_on_column('time',point,operator.le)
-
-          #img_inds = np.unique(dets_to_this_point.subset_arr('img_ind'))
-          #gt = self.dataset.get_ground_truth_for_img_inds(img_inds, with_diff=True)
-          # TODO: fuck it!
-          #ap,_,_ = self.compute_det_pr(dets_to_this_point,gt)
-          ap = 0
+          if True:
+            img_inds = np.unique(dets_to_this_point.subset_arr('img_ind').astype(int))
+            gt = self.dataset.get_det_gt(with_diff=True).copy()
+            gt.arr = gt.arr[img_inds,:]
+            #ap,_,_ = self.compute_det_pr(dets_to_this_point,gt)
+            ap = self.compute_det_map(dets_to_this_point,gt,det_perspective=True)
+          else:
+            # TODO: fuck it! takes too long
+            ap = 0
         det_arr[i,:] = [point,ap]
 
         # go through the per-image classifications and only keep the latest time
@@ -427,19 +429,29 @@ class Evaluation:
   ##############################
   # Computation of Precision-Recall and Average Precision
   ##############################
-  def compute_det_map(self, dets, gt):
+  def compute_det_map(self, dets, gt, det_perspective=False):
     """
     Compute average of per-class APs for the given detections.
-    Note that all the classes present in gt are considered.
-    #Note that only the classes present in the detections 
+    If det_perspective == True, only classes present in dets are evaluated.
+    Otherwise, all classes present in gt are evaluated.
     """
     aps = []
-    unique_cls_inds = np.unique(gt.subset_arr('cls_ind'))
+    if det_perspective:
+      unique_cls_inds = np.unique(dets.subset_arr('cls_ind'))
+    else:
+      unique_cls_inds = np.unique(gt.subset_arr('cls_ind'))
+
+    # NOTE: the values are from the training dataset
+    values = self.dp.train_dataset.values
+
     for cls_ind in unique_cls_inds:
       d = dets.filter_on_column('cls_ind',cls_ind)
       g = gt.filter_on_column('cls_ind',cls_ind)
       ap,_,_ = self.compute_det_pr(d,g)
-      aps.append(ap*self.dataset.values[cls_ind])
+      aps.append(ap*values[cls_ind])
+    # Since not all classes could have been used, we should normalize
+    # the weighted sum by the total value
+    aps /= np.sum([values[cls_ind] for cls_ind in unique_cls_inds])
     return np.sum(aps)
 
   def compute_det_pr(self, dets, gt):
@@ -465,6 +477,8 @@ class Evaluation:
     NOTE: modifies dets in-place (sorts by score)
     Return ap, recall, and precision vectors as tuple.
     """
+    gt = gt.copy()
+
     # if dets or gt are empty, return 0's
     nd = dets.arr.shape[0]
     if nd < 1 or gt.shape[0] < 1:
@@ -544,7 +558,6 @@ class Evaluation:
       if 'img_ind' in gt.cols:
         gt.arr[inds,:] = gt_for_image
 
-    #embed()
     ap,rec,prec = cls.compute_rec_prec_ap(tp,fp,npos)
     return (ap,rec,prec,hard_neg)
 
