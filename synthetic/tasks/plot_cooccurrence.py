@@ -6,7 +6,7 @@ and PASCAL datasets.
 from synthetic.common_imports import *
 from synthetic.dataset import Dataset
 
-datasets = ['synthetic','full_pascal_train','full_pascal_val','full_pascal_test']
+datasets = ['synthetic','full_pascal_train','full_pascal_trainval','full_pascal_val','full_pascal_test']
 
 for dataset in datasets:
   d = Dataset(dataset) 

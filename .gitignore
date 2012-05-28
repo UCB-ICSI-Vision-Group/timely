@@ -1,3 +1,4 @@
 data/VOC*
 data/results
 sync
+writeups/nips12/*.pdf
