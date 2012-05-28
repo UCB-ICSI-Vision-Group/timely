@@ -58,7 +58,6 @@ class Evaluation:
     We evaluate on the whole dataset instead of averaging per-image,
     and so get rid of error bars.
     Return two tables: one for detection and one for classification evals.
-    This version average per-image results.
     """
     bounds = self.dp.bounds if self.dp and self.dp.bounds else None
 
@@ -108,7 +107,8 @@ class Evaluation:
           else:
             dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
             num_dets += dets_to_this_point.shape[0]
-            det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
+            #det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
+            det_ap = self.compute_det_map(dets_to_this_point, gt_for_image)
           det_aps.append(det_ap)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
