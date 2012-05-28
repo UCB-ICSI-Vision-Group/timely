@@ -624,7 +624,9 @@ class DatasetPolicy:
       # TODO: should set time_to_deadline to -Inf if no bounds
       time_to_deadline = 0
       if self.bounds:
+        # this should never be less than zero, except for when running oracle
         time_to_deadline = max(0,self.bounds[1]-b.t)
+      sample.auc_ap_raw = 0
       sample.auc_ap = 0
 
       # Take the action and get the observations as a dict
@@ -667,20 +669,25 @@ class DatasetPolicy:
         ap_diff = ap-prev_ap
         sample.det_actual_ap = ap_diff
 
-        # detector AUC reward: this was tricky to get right :)
-        auc_ap = time_to_deadline * ap_diff - ap_diff * dt / 2
-        divisor = (time_to_deadline*(1-prev_ap))
-        if divisor == 0:
-          auc_ap = 1
-        else:
-          auc_ap /= divisor
-        if dt > time_to_deadline:
-          auc_ap = 0
-        if not (auc_ap>=-1 and auc_ap<=1):
-          auc_ap = 0
-        # TODO: why now the below assert?
-        #assert(auc_ap>=-1 and auc_ap<=1)
-        sample.auc_ap = auc_ap
+        # Compure detector AUC reward
+        # If the action took longer than we have time, benefit is 0 (which is already set above)
+        if dt <= time_to_deadline:
+          auc_ap = time_to_deadline * ap_diff - ap_diff * dt / 2.
+          sample.auc_ap_raw = auc_ap
+
+          # Now divide by the potential gain to compute the "normalized" reward
+          # Note that there are two cases: the curve goes up, or it turns down.
+          # In the first case, the normalizing area should be the area to ap=1.
+          # In the second case, the normalizing area should be the area to ap=0.
+          if ap_diff<0:
+            divisor = time_to_deadline*(prev_ap)
+          else:
+            divisor = time_to_deadline*(1.-prev_ap)
+          assert(divisor >= 0)
+          auc_ap = 1 if divisor == 0 else auc_ap/divisor
+          if not (auc_ap>=-1 and auc_ap<=1):
+            embed()
+          sample.auc_ap = auc_ap  
         prev_ap = ap
 
       b.update_with_score(action_ind, obs['score'])
