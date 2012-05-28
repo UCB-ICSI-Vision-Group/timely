@@ -9,6 +9,7 @@ from synthetic.gist_classifier import gist_classify_dataset
 from matplotlib.pylab import *
 import argparse
 from matplotlib.pyplot import hist
+from synthetic.ext_detector_regions import RegionModel
 
 class FastinfDiscretizer(object):
   def __init__(self,d,suffix):
@@ -50,7 +51,7 @@ def discretize_table(table, num_bins, asInt=True, linsp=False):
   else:
     return (all_bounds, new_table)
 
-def write_out_mrf(table, num_bins, filename, data_filename, second_table=None, pairwise=True):
+def write_out_mrf(table, num_bins, filename, data_filename, second_table=None, pairwise=True, force=True):
   """
   Again we assume the table to be of the form displayed below.
   """
@@ -59,8 +60,8 @@ def write_out_mrf(table, num_bins, filename, data_filename, second_table=None, p
   wm = open(filename, 'w')
   modelfile = config.get_mrf_model(num_vars)
   print modelfile, os.path.exists(modelfile)
-  # TODO!
-  if True or not os.path.exists(modelfile):
+  
+  if force or not os.path.exists(modelfile):
     #===========
     #= Model
     #===========  
@@ -265,6 +266,22 @@ def store_bound(d, suffix, bounds):
   np.savetxt(bound_file, bounds)  
   print bound_file
 
+def create_regioned_table(rm, gt, images, num_classes):
+  num_regions = rm.get_number_regions()
+  num_images = len(images)
+  region_table = np.zeros((num_images, num_regions*num_classes))
+  img_inds = np.unique(gt.subset_arr('img_ind'))
+  for ind in img_inds:
+    gt_img = gt.filter_on_column('img_ind', ind)
+    img = images[int(ind)]
+    for row in gt_img.arr:
+      region_id = rm.which_region(img, row[gt.cols.index('x')],row[gt.cols.index('y')],  
+                                  row[gt.cols.index('w')],row[gt.cols.index('h')])
+      cls = row[gt.cols.index('cls_ind')]
+      region_table[ind, num_regions*cls + region_id] = row[gt.cols.index('score')]
+
+  return region_table
+
 def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
   
   settings = list(itertools.product(suffixs, ms, rs))
@@ -303,6 +320,22 @@ def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
         orig_table = orig_table.arr[:,:-1]
       bounds, discr_table = discretize_table(orig_table, num_bins)
       table = np.hstack((table_gt, discr_table))
+      
+    elif suffix == 'CSC_regions':
+      rm = RegionModel("1big_2small", 0.5)
+      detector = 'csc_default'
+      from synthetic.dataset_policy import DatasetPolicy
+      orig_table = DatasetPolicy.load_ext_detections(d, detector)            
+      gt = d.get_det_gt().copy()
+      # we need to spice up the gt by a score of 1 for each class (results in less code)
+      gt.cols.append('score')
+      gt.arr = np.hstack((gt.arr, np.ones((gt.shape[0], 1))))  
+      table_gt_region = create_regioned_table(rm, gt, d.images, len(d.classes))
+      # At this point we need to split them for the different regions
+      orig_table_region = create_regioned_table(rm, orig_table, d.images, len(d.classes))
+      
+      bounds, discr_table_region = discretize_table(orig_table_region, num_bins)
+      table = np.hstack((table_gt_region, discr_table_region))
       
     elif suffix == 'GIST_CSC':
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')
@@ -362,7 +395,7 @@ def simply_run_it(dataset):
   m = args.m
   r = args.r
   d = Dataset(dataset)
-  suffixs = ['GIST', 'CSC', 'perfect', 'GIST_CSC']
+  suffixs = ['CSC_regions']
   run_fastinf_different_settings(d, [m], [r], suffixs)
 
 if __name__=='__main__':

@@ -124,6 +124,8 @@ Table name: %(name)s | size: %(shape)s
     If the array to be returned has 1 as one of its dimensions,
     returns an (N,) array instead.
     """
+    if self.arr.size == 0:
+      return self.arr
     arr = self.subset_arr_and_cols_and_index(names_or_inds_or_mask,axis)[0]
     # squeeze() has a weird behavior where if the array has noly one element,
     # it will return a ()-sized array. We always want to return (N,).
@@ -210,7 +212,10 @@ Table name: %(name)s | size: %(shape)s
   def with_column_omitted(self,col_name):
     "Return Table with given column omitted. Not necessarily a copy."
     drop_mask = np.arange(self.shape[1])==self.cols.index(col_name)
-    arr = self.arr[:,-drop_mask]
+    if self.arr.size > 0:
+      arr = self.arr[:,-drop_mask]
+    else:
+      arr = self.arr
     cols = list(self.cols)
     cols.remove(col_name)
     return Table(arr,cols,self.index,self.name)

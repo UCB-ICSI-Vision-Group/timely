@@ -5,7 +5,7 @@ Sergey Karayev - http://sergeykarayev.com
 
 import subprocess
 import operator
-import os
+import os, sys
 import time
 import numpy as np
 import scipy.stats as st
