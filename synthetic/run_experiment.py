@@ -69,7 +69,10 @@ def load_configs(name):
     return configs
 
   dirname = opjoin(config.config_dir,name)
-  filename = opjoin(config.config_dir,name+'.json')
+  if filename[-4:] == 'json':
+    filename = opjoin(config.config_dir,name)
+  else:
+    filename = opjoin(config.config_dir,name+'.json')
   collectname = opjoin(config.config_dir,name+'.txt')
   
   if os.path.isdir(dirname):
