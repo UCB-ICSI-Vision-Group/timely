@@ -80,7 +80,7 @@ class BeliefState(object):
     self.full_feature = self.compute_full_feature()
 
   num_time_blocks = 1
-  num_features = num_time_blocks * 5 # [P(C) P(C|O) H(C|O) t/T 1]
+  num_features = num_time_blocks * 4 # [P(C) P(C|O) H(C|O) t/T]
   def compute_full_feature(self):
     """
     Return featurized representation of the current belief state.
@@ -96,9 +96,8 @@ class BeliefState(object):
     h_c[h_c==-0]=0
     time_ratio = 0 if self.t <= self.bounds[0] else self.t/self.bounds[1]
     time_ratio = time_ratio * np.ones(p_c.shape)
-    ones = np.ones(p_c.shape)
     # TODO: work out the time-blocks
-    feat = np.vstack((orig_p_c,p_c,h_c,time_ratio,ones)).T
+    feat = np.vstack((orig_p_c,p_c,h_c,time_ratio)).T
 
     # zero out those actions that have been taken
     # NOTE: this makes sense because it allows the policy to simply do argmax

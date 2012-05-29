@@ -34,10 +34,10 @@ class DatasetPolicy:
       # no_smooth, backoff, fastinf
     'bounds': [0,20], # start and deadline times for the policy
     'weights_mode': 'manual_1',
-    # manual_1, manual_2, manual_3, greedy, rl_regression, rl_lspi
+    # manual_1, manual_2, manual_3, greedy, rl_half, rl_regression, rl_lspi
     'rewards_mode': 'det_actual_ap',
     # det_actual_ap, entropy, auc_ap, auc_entropy
-    'values': 'uniform'
+    'values': 'uniform',
   }
 
   def get_config_name(self):
@@ -206,7 +206,7 @@ class DatasetPolicy:
         None # impossible
       weights = weights.flatten()
 
-    elif weights_mode in ['greedy','rl_regression','rl_lspi']:
+    elif weights_mode in ['greedy','rl_half','rl_regression','rl_lspi']:
       weights = self.learn_weights(weights_mode)
       print("DONE LEARNING WEIGHTS PLZ RUN ON TEST GODDAMNIT!!!!")
       sys.exit()
@@ -339,7 +339,7 @@ class DatasetPolicy:
     """
     Runs iterations of generating samples with current weights and training
     new weight vectors based on the collected samples.
-    - mode can be ['greedy','rl_regression','rl_lspi']
+    - mode can be ['greedy','rl_half','rl_regression','rl_lspi']
     """
     print("Beginning to learn regression weights")
     self.tt.tic('learn_weights:all')
@@ -354,11 +354,11 @@ class DatasetPolicy:
 
     # Loop until max_iterations or the error is below threshold
     error = threshold = 0.001
-    max_iterations = 12
+    max_iterations = 10
 
     # early iterations should explore more than later iterations
     # so do an exponential fall-off, halving every few iterations
-    epsilons = 0.5*np.exp2(-np.arange(0,max_iterations+1)/4.)
+    epsilons = 0.6*np.exp2(-np.arange(0,max_iterations+1)/3.)
 
     # Collect samples (parallelized)
     num_samples = 350 # actually this refers to images
@@ -439,11 +439,11 @@ class DatasetPolicy:
     return np.array(feats)
 
   def compute_reward_from_samples(self, samples, mode='greedy',
-    discount=0.1, attr=None):
+    discount=0.4, attr=None):
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action
-    - mode=='rl_regression' or 'rl_lspi' uses discounted sum
+    - mode=='rl_half', 'rl_regression' or 'rl_lspi' uses discounted sum
     of actual_aps to the end of the episode
     - attr can be ['det_actual_ap', 'entropy', 'auc_ap_raw', 'auc_ap', 'auc_entropy']
     """ 
@@ -452,7 +452,11 @@ class DatasetPolicy:
     y = np.array([getattr(sample,attr) for sample in samples])
     if mode=='greedy':
       return y
-    elif mode=='rl_regression':
+    elif mode=='rl_regression' or mode=='rl_half':
+      if mode=='rl_half':
+        discount = 0.4
+      else:
+        discount = 0.9
       y = np.zeros(len(samples))
       for sample_idx in range(len(samples)):
         sample = samples[sample_idx]
@@ -487,6 +491,7 @@ class DatasetPolicy:
     alphas = [0.001, 0.01, 0.1, 1, 100, 1000]
     for alpha in alphas:
       clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=3000)
+      #clf = sklearn.linear_model.Ridge(alpha=alpha)
       errors = []
       # TODO parallelize this? seems fast enough
       for train_ind,val_ind in folds:
@@ -495,7 +500,8 @@ class DatasetPolicy:
       alpha_errors.append(np.mean(errors))
     best_ind = np.argmin(alpha_errors)
     best_alpha = alphas[best_ind]
-    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=200)
+    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=3000)
+    #clf = sklearn.linear_model.Ridge(alpha=best_alpha)
     clf.fit(X,y)
     print("Best lambda was %.3f"%best_alpha)
     weights = clf.coef_
@@ -675,7 +681,7 @@ class DatasetPolicy:
 
         # compute the actual AP increase: adding dets to dets so far
         #ap,rec,prec = self.ev.compute_det_pr(all_dets_table,gt)
-        ap = self.ev.compute_det_map(dets_table,gt)
+        ap = self.ev.compute_det_map(all_dets_table,gt)
         ap_diff = ap-prev_ap
         sample.det_actual_ap = ap_diff
 
