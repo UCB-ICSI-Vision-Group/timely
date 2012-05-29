@@ -1,4 +1,5 @@
 from mpi4py import MPI
+import time
 
 comm = MPI.COMM_WORLD
 comm_rank = comm.Get_rank()
