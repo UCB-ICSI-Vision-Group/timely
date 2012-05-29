@@ -45,3 +45,6 @@ Training weights takes about 20 min with fastinf and about a minute (?) with fix
 Then actually detecting takes less than that.
 
 find configs/may_run/*.json -exec echo {} \; -exec cat {} \;
+
+orange1
+mpirun -n 20 python run_experiment.py --test_dataset=trainval --suffix=may28 --config=may_run/csc_greedy_ap_fastinf.json && mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may28 --config=may_run/csc_greedy_ap_fastinf.json && mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may28 --config=may_run/csc_greedy_ap_fixed_order.json && mpirun -n 20 python run_experiment.py --test_dataset=trainval --suffix=may28 --config=may_run/csc_greedy_raw_fastinf.json &&  mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may28 --config=may_run/csc_greedy_raw_fastinf.json && mpirun -n 20 python run_experiment.py --test_dataset=trainval --suffix=may28 --config=may_run/csc_greedy_raw_fixed_order.json && mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may28 --config=may_run/csc_greedy_raw_fixed_order.json
