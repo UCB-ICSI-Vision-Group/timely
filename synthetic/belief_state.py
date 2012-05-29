@@ -85,7 +85,13 @@ class BeliefState(object):
     obs_ind = action_ind
     self.observed[obs_ind] = 1
     self.observations[obs_ind] = score
-    self.model.update_with_observations(self.observed,self.observations)
+    
+    if self.mode=='random':
+      self.model.update_with_observations(
+        self.observed[:len(self.dataset.classes)],
+        self.observations[:len(self.dataset.classes)])
+    else:
+      self.model.update_with_observations(self.observed,self.observations)
     self.full_feature = self.compute_full_feature()
 
   def update_with_gist(self,action_ind,scores):
@@ -95,10 +101,16 @@ class BeliefState(object):
     the interface to the FastInf model.
     """
     self.taken[action_ind] = 1
-    self.observed[:len(self.dataset.classes)] = 1
     # FastInf models expect GIST to be the second half of observations
-    self.observations[:len(self.dataset.classes)] = scores
-    self.model.update_with_observations(self.observed,self.observations)
+    self.observed[len(self.dataset.classes):] = 1
+    self.observations[len(self.dataset.classes):] = scores
+    
+    if self.mode=='random':
+      self.model.update_with_observations(
+        self.observed[:len(self.dataset.classes)],
+        self.observations[:len(self.dataset.classes)])
+    else:
+      self.model.update_with_observations(self.observed,self.observations)
     self.full_feature = self.compute_full_feature()
 
   num_time_blocks = 1
