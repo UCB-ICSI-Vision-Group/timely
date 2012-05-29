@@ -30,7 +30,7 @@ class GistForAllClasses(object):
 
   def get_observations(self,image):
     scores = [classifier.get_score(image) for classifier in self.classifiers]
-    return {'scores': scores, 'dt': 1.}
+    return {'scores': scores, 'dt': 0.3}
 
 class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
@@ -296,6 +296,7 @@ class DatasetPolicy:
     all_samples = []
     for i in range(comm_rank,len(images),comm_size):
       dets,clses,samples = self.run_on_image(images[i],dataset,epsilon=epsilon)
+      embed()
       all_dets.append(dets)
       all_clses.append(clses)
       all_samples += samples
