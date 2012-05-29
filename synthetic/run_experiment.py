@@ -177,6 +177,7 @@ def main():
     if args.bounds10:
       config_f['bounds'] = [0,10]
     if args.inverse_prior:
+      config_f['suffix'] += '_inverse_prior'
       config_f['values'] = 'inverse_prior'
 
     dp = DatasetPolicy(dataset, train_dataset, weights_dataset_name, **config_f)
@@ -205,6 +206,8 @@ def main():
     # filename of the final plot is the config file name
     dirname = config.get_evals_dir(dataset.get_name())
     filename = args.config
+    if args.inverse_prior:
+      filename += '_inverse_prior'
     
     # det avg
     ff = opjoin(dirname, '%s_det_avg.png'%filename)

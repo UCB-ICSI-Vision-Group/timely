@@ -1,0 +1,4 @@
+csc_manual_1_oracle
+csc_greedy_entropy_fastinf
+csc_greedy_ap_fastinf
+csc_manual_1_random

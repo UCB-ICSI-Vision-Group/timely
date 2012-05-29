@@ -2,6 +2,6 @@
   "suffix": "may28",
   "detectors": ["csc_default"],
   "policy_mode": ["fixed_order"],
-  "weights_mode": ["rl_regression"],	
+  "weights_mode": ["greedy"],
   "rewards_mode": ["auc_ap"]
 }

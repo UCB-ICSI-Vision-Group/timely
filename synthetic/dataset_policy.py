@@ -176,7 +176,7 @@ class DatasetPolicy:
     # The features are [P(C) P(not C) H(C) 1]
     weights = np.zeros((len(self.actions), BeliefState.num_features))
 
-    # OPTION 1: the corresponding manual weights are [1 0 0 0]
+    # OPTION 1: the corresponding manual weights are [1 0 0 0 0]
     if weights_mode == 'manual_1':
       weights[:,0] = 1
       weights = weights.flatten()
@@ -232,7 +232,7 @@ class DatasetPolicy:
     plt.colorbar()
     plt.savefig(filename)
 
-  def run_on_dataset(self,train=False,sample_size=-1,force=False):
+  def run_on_dataset(self,train=False,sample_size=-1,force=False,epsilon=0.05):
     """
     Run MPI-parallelized over the images of the dataset (or a random subset).
     Return list of detections and classifications for the whole dataset.
@@ -284,7 +284,7 @@ class DatasetPolicy:
     all_clses = []
     all_samples = []
     for i in range(comm_rank,len(images),comm_size):
-      dets,clses,samples = self.run_on_image(images[i],dataset)
+      dets,clses,samples = self.run_on_image(images[i],dataset,epsilon=epsilon)
       all_dets.append(dets)
       all_clses.append(clses)
       all_samples += samples
@@ -346,19 +346,24 @@ class DatasetPolicy:
 
     # Need to have weights set here to collect samples, so let's set
     # to manual_1 to get a reasonable execution trace.
-    self.weights = self.load_weights(weights_mode='manual_1') 
+    self.weights = self.load_weights(weights_mode='manual_1',force=True) 
     if comm_rank==0:
       print("Initial weights:")
       np.set_printoptions(precision=2,suppress=True,linewidth=160)
       print self.get_reshaped_weights()
 
+    # Loop until max_iterations or the error is below threshold
+    error = threshold = 0.001
+    max_iterations = 12
+
+    # early iterations should explore more than later iterations
+    # so do an exponential fall-off, halving every few iterations
+    epsilons = 0.5*np.exp2(-np.arange(0,max_iterations+1)/4.)
+
     # Collect samples (parallelized)
     num_samples = 350 # actually this refers to images
-    dets,clses,all_samples = self.run_on_dataset(False,num_samples)
+    dets,clses,all_samples = self.run_on_dataset(False,num_samples,epsilon=epsilons[0])
     
-    # Loop until max_iterations or the error is below threshold
-    error = threshold = 0.002
-    max_iterations = 8
     for i in range(0,max_iterations):
       # do regression with cross-validated parameters (parallelized)
       weights = None
@@ -383,8 +388,8 @@ class DatasetPolicy:
           print("Couldn't plot, no big deal.")
 
         print("""
-  After iteration %d, we've trained on %d samples and
-  the weights and error are:"""%(i,len(all_samples)))
+  After iteration %d (epsilon %.2f), we've trained on %d samples and
+  the weights and error are:"""%(i,epsilons[i],len(all_samples)))
         np.set_printoptions(precision=2,suppress=True,linewidth=160)
         print self.get_reshaped_weights()
         print error
@@ -399,7 +404,7 @@ class DatasetPolicy:
       safebarrier(comm)
       weights = comm.bcast(weights,root=0)
       self.weights = weights
-      new_dets,new_clses,new_samples = self.run_on_dataset(False,num_samples)
+      new_dets,new_clses,new_samples = self.run_on_dataset(False,num_samples,epsilon=epsilons[i+1])
 
       if comm_rank==0:
         # We either collect only unique samples or all samples
@@ -434,13 +439,13 @@ class DatasetPolicy:
     return np.array(feats)
 
   def compute_reward_from_samples(self, samples, mode='greedy',
-    discount=0.4, attr=None):
+    discount=0.1, attr=None):
     """
     Return vector of rewards for the given samples.
     - mode=='greedy' just uses the actual_ap of the taken action
     - mode=='rl_regression' or 'rl_lspi' uses discounted sum
     of actual_aps to the end of the episode
-    - attr can be ['det_actual_ap', 'entropy', 'auc_ap', 'auc_entropy']
+    - attr can be ['det_actual_ap', 'entropy', 'auc_ap_raw', 'auc_ap', 'auc_entropy']
     """ 
     if not attr:
       attr = self.rewards_mode
@@ -458,7 +463,7 @@ class DatasetPolicy:
           if next_samp.step_ind == 0:
             # New episode begins here
             break
-          reward += discount**i*getattr(next_samp,attr)
+          reward += discount**i * getattr(next_samp,attr)
           i += 1
         y[sample_idx] = reward
       return y    
@@ -479,9 +484,9 @@ class DatasetPolicy:
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
-    alphas = [0.0001, 0.001, 0.01, 0.1, 1, 100, 1000, 10000]
+    alphas = [0.001, 0.01, 0.1, 1, 100, 1000]
     for alpha in alphas:
-      clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=2000)
+      clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=3000)
       errors = []
       # TODO parallelize this? seems fast enough
       for train_ind,val_ind in folds:
@@ -566,7 +571,7 @@ class DatasetPolicy:
       self.action_values = np.array([\
         np.dot(self.weights, b.block_out_action(ff,action_ind)) for action_ind in range(len(self.actions))])
 
-  def select_action(self, b):
+  def select_action(self, b, epsilon=0.05):
     """
     Return the index of the untaken action with the max value.
     Return -1 if all actions have been taken.
@@ -575,10 +580,15 @@ class DatasetPolicy:
     if np.all(taken):
       return -1
     untaken_inds = np.flatnonzero(taken==0)
-    max_untaken_ind = self.action_values[untaken_inds].argmax()
-    return untaken_inds[max_untaken_ind]
 
-  def run_on_image(self, image, dataset, verbose=False):
+    # our policies are epsilon greedy
+    if np.random.rand() > epsilon:
+      max_untaken_ind = self.action_values[untaken_inds].argmax()
+      return untaken_inds[max_untaken_ind]
+    else:
+      return np.random.randint(len(self.actions))
+
+  def run_on_image(self, image, dataset, verbose=True, epsilon=0.05):
     """
     Return
     - list of detections in the image, with each row as self.det_columns
@@ -606,7 +616,7 @@ class DatasetPolicy:
       self.inf_model = b.model
 
     self.update_actions(b)
-    action_ind = self.select_action(b)
+    action_ind = self.select_action(b,epsilon)
     step_ind = 0
     initial_clses = np.array(b.get_p_c().tolist() + [img_ind,0])
     entropy_prev = np.mean(b.get_entropies())
@@ -685,8 +695,7 @@ class DatasetPolicy:
             divisor = time_to_deadline*(1.-prev_ap)
           assert(divisor >= 0)
           auc_ap = 1 if divisor == 0 else auc_ap/divisor
-          if not (auc_ap>=-1 and auc_ap<=1):
-            embed()
+          assert(auc_ap>=-1 and auc_ap<=1)
           sample.auc_ap = auc_ap  
         prev_ap = ap
 
@@ -721,7 +730,7 @@ class DatasetPolicy:
       all_clses.append(clses)
       # Update action values and pick the next action
       self.update_actions(b)
-      action_ind = self.select_action(b)
+      action_ind = self.select_action(b,epsilon)
 
       # check for stopping conditions
       if action_ind < 0:

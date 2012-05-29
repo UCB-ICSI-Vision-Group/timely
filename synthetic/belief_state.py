@@ -51,6 +51,7 @@ class BeliefState(object):
     else:
       raise RuntimeError("Unknown mode")
     self.reset()
+    self.orig_p_c = self.get_p_c()
 
   def __repr__(self):
     return "BeliefState: \n%s\n%s"%(
@@ -79,7 +80,7 @@ class BeliefState(object):
     self.full_feature = self.compute_full_feature()
 
   num_time_blocks = 1
-  num_features = num_time_blocks * 3 # [P(C) H(C) 1]
+  num_features = num_time_blocks * 5 # [P(C) P(C|O) H(C|O) t/T 1]
   def compute_full_feature(self):
     """
     Return featurized representation of the current belief state.
@@ -89,12 +90,15 @@ class BeliefState(object):
     This is useful for zeroing-out all actions but the relevant one.
     NOTE: Keep the class variable num_features synced with the behavior here.
     """
+    orig_p_c = self.orig_p_c
     p_c = self.get_p_c()
     h_c = self.get_entropies()
     h_c[h_c==-0]=0
+    time_ratio = 0 if self.t <= self.bounds[0] else self.t/self.bounds[1]
+    time_ratio = time_ratio * np.ones(p_c.shape)
     ones = np.ones(p_c.shape)
     # TODO: work out the time-blocks
-    feat = np.vstack((p_c,h_c,ones)).T
+    feat = np.vstack((orig_p_c,p_c,h_c,time_ratio,ones)).T
 
     # zero out those actions that have been taken
     # NOTE: this makes sense because it allows the policy to simply do argmax

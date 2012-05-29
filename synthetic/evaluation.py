@@ -107,7 +107,7 @@ class Evaluation:
             dets_to_this_point = img_dets.filter_on_column('time',point,operator.le)          
             num_dets += dets_to_this_point.shape[0]
             #det_ap,_,_ = self.compute_det_pr(dets_to_this_point, gt_for_image)
-            det_ap = self.compute_det_map(dets_to_this_point, gt_for_image, det_perspective=True)
+            det_ap = self.compute_det_map(dets_to_this_point, gt_for_image, det_perspective=False)
           det_aps.append(det_ap)
         det_arr[i,:] = [point,np.mean(det_aps),np.std(det_aps)]
         print("Calculating AP (%.3f) of the %d detections up to %.3fs took %.3fs"%(
@@ -309,9 +309,9 @@ class Evaluation:
 #        high_bound_val = vals[times.tolist().index(bounds[1])]
       
       if not plot_infos == None and "label" in plot_infos[i]:
-        label = '%s: %.2f'%(str(plot_infos[i]["label"]), auc)
+        label = '%s: (%.4f, %.4f)'%(str(plot_infos[i]["label"]), auc, high_bound_val)
       else:
-        label = "(%.2f, %.2f) %s"%(auc,high_bound_val,table.name)
+        label = "(%.4f, %.4f) %s"%(auc,high_bound_val,table.name)
       
       plt.plot(times, vals, style,
           linewidth=2,color=color,label=label)
