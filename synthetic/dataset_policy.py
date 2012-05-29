@@ -243,7 +243,7 @@ class DatasetPolicy:
     plt.colorbar()
     plt.savefig(filename)
 
-  def run_on_dataset(self,train=False,sample_size=-1,force=False,epsilon=0.05):
+  def run_on_dataset(self,train=False,sample_size=-1,force=False,epsilon=0.01):
     """
     Run MPI-parallelized over the images of the dataset (or a random subset).
     Return list of detections and classifications for the whole dataset.
@@ -365,11 +365,11 @@ class DatasetPolicy:
 
     # Loop until max_iterations or the error is below threshold
     error = threshold = 0.001
-    max_iterations = 12
+    max_iterations = 15
 
     # early iterations should explore more than later iterations
     # so do an exponential fall-off, halving every few iterations
-    epsilons = 0.6*np.exp2(-np.arange(0,max_iterations+1)/3.)
+    epsilons = 0.6*np.exp2(-np.arange(0,max_iterations+1)/2.)
 
     # Collect samples (parallelized)
     num_samples = 320 # actually this refers to images
@@ -499,10 +499,11 @@ class DatasetPolicy:
     from sklearn.cross_validation import KFold
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
-    alphas = [0.001, 0.01, 0.1, 1, 100, 1000]
+    alphas = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000]
     for alpha in alphas:
-      clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=3000)
-      #clf = sklearn.linear_model.Ridge(alpha=alpha)
+      tl = self.tt.tic('regress')
+      #clf = sklearn.linear_model.Lasso(alpha=alpha,max_iter=4000)
+      clf = sklearn.linear_model.Ridge(alpha=alpha,fit_intercept=False)
       errors = []
       # TODO parallelize this? seems fast enough
       for train_ind,val_ind in folds:
@@ -511,10 +512,13 @@ class DatasetPolicy:
       alpha_errors.append(np.mean(errors))
     best_ind = np.argmin(alpha_errors)
     best_alpha = alphas[best_ind]
-    clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=3000)
-    #clf = sklearn.linear_model.Ridge(alpha=best_alpha)
+    print("Cross-validating regression took %.3f s"%self.tt.qtoc('regress'))
+    #clf = sklearn.linear_model.Lasso(alpha=best_alpha,max_iter=4000)
+    tl = self.tt.tic('regress')
+    clf = sklearn.linear_model.Ridge(alpha=best_alpha,fit_intercept=False)
     clf.fit(X,y)
     print("Best lambda was %.3f"%best_alpha)
+    print("Final regression took %.3f s"%self.tt.qtoc('regress'))
     weights = clf.coef_
     error = ut.mean_squared_error(clf.predict(X),y)
     return (weights, error)
@@ -605,7 +609,7 @@ class DatasetPolicy:
     else:
       return np.random.randint(len(self.actions))
 
-  def run_on_image(self, image, dataset, verbose=False, epsilon=0.05):
+  def run_on_image(self, image, dataset, verbose=False, epsilon=0.01):
     """
     Return
     - list of detections in the image, with each row as self.det_columns
