@@ -44,6 +44,11 @@ class ExternalDetector(Detector):
     # Also halve the time passed by csc_half detector, because we halved its AP
     if self.detname=='dpm_may25' or self.detname=='csc_half':
       time_passed /= 2
+
+    # TODO: hack that returns time around 1s always
+    #hist(np.maximum(0.8,1+0.1*np.random.randn(1000)),20)
+    time_passed = np.maximum(0.8,1+0.1*np.random.randn())
+
     dets = dets.with_column_omitted('time')
     if astable:
       return (dets, time_passed)

@@ -296,7 +296,6 @@ class DatasetPolicy:
     all_samples = []
     for i in range(comm_rank,len(images),comm_size):
       dets,clses,samples = self.run_on_image(images[i],dataset,epsilon=epsilon)
-      embed()
       all_dets.append(dets)
       all_clses.append(clses)
       all_samples += samples
