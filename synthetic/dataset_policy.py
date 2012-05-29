@@ -710,7 +710,8 @@ class DatasetPolicy:
             divisor = time_to_deadline*(prev_ap)
           else:
             divisor = time_to_deadline*(1.-prev_ap)
-          assert(divisor >= 0)
+          if divisor < 0:
+            divisor = 0
           auc_ap = 1 if divisor == 0 else auc_ap/divisor
           assert(auc_ap>=-1 and auc_ap<=1)
           sample.auc_ap = auc_ap  

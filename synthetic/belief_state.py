@@ -28,14 +28,14 @@ class BeliefState(object):
     self.num_obs_vars = len(self.actions)
     if self.gist_mode:
       assert(self.actions[0].name == 'gist')
-      self.num_obs_vars = len(self.actions)+len(self.dataset.classes)
+      self.num_obs_vars = len(self.actions)-1+len(self.dataset.classes)
 
     if mode == 'random':
       if model:
         assert(isinstance(model,RandomModel))
         self.model = model
       else:
-        self.model = RandomModel(len(self.actions))
+        self.model = RandomModel(len(self.dataset.classes))
     elif mode=='no_smooth' or mode=='backoff':
       if model:
         assert(isinstance(model,NGramModel))
@@ -61,7 +61,7 @@ class BeliefState(object):
 
   def __repr__(self):
     return "BeliefState: \n%s\n%s"%(
-      self.get_p_c(), zip(self.taken,self.observations))
+      self.get_p_c(), zip(self.observed,self.observations))
 
   def get_p_c(self):
     return self.model.p_c

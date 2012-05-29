@@ -19,16 +19,16 @@ class InferenceModel(object):
 class RandomModel(InferenceModel):
   "P(C) is random, but is updated with observations."
 
-  def __init__(self,num_actions):
-    self.num_actions = num_actions
+  def __init__(self,num_classes):
+    self.num_classes = num_classes
     self.reset()
   
   def reset(self):
-    self.p_c = np.random.rand(self.num_actions)
+    self.p_c = np.random.rand(self.num_classes)
 
-  def update_with_observations(self, taken, observations):
+  def update_with_observations(self, observed, observations):
     "Simply set relevant values of p_c to the observations."
-    inds = np.flatnonzero(taken)
+    inds = np.flatnonzero(observed)
     self.p_c[inds] = observations[inds]
 
 class FixedOrderModel(InferenceModel):
