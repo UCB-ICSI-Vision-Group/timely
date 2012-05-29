@@ -365,14 +365,14 @@ class DatasetPolicy:
 
     # Loop until max_iterations or the error is below threshold
     error = threshold = 0.001
-    max_iterations = 10
+    max_iterations = 12
 
     # early iterations should explore more than later iterations
     # so do an exponential fall-off, halving every few iterations
     epsilons = 0.6*np.exp2(-np.arange(0,max_iterations+1)/3.)
 
     # Collect samples (parallelized)
-    num_samples = 300 # actually this refers to images
+    num_samples = 320 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(False,num_samples,epsilon=epsilons[0])
     
     for i in range(0,max_iterations):
