@@ -1,5 +1,5 @@
 {
-  "suffix": "mar4",
+  "suffix": "may28",
   "detectors": ["csc_default"],
   "policy_mode": ["fastinf"],
   "weights_mode": ["greedy"],	

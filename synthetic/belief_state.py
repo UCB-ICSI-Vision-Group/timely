@@ -23,6 +23,13 @@ class BeliefState(object):
     self.bounds = bounds
     self.fastinf_model_name = fastinf_model_name
 
+    # Is GIST in the actions? Need to behave differently if so.
+    self.gist_mode = ('gist' in [action.name for action in self.actions])
+    self.num_obs_vars = len(self.actions)
+    if self.gist_mode:
+      assert(self.actions[0].name == 'gist')
+      self.num_obs_vars = len(self.actions)+len(self.dataset.classes)
+
     if mode == 'random':
       if model:
         assert(isinstance(model,RandomModel))
@@ -46,8 +53,7 @@ class BeliefState(object):
         assert(isinstance(model,FastinfModel))
         self.model = model
       else:
-        num_actions = len(self.actions)
-        self.model = FastinfModel(dataset,self.fastinf_model_name,num_actions)
+        self.model = FastinfModel(dataset, self.fastinf_model_name, self.num_obs_vars)
     else:
       raise RuntimeError("Unknown mode")
     self.reset()
@@ -69,18 +75,34 @@ class BeliefState(object):
     "Zero everything and reset the model."
     self.t = 0
     self.taken = np.zeros(len(self.actions))
-    self.observations = np.zeros(len(self.actions))
+    self.observed = np.zeros(self.num_obs_vars)
+    self.observations = np.zeros(self.num_obs_vars)
     self.model.reset()
 
   def update_with_score(self,action_ind,score):
     "Update the taken and observations lists, the model, and get the new marginals."
     self.taken[action_ind] = 1
-    self.observations[action_ind] = score
-    self.model.update_with_observations(self.taken,self.observations)
+    obs_ind = action_ind
+    self.observed[obs_ind] = 1
+    self.observations[obs_ind] = score
+    self.model.update_with_observations(self.observed,self.observations)
+    self.full_feature = self.compute_full_feature()
+
+  def update_with_gist(self,action_ind,scores):
+    """
+    GIST returns multiple scores (for all the C_i), but is only one action.
+    We deal with this by converting to multiple "actions" here, to maintain
+    the interface to the FastInf model.
+    """
+    self.taken[action_ind] = 1
+    self.observed[:len(self.dataset.classes)] = 1
+    # FastInf models expect GIST to be the second half of observations
+    self.observations[:len(self.dataset.classes)] = scores
+    self.model.update_with_observations(self.observed,self.observations)
     self.full_feature = self.compute_full_feature()
 
   num_time_blocks = 1
-  num_features = num_time_blocks * 4 # [P(C) P(C|O) H(C|O) t/T]
+  num_features = num_time_blocks * 5 # [P(C) P(C|O) H(C|O) \hat{H}(\mathbf{C}) t/T]
   def compute_full_feature(self):
     """
     Return featurized representation of the current belief state.
@@ -93,11 +115,16 @@ class BeliefState(object):
     orig_p_c = self.orig_p_c
     p_c = self.get_p_c()
     h_c = self.get_entropies()
+    mean_entropy = np.mean(h_c)
     h_c[h_c==-0]=0
     time_ratio = 0 if self.t <= self.bounds[0] else self.t/self.bounds[1]
-    time_ratio = time_ratio * np.ones(p_c.shape)
-    # TODO: work out the time-blocks
-    feat = np.vstack((orig_p_c,p_c,h_c,time_ratio)).T
+    # If GIST is an action, it's our first action, and doesn't care about any
+    # class feature, only the mean_entropy and time_ratio ones. 
+    if self.gist_mode:
+      orig_p_c = np.concatenate(([0],orig_p_c))
+      p_c = np.concatenate(([0],p_c))
+      h_c = np.concatenate(([0],h_c))
+    feat = np.vstack((orig_p_c,p_c,h_c,mean_entropy*np.ones(len(self.actions)),time_ratio*np.ones(len(self.actions)))).T
 
     # zero out those actions that have been taken
     # NOTE: this makes sense because it allows the policy to simply do argmax

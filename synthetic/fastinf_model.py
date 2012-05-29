@@ -8,7 +8,7 @@ from synthetic.ngram_model import InferenceModel
 from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,model_name,num_actions,m='0',r1='1', lbp_iters=3000):
+  def __init__(self,dataset,model_name,num_obs_vars,m='0',r1='1', lbp_iters=3000):
     # TODO: experiment with different values of fastinf
 
     self.dataset = dataset
@@ -27,7 +27,7 @@ class FastinfModel(InferenceModel):
     else:
       self.cache = {}
     self.cmd = config.fastinf_bin+" -i %s -m 0 -Is %f -Imm %d"%(self.res_fname, self.smoothing, lbp_iters)
-    self.num_actions = num_actions
+    self.num_obs_vars = num_obs_vars
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
     self.blacklist = []
@@ -41,10 +41,10 @@ class FastinfModel(InferenceModel):
     with open(self.cache_fname,'w') as f:
       cPickle.dump(self.cache,f)
 
-  def update_with_observations(self, taken, observations):
+  def update_with_observations(self, observed, observations):
     self.tt.tic()
-    evidence = self.dataset.num_classes()*['?']
-    for i in np.flatnonzero(taken):
+    evidence = self.num_obs_vars*['?']
+    for i in np.flatnonzero(observed):
       evidence[i] = str(self.fd.discretize_value(observations[i],i))
     evidence = "(%s %s )"%(self.dataset.num_classes()*' ?', ' '.join(evidence))
     if evidence in self.blacklist:
@@ -66,11 +66,15 @@ class FastinfModel(InferenceModel):
         print("comm_rank %d: can't close process!"%comm_rank)
       self.process = pexpect.spawn(self.cmd)
       self.get_marginals()
+    
     # TODO: hack to set the actual classifier score here!
-    # TODO: this assumes that there's only one action per class!!
-    inds = np.flatnonzero(taken)
+    # GIST is hard-coded as second half of observations!
+    if self.num_obs_vars == len(self.dataset.classes):
+      inds = np.flatnonzero(observed)
+    else:
+      inds = np.flatnonzero(observed[:len(self.dataset.classes)])
     self.p_c[inds] = observations[inds]
-    #print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
+    print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
 
   def reset(self):
     """
@@ -79,8 +83,8 @@ class FastinfModel(InferenceModel):
     Sends totally uninformative evidence to get back to the priors.
     Is actually instantaneous due to caching.
     """
-    observations = taken = np.zeros(self.num_actions)
-    self.update_with_observations(taken,observations)
+    observations = observed = np.zeros(self.num_obs_vars)
+    self.update_with_observations(observed,observations)
 
   def get_marginals(self,evidence=None):
     """

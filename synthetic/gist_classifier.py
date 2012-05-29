@@ -40,8 +40,7 @@ class GistClassifier(Classifier):
     return scores
     
   def get_score(self, img):
-    image = self.val_d.get_image_by_filename(img.name)
-    index = self.val_d.get_img_ind(image)
+    index = self.val_d.get_img_ind(img)
     gist = np.array(self.gist_table[index])
     score = svm_proba(gist, self.svm)[0,1] 
     return score

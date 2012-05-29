@@ -24,6 +24,14 @@ class ImageAction:
   def __repr__(self):
     return self.name
 
+class GistForAllClasses(object):
+  def __init__(self,gist_classifiers):
+    self.classifiers = gist_classifiers
+
+  def get_observations(self,image):
+    scores = [classifier.get_score(image) for classifier in self.classifiers]
+    return {'scores': scores, 'dt': 1.}
+
 class DatasetPolicy:
   # run_experiment.py uses this and __init__ uses as default values
   default_config = {
@@ -139,10 +147,13 @@ class DatasetPolicy:
 
       # GIST classifier
       elif detector=='gist':
+        # Make a single action that runs all the GIST classifiers
+        dets = []
         for cls in self.dataset.classes:
           gist_table = np.load(config.get_gist_dict_filename(self.dataset))
-          det = GistClassifier(cls, self.train_dataset,gist_table, self.dataset)
-          actions.append(ImageAction('%s_%s'%(detector,cls), det))
+          dets.append(GistClassifier(cls, self.train_dataset,gist_table, self.dataset))
+        gist_all = GistForAllClasses(dets)
+        actions.append(ImageAction('gist', gist_all))
 
       # real detectors, with pre-cached detections
       elif detector in ['dpm','csc_default','csc_half']:
@@ -157,7 +168,7 @@ class DatasetPolicy:
 
       else:
         raise RuntimeError("Unknown mode in detectors: %s"%self.detectors)
-      return actions
+    return actions
 
   def load_weights(self,weights_mode=None,force=False):
     """
@@ -705,7 +716,11 @@ class DatasetPolicy:
           sample.auc_ap = auc_ap  
         prev_ap = ap
 
-      b.update_with_score(action_ind, obs['score'])
+      # Update the belief state with the observations
+      if action.name=='gist':
+        b.update_with_gist(action_ind, obs['scores'])
+      else:
+        b.update_with_score(action_ind, obs['score'])
 
       # mean entropy
       entropy = np.mean(b.get_entropies())

@@ -43,7 +43,7 @@ x add in time ratio feature
   - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
   - rework figure 1 to be more comprehensive and show the whole working of the system
   - what's up with the curves being slightly different in the figures in the paper, even though they're supposed to be the same thing? fix
-  - discussion of inference time and tradeoffs
+  - discussion of inference time and tradeoffs: mention cross-validation for the parameters
   - include discussion of learned weights, with pictures
 
 - implement epsilon-greedy policy with decreasing epsilon in iterations of training @sergey
