@@ -4,6 +4,7 @@ import synthetic.config as config
 import datetime
 import scipy.io
 import sklearn
+from sklearn.cross_validation import KFold
 
 from synthetic.dataset import Dataset
 from synthetic.sample import Sample
@@ -254,8 +255,8 @@ class DatasetPolicy:
     Return dets,clses,samples.
     """
     self.tt.tic('run_on_dataset')
-    print("Beginning run on dataset, with train=%s, sample_size=%s"%
-      (train,sample_size))
+    print("comm_rank %d beginning run on dataset, with train=%s, sample_size=%s"%
+      (comm_rank,train,sample_size))
 
     dets_table = None
     clses_table = None
@@ -410,8 +411,8 @@ class DatasetPolicy:
           break
 
         print("Now collecting more samples with the updated weights...")
-
-      # collect more samples (parallelized)
+      else:
+        print("comm_rank %d reached last safebarrier in learn_weights"%comm_rank)
       safebarrier(comm)
       weights = comm.bcast(weights,root=0)
       self.weights = weights
@@ -493,10 +494,11 @@ class DatasetPolicy:
     X = self.construct_X_from_samples(samples)
     y = self.compute_reward_from_samples(samples,mode)
     assert(X.shape[0]==y.shape[0])
-    print("Number of non-zero rewards: %d/%d"%(
+    print("Beginning regression with number of non-zero rewards: %d/%d"%(
       np.sum(y!=0),y.shape[0]))
 
-    from sklearn.cross_validation import KFold
+    time.sleep(10)
+
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
     alphas = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000]
