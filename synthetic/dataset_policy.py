@@ -497,8 +497,6 @@ class DatasetPolicy:
     print("Beginning regression with number of non-zero rewards: %d/%d"%(
       np.sum(y!=0),y.shape[0]))
 
-    time.sleep(10)
-
     folds = KFold(X.shape[0], 4)
     alpha_errors = []
     alphas = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000]
