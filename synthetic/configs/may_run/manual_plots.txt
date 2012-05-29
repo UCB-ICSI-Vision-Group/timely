@@ -1,4 +1,0 @@
-csc_manual_1_oracle
-csc_manual_1_fastinf
-csc_manual_1_fixed_order
-csc_manual_1_random

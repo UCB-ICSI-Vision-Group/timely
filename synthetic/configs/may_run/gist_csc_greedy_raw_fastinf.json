@@ -1,7 +1,6 @@
 {
-  "suffix": "mar4",
   "detectors": ["gist","csc_default"],
   "policy_mode": ["fastinf"],
   "weights_mode": ["greedy"],	
-  "rewards_mode": ["auc_entropy"]
+  "rewards_mode": ["auc_ap_raw"]
 }

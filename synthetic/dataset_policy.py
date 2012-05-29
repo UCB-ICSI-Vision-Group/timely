@@ -372,7 +372,7 @@ class DatasetPolicy:
     epsilons = 0.6*np.exp2(-np.arange(0,max_iterations+1)/3.)
 
     # Collect samples (parallelized)
-    num_samples = 350 # actually this refers to images
+    num_samples = 300 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(False,num_samples,epsilon=epsilons[0])
     
     for i in range(0,max_iterations):
@@ -605,7 +605,7 @@ class DatasetPolicy:
     else:
       return np.random.randint(len(self.actions))
 
-  def run_on_image(self, image, dataset, verbose=True, epsilon=0.05):
+  def run_on_image(self, image, dataset, verbose=False, epsilon=0.05):
     """
     Return
     - list of detections in the image, with each row as self.det_columns

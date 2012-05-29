@@ -46,10 +46,10 @@ x add in time ratio feature
   - discussion of inference time and tradeoffs: mention cross-validation for the parameters
   - include discussion of learned weights, with pictures
 
-- implement epsilon-greedy policy with decreasing epsilon in iterations of training @sergey
-- LSPI to learn weights @sergey
+x implement epsilon-greedy policy with decreasing epsilon in iterations of training @sergey
 
 29 May - Tuesday
+- LSPI to learn weights @sergey
 - launch run with region-based actions @sergey
 
 30 May - Wednesday

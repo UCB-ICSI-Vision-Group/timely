@@ -74,7 +74,7 @@ class FastinfModel(InferenceModel):
     else:
       inds = np.flatnonzero(observed[:len(self.dataset.classes)])
     self.p_c[inds] = observations[inds]
-    print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
+    #print("FastinfModel: Computed marginals given evidence in %.3f sec"%self.tt.qtoc())
 
   def reset(self):
     """

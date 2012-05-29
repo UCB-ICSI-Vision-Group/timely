@@ -1,0 +1,47 @@
+May 28 runs:
+
+The auxillary conditions are:
+[auc_ap, auc_ap_raw]
+[greedy, half, rlreg]
+[uniform, inverse]:
+
+So there are 12 combinations:
+[
+  auc_ap-greedy
+  auc_ap-half
+  auc_ap-rlreg
+
+  auc_ap_raw-greedy
+  auc_ap_raw-half
+  auc_ap_raw-rlreg
+
+  auc_ap-greedy-inverse
+  auc_ap-half-inverse
+  auc_ap-rlreg-inverse
+
+  auc_ap_raw-greedy-inverse
+  auc_ap_raw-half-inverse
+  auc_ap_raw-rlreg-inverse
+]
+
+CSC:
+- random
+- oracle
+
+CSC x the 12 combinations:
+- fixed_order
+- fastinf
+
+GIST:
+- random
+- oracle
+
+GIST x the 12 combinations:
+- fastinf
+
+So that's a total of 36 heavy jobs + 4 light jobs
+
+Training weights takes about 20 min with fastinf and about a minute (?) with fixed_order with 20 cores)
+Then actually detecting takes less than that.
+
+find configs/may_run/*.json -exec echo {} \; -exec cat {} \;
