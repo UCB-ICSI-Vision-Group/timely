@@ -6,10 +6,10 @@
   \label{fig:pomdp}
 \end{figure}
 
-Our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs a list of multi-class detection results $\emph{detect}(I)$ by running detector and other \emph{actions} sequentially.
+Our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs a list of multi-class detection results by running detector and other \emph{actions} sequentially.
 
-The policy repeatedly selects an action $a_i$ from a set of actions $\mathcal{A}$, executes it, receiving observations $o_i$, and then selects the next action.
-The set of actions can include both classifiers and detectors: anything that would be useful for inferring the contents of the image.
+The policy repeatedly selects an action $a_i \in \mathcal{A}$, executes it, receiving observations $o_i$, and then selects the next action.
+The set of actions $\mathcal{A}$ can include both classifiers and detectors: anything that would be useful for inferring the contents of the image.
 
 Each action $a_i$ has an expected cost $c(a_i)$ of execution.
 Depending on the setting, the cost can be defined in terms of algorithmic runtime analysis, an idealized property such as number of \emph{flops}, or simply the empirical runtime on specific hardware.
@@ -22,26 +22,23 @@ This corresponds to the general notion of \emph{Anytime} algorithms, and is moti
 A single-number metric that corresponds to this objective is simply the ratio of the area captured under the curve to the total area between the start and deadline bounds.
 We evaluate policies by this more robust metric and not simply by the final performance at deadline time for the same reason that Average Precision is used instead of a fixed Precision vs. Recall point.
 
-\subsubsection{Sequential Execution}
+\subsection{Sequential Execution}
 An ``open-loop'' policy takes actions in a sequence that does not depend on observations received from previous actions.
 The common classifier cascade \cite{Viola2001} is an example.
 In contrast, our goal is to learn a dynamic, or ``closed-loop,'' policy, which would exploit the signal in inter-object and scene context for a maximally efficient path through the actions.
 
-An action $a_i$ that consists of running a classifier $L_i$ returns a real-valued observation $o_i \sim P(O_i)$.
-The state records the fact that $a$ has been taken by adding it to the initially empty set $\mathcal{O}$.
-We refer to the current set of observations as $\mathbf{o} = \{o_i | L_i \in \mathcal{O}\}$.
+The basis for the decisions made by the decision process is called the \emph{state}.
+The state, $b$, includes the currently believed distribution over class presence variables $P(\mathbf{C}) = P(C_1, \dots, C_K)$, where we write $P(C_k)$ to mean $P(C_k=1)$
 
-We define the belief state $b$ of the decision process by the the distribution over class presence variables $P(\mathbf{C}) = P(C_1, \dots, C_K)$, where we write $P(C_k)$ to mean $P(C_k=1)$.
-Additionally, $b$ records the time into episode $t$, and the set of executed actions $\mathcal{O}$ with corresponding observations $\mathbf{o}$.
+Additionally, the state records the fact that an action $a_i$ has been taken by adding it to the initially empty set $\mathcal{O}$ and recording the resulting observations $o_i$.
+We refer to the current set of observations as $\mathbf{o} = \{o_i | a_i \in \mathcal{O}\}$.
+The state also includes the time into episode $t$, and the setup and deadline times $T_s,T_d$.
 
-A recognition \emph{episode} takes an image $\mathcal{I}$ and proceeds from the initial belief state $b^0$ and action $a^0$ to the next pair $b^1$, and so on until $t$ exceeds $T_d$.
+A recognition \emph{episode} takes an image $\mathcal{I}$ and proceeds from the initial state $b^0$ and action $a^0$ to the next pair $(b^1,a^1)$, and so on until $t$ exceeds $T_d$.
 At that point, the policy is terminated and a new episode begins on a new image.
 
-The policy's performance at time $t$ is determined by the detection and classification observations that have been observed at the last belief state $b^j$ before that point.
-For classification of unobserved classes, we treat the corresponding values of $P(\mathbf{C})$ as the set of confidence scores $\{\emph{classify}(k)\}$.
+The policy's performance at time $t$ is determined by the detections that are part of the set of observations $\mathbf{o}$ at the last state $b^j$ before $t$.
 Detection results of unobserved classes are an empty set.
-
-Our notation is summarized in \autoref{tab:notation}.
 
 \begin{table}[h!]
 \centering
@@ -65,72 +62,23 @@ Our notation is summarized in \autoref{tab:notation}.
   \hline
 \end{tabular}\end{table}
 
-\section{Selecting actions} \label{sec:value}
-\comment{Optimal performance results from becoming maximally certain of the correct values $C_i$ as quickly as possible (given the setup time).}
-As our goal is to pick actions dynamically, we want to formulate a function $V(b,a)$  that assigns a value to a potential action, given the current state of the decision process.
-We can then define the policy as simply the untaken action with the maximum value:
+\subsection{Selecting actions based on expected reward} \label{sec:value}
+As our goal is to pick actions dynamically, we want a function $V(b,a): B \times \mathcal{A} \mapsto \mathbb{R}$, where $B$ is the space of all possible states, to assign a value to a potential action, given the current state of the decision process.
+We can then define the desired policy $\pi$ as simply taking the (untaken) action with the maximum value:
 \begin{align}
 \pi(b) = \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} V(b,a_i)
 \end{align}
 
-For this policy to be \emph{closed-loop}, the observations $o_i$ generated by taking an action $a_i$ need to update $b$ and thus influence the selection of the next action.
-Figure~\ref{fig:pomdp} visualizes such an execution process.
+This formulation can represent a closed-loop policy if the observations $\mathbf{o}$ (part of the state $b$) play a role in determining the value of a potential action.
 
-One simple heuristic value function that we can try is simply picking the action corresponding to the class presence variable $C_k$ with the highest probability.
-Of course, we'd like to learn the value function from the data, but the above heuristic will be used as a baseline in the evaluation to follow.
+Before proceeding, we note that that although the action space $\mathcal{A}$ is quite manageable, consisting of the detectors and classifier we would like to run on the image, the space of possible states $B$ is infinite.
+Therefore we cannot learn a tabular representation of $V(b,a)$, and so use function approximation to represent it \cite{Sutton1998}.
+We featurize the state-action pair and assume linear structure: $V^\pi(b,a) = \theta_\pi^\top  \phi(b,a_i)$.
 
-Before we discuss how to set $V(b,a_i)$ such that our policy obtains best performance under our evaluation, we present our model for updating the belief state with observations.
-
-\subsection{The model of the belief state}
-\begin{figure}[h!]
-\centering
-\includegraphics[width=0.56\linewidth]{../figures/inf_model_mrf_1.pdf}
-\caption{
-The MRF inference model used in our system.
-We show a point in the middle of the decision process for 3 classes; one action has already been taken.
-\comment{Some classifiers have already been observed.}
-}
-\label{fig:model}
-\end{figure}
-
-The quantities that may be useful to us for selecting which actions to deploy are the probabilities and entropies of the class presence variables $C_k$.
-These allow us to look for the most probable classes given the observations.
-When the policy starts, the model should present the prior distributions $P(C_k)$; as observations are accrued, the model should present the updated conditionals $P(C_k|\mathbf{o})$.
-
-We employ a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:model}.
-All parameters of the model are trained on fully-observed data.
-Exact inference is generally intractable in this model.
-Instead, we use Loopy Belief Propagation, which does not provide general convergence guarantees but has been shown to work well empirically on similar tasks \cite{Desai2009}.
-
-The $L_i$ variables are discretized from real-valued responses of a classifier on the detections output by the deformable part-model detector we employ (see Section~\ref{sec:tech}).
-The classifier is a linear SVM on the top two max detection scores in the list of detections.
-The responses are discretized per variable based on the distribution of the scores on the training dataset.
-
-The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
-Accordingly, the graph edge weights are learned with L1 regularization, which obtains the desired sparse structure \cite{Lee2006}.
- is implemented with an open-source graphical model package \cite{Jaimovich2010}.
-
- \todo{section on a ``fast approximation'' to this based on the n-gram counts we had before?}
-
-\subsection{Learning the Value Function}
-
-Remember that our heuristic value function consisted of picking the action corresponding to the class presence variable with the highest probability $P(C_k)$.
-We can formulate such a policy as a scalar product:
-\begin{align}
-\pi(b) = \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} \theta^\top \phi(b,a_i)
-\end{align}
-where $\phi(b,a_i)$ is a feature vector representation of the belief state.
-This approach is known as function approximation in reinforcement learning \cite{Sutton1998}.
-
-Let us take take the feature representation for an action $a_i$ to be $[P(C_k), \, 1]$, where $C_k$ corresponds to the action.
-This corresponds to our heuristic value function, with a bias variable.
-The feature representation $\phi(b,a_i)$ then is a vector of size $F|\mathcal{A}|$, with $F=2$ for this feature, where all values are $0$ except those corresponding to $a_i$.
-
-This representation allows us to use a single vector of weights $\theta$ as a compact representation of our policy.
-
-At each time step, our system is evaluated by properties of the state $b$ (the list of detections and the classification outputs).
+Rembmer that at each time step, our system is evaluated by properties of the state $b$ (the list of detections and the classification outputs).
 The final evaluation metric is a function of the history of execution $h^0=b^0,b^1,\dots,b^J$, with $J$ being the last step of the process with $t \le T_d$.
 
+\todo{rework the below from the persepctive of individual action rewards, not reward of whole history}
 Ideally, the value function for a point in the decision process $b^j$ should give the expected value of the final evaluation metric, over all possible histories starting at point $j$:
 \begin{align}
 V(b^j,a_i) = \mathbb{E}_{h^j \sim P(h^j|b,a_i)}[R(h^j)]
@@ -145,8 +93,6 @@ The total reward of a policy $\pi$ starting at state $b^j$ is then defined as th
 \begin{equation}
 R(h^j) = \sum_{j'=j}^J R(b_j',a^{j'})
 \end{equation}
-
-We formulate two reward definitions: one strives to match the final AP evaluation of the detections, and one is motivated by lowering uncertainty of $P(\mathbf{C})$.
 
 \subsubsection{Reward: area under the AP vs. Time curve}
 \begin{figure}[htb]
@@ -167,13 +113,14 @@ where $t_T^j$ and $\text{ap}^j$ are the time left until deadline and the AP at s
 
 The reward is $1$ if the policy takes an action that obtains the maximum possible area under the curve at that point, and $0$ if no area under the curve is captured.
 
-\subsubsection{Reward: decrease in mean entropy}
-We also consider a similar additive reward function based on the mean entropy of the variables $P(C_k)$: $\frac{1}{K}\sum_{k=1}^K H(C_k)$, where $H(C_k) = - \sum_{c_k \in {0,1}} P(c_k) \log P(c_k)$.
-We follow the same setup as above, but strive to maximize the area \emph{above} the curve of mean entropy vs. time.
+\todo{discuss the raw vs. the normalized area, saying we'll try both}
 
-The goal of a policy that maximizes these rewards is to take actions that reduce uncertainty of the most uncertain variables most quickly.
+\subsection{Feature representation and learning the policy}
+\todo{write out current approach}
 
-\subsection{Learning the weights}
+Let us take take the feature representation for an action $a_i$ to be $[P(C_k), \, 1]$, where $C_k$ corresponds to the action.
+This corresponds to our heuristic value function, with a bias variable.
+The feature representation $\phi(b,a_i)$ then is a vector of size $F|\mathcal{A}|$, with $F=2$ for this feature, where all values are $0$ except those corresponding to $a_i$.
 
 The feature representation of the belief state for a given action $a_i$ that corresponds to class $k$ is defined to be
 \begin{align}
@@ -197,3 +144,36 @@ With the updated weights $\theta$, we run $N$ more episodes and repeat the proce
 
 The parameters of this training procedure are the $\alpha$ weight on the regularization term in the regression and the $\lambda$ discount weight.
 We cross-validate for both values.
+
+
+\subsection{Updating probabilities}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.56\linewidth]{../figures/inf_model_mrf_1.pdf}
+\caption{
+The MRF inference model used in our system.
+We show a point in the middle of the decision process for 3 classes; one action has already been taken.
+\comment{Some classifiers have already been observed.}
+}
+\label{fig:model}
+\end{figure}
+
+\todo{Rework from the persepctive of two potential ways of updating the beliefs with observations: just putting them in directly vs. going through MRF. De-emphasize the need for the model, treat it as an extra oomph.}
+
+The quantities that may be useful to us for selecting which actions to deploy are the probabilities and entropies of the class presence variables $C_k$.
+These allow us to look for the most probable classes given the observations.
+When the policy starts, the model should present the prior distributions $P(C_k)$; as observations are accrued, the model should present the updated conditionals $P(C_k|\mathbf{o})$.
+
+We employ a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:model}.
+All parameters of the model are trained on fully-observed data.
+Exact inference is generally intractable in this model.
+Instead, we use Loopy Belief Propagation, which does not provide general convergence guarantees but has been shown to work well empirically on similar tasks \cite{Desai2009}.
+
+The $L_i$ variables are discretized from real-valued responses of a classifier on the detections output by the deformable part-model detector we employ (see Section~\ref{sec:tech}).
+The classifier is a linear SVM on the top two max detection scores in the list of detections.
+The responses are discretized per variable based on the distribution of the scores on the training dataset.
+
+The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
+Accordingly, the graph edge weights are learned with L1 regularization, which obtains the desired sparse structure \cite{Lee2006}.
+ is implemented with an open-source graphical model package \cite{Jaimovich2010}.
+ 

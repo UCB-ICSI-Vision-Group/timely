@@ -1,13 +1,13 @@
 Unscheduled
 ---
-- work out the empirical counts inference model and include in paper as a fast approximation, since the results are so similar @sergey
-- implement and launch run with support vector regression @sergey
-- understand the inference behavior: why linear? @tobi @sergey
+- work out the empirical counts inference model and include in paper as a fast approximation, since the results are so similar
+- understand the inference behavior: why linear?
 - run on PASCAL VOC 2011 (test on val)
-- optimized inference of marginals, with controlled caching and potentially regression approximation @tobi
-- more proper entropy computation, probably by sampling @sergey @tobi
+- optimized inference of marginals, with controlled caching and potentially regression approximation
+- more proper entropy computation, probably by sampling
 - running on whole dataset instead of only inside of an image
 - stick VJ face detection in there as a quick person class detector
+- LSPI to learn weights
 
 Schedule
 ---
@@ -42,19 +42,23 @@ x implement epsilon-greedy policy with decreasing epsilon in iterations of train
 
 29 May - Tuesday
 x process results from last night's runs
-x improve the features and fix some bugs in the GIST feature, and re-launch runs
-- rework paper @sergey
+x significantly improve the features and fix some bugs in the GIST feature, and re-launch runs
+x launch runs with bounds10
+x rework paper
+
+30 May - Wednesday
+- redo all the plots with finer-grained time intervals (output to new files/txt files)
+- launch run with region-based actions
+- implement and launch run with support vector regression, or a nearest-neighbor approach
+- keep reworking paper
   - tighter story/intro
+  - tighter related work, and cite Ashish and recent papers like that cyclic optimization one
   - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
   - rework figure 1 to be more comprehensive and show the whole working of the system
   - replace results figures
   - discussion of inference time and tradeoffs: mention cross-validation for the parameters
   - include discussion of learned weights, with pictures
-
-30 May - Wednesday
-- LSPI to learn weights @sergey
-- launch run with region-based actions @sergey
-
+  
 31 May - Thursday
 - polish paper
 

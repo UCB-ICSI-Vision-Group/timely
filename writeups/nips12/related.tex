@@ -15,11 +15,14 @@ A common measure of a correct detection is the PASCAL overlap: two bounding boxe
 
 To highlight the hierarchical structure of these problems, we note that (1) the confidences for each sub-image $b \in B$ may be given by $\emph{classify}(b,k)$; (2) correct answer to the detection problem also answers the classification problem.
 
+Multi-class performance is evaluated by averaging the individual per-class AP values.
+Since our use case is motivated by a potential advertising system, we generalize this metric to a weighted average, with the weights set by the \emph{values} of the classes.
+
 \subsection{Related Work}
 The literature on object detection is vast.
 Here we briefly summarize detection work that sufficiently contextualizes our contribution in the areas of object classification and detection in context, saliency, multi-class prediction, steering of computation (such as in cascades, any time algorithm) and active classification.
 
-\paragraph{Contect}
+\paragraph{Context}
 Context of course has a long history in vision.
 One source of context is the scene or non-detector cues; for the PASCAL VOC, these are quantitatively considered in~\cite{Divvala2009}. 
 Another source is inter-object context, used for detection in a random field setting in~\cite{Torralba2004}. These  statistics interlink individual object detection tasks as well as image classification. Exploiting this information has shown to improve classification as well as detection tasks (e.g. \cite{Torralba, visual phrases}).
