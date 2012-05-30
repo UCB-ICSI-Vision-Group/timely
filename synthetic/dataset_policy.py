@@ -187,10 +187,16 @@ class DatasetPolicy:
     # Construct the weight vector by concatenating per-action vectors
     # The features are [P(C) P(not C) H(C) 1]
     weights = np.zeros((len(self.actions), BeliefState.num_features))
+    num_classes = len(self.dataset.classes)
 
-    # OPTION 1: the corresponding manual weights are [1 0 0 0 0]
+    # OPTION 1: the manual weights correspond to the class of the action
     if weights_mode == 'manual_1':
+      # Set weight of 1 on the P(C) feature
       weights[:,0] = 1
+
+      # If gist mode, also set a 1 to 1-t/T, which starts at as 1.
+      if self.actions[0].name=='gist':
+        weights[0,-1] = 1
       weights = weights.flatten()
 
     elif weights_mode in ['manual_2','manual_3']:

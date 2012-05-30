@@ -114,7 +114,8 @@ class BeliefState(object):
     self.full_feature = self.compute_full_feature()
 
   num_time_blocks = 1
-  num_features = num_time_blocks * 66 # [P(C_i) P(C_i|O) H(C_i|O) mean_entropy max_entropy t/S (1-t/S) t/T (1-t/T)]
+  num_features = num_time_blocks * 47
+  # [P(C) [P(C_i|O) for all i] [H(C_i|O) for all i] mean_entropy max_entropy t/S (1-t/S) t/T (1-t/T)]
   def compute_full_feature(self):
     """
     Return featurized representation of the current belief state.
@@ -132,20 +133,18 @@ class BeliefState(object):
     h_c[h_c==-0]=0
     time_to_start_ratio = 0 if self.t >= self.bounds[0] else self.t/(self.bounds[0])
     time_ratio = 0 if self.t <= self.bounds[0] else self.t/self.bounds[1]
+
     # If GIST is an action, it's our first action, and doesn't care about any
-    # class feature, only the mean_entropy and time_ratio ones. 
+    # class feature, only the mean_entropy and time_ratio ones.
     if self.gist_mode:
       orig_p_c = np.concatenate(([0],orig_p_c))
-      p_c = np.concatenate(([0],p_c))
-      h_c = np.concatenate(([0],h_c))
 
-    # Tile the probability features
+    # Tile the dynamic probability features
     num_classes = len(self.dataset.classes)
-    orig_p_c = np.tile(np.atleast_2d(orig_p_c).T,(1,num_classes))
-    p_c = np.tile(np.atleast_2d(p_c).T,(1,num_classes))
-    h_c = np.tile(np.atleast_2d(h_c).T,(1,num_classes))
-    feat = np.vstack((
-        orig_p_c, p_c, h_c,
+    p_c = np.tile(np.atleast_2d(p_c),(len(self.actions),1))
+    h_c = np.tile(np.atleast_2d(h_c),(len(self.actions),1))
+
+    rest = np.vstack((
         mean_entropy*np.ones(len(self.actions)),
         max_entropy*np.ones(len(self.actions)),
         time_to_start_ratio*np.ones(len(self.actions)),
@@ -153,6 +152,9 @@ class BeliefState(object):
         time_ratio*np.ones(len(self.actions)),
         1.-time_ratio*np.ones(len(self.actions))
       )).T
+
+    feat = np.hstack((
+        np.atleast_2d(orig_p_c).T, p_c, h_c, rest))
 
     # zero out those actions that have been taken
     # NOTE: this makes sense because it allows the policy to simply do argmax
