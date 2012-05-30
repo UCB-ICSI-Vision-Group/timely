@@ -51,8 +51,6 @@ x rework paper
 - launch run with region-based actions
 - implement and launch run with support vector regression, or a nearest-neighbor approach
 - keep reworking paper
-  - tighter story/intro
-  - tighter related work, and cite Ashish and recent papers like that cyclic optimization one
   - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
   - rework figure 1 to be more comprehensive and show the whole working of the system
   - replace results figures
@@ -60,7 +58,9 @@ x rework paper
   - include discussion of learned weights, with pictures
   
 31 May - Thursday
-- polish paper
+- keep reworking paper
+  - tighter story/intro
+  - tighter related work, and cite Ashish and recent papers like that cyclic optimization one
 
 1 Jun - Friday
 
