@@ -1,32 +1,3 @@
-\section{Recognition Problems}
-
-We deal with a dataset of images $\mathcal{D}$, where each image $\mathcal{I}$ contains at least one, and often multiple, objects.
-Each object is labeled with exactly one category label $k \in \{1, \dots, K\}$.
-
-The multi-class, multi-label \textbf{classification} problem asks whether $\mathcal{I}$ contains at least one object of class $k$.
-The answer for a single label is given with a real-valued confidence by a function $\emph{classify}(\mathcal{I},k)$.
-We write the ground truth for an image as $\mathbf{C}=\{C_1,\dots,C_K\}$, where $C_k \in \mathbb{B} = \{0,1\}$ is set to $1$ if an object of class $k$ is present.
-
-The answer is evaluated by plotting precision vs. recall across dataset $\mathcal{D}$ (by progressively lowering the confidence threshold for a positive label) and integrating to yield the Average Precision (AP) metric, which has become the standard evaluation for recognition performance on challenging datasets \cite{pascal-voc-2010}.
-
-\comment{
-We can make the classification problem more difficult by posing the \emph{counting} problem, which asks how many objects of class $k$ are present in $\mathcal{I}$, for each $k$.
-This setting is not commonly evaluated; we mention it for its usefulness in later exposition.
-}
-
-The \textbf{detection} problem is to output a list of bounding boxes (sub-images defined by four coordinates), each with a real-valued confidence that it encloses a single instance of an object of class $k$, for each $k$.
-The answer for a single class is given by an algorithm $\emph{detect}(\mathcal{I},k)$, which outputs a list of sub-image bounding boxes $B$ and their associated confidences.
-
-A common measure of a correct detection is the PASCAL overlap: two bounding boxes are considered to match if they have the same label and the ratio of their intersection to their union is at least $\frac{1}{2}$.
-Again, Average Precision is the single-number metric for the performance of a detector.
-
-As our task is fundamentally in \emph{multi-class} object detection, we rely on a slightly different evaluation than is commonly used (although it has precedent in \cite{Desai2009}).
-Instead of pooling detections across images in the dataset, and considering classes individually, we pool detections across classes, but consider images individually, reporting results averaged across the dataset.
-
-To highlight the hierarchical structure of these problems, we note that (1) the confidences for each sub-image $b \in B$ may be given by $\emph{classify}(b,k)$; (2) the correct answer to the detection problem also answers the classification problem. \comment{the counting and classification problems}
-
-Our goal is a general recognition policy that outputs both classification and detection results; we evaluate on both tasks.
-
 \section{Multi-class Recognition Policy} \label{sec:tech}
 \begin{figure}[h!]
 \center{\includegraphics[width=0.66\linewidth]
@@ -35,25 +6,12 @@ Our goal is a general recognition policy that outputs both classification and de
   \label{fig:pomdp}
 \end{figure}
 
-As presented in Figure~\ref{fig:pomdp}, our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and then outputs $\{\emph{classify}(1), \dots, \emph{classify}(K)\}$ and a list of multi-class detection results $\emph{detect}(I)$.
+Our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs a list of multi-class detection results $\emph{detect}(I)$ by running detector and other \emph{actions} sequentially.
 
-The policy repeatedly selects an action $a_i$ from a set of actions $\mathcal{A}$, executes it, potentially receives an observation $o_i$, and selects the next action.
-The set of actions can include classifiers, detectors, or hybrid actions (detector followed by classification of its output).
+The policy repeatedly selects an action $a_i$ from a set of actions $\mathcal{A}$, executes it, receiving observations $o_i$, and then selects the next action.
+The set of actions can include both classifiers and detectors: anything that would be useful for inferring the contents of the image.
 
-A dynamic, or ``closed-loop,'' policy bases action selection on observations received from previous actions, exploiting the signal in inter-object and scene context for a maximally efficient path through the actions.
-This is our goal, and what sets our formulation apart from multi-class systems that evaluate in a fixed order, such as simple cascades \cite{Viola2001} or decision trees.
-
-Let $\mathcal{A}$ consist of $K$ detectors $L^\text{det}_i$.
-We use one-vs-all deformable part-model classifiers on a HOG featurization of the image \cite{Felzenszwalb2010a}, with associated linear classification of the detections.
-
-\comment{Let $\mathcal{A}$ consist of $K$ actions:
-\begin{itemize}
-  \item $K$ detectors $L^\text{det}_i$: one-vs-all deformable part-model classifiers on a HOG featurization of the image \cite{Felzenszwalb2010a}, with associated linear classification of the detections.
-  \item $K$ classifiers $L^\text{gist}_i$: one-vs-all SVMs on the GIST feature \cite{Torralba2004}.
-\end{itemize}}
-
-\subsubsection{Time and Evaluation}
-Each action $L$ has an expected cost $c(\cdot)$ of execution.
+Each action $a_i$ has an expected cost $c(a_i)$ of execution.
 Depending on the setting, the cost can be defined in terms of algorithmic runtime analysis, an idealized property such as number of \emph{flops}, or simply the empirical runtime on specific hardware.
 We take the empirical approach: every executed action advances $t$, the \emph{time into episode}, by its empirical runtime.
 
@@ -62,10 +20,13 @@ From the setup time to the deadline, we want to obtain the best possible answer 
 This corresponds to the general notion of \emph{Anytime} algorithms, and is motivated by desired flexibility in the system.
 
 A single-number metric that corresponds to this objective is simply the ratio of the area captured under the curve to the total area between the start and deadline bounds.
-\comment{Just like the metric of Average Precision itself was motivated by the inadequacy of any single Precision-Recall operating point to describe the performance of a robust system, our proposed metric is motivated by the inadequacy of any single Performance vs. Time operating point.}
 We evaluate policies by this more robust metric and not simply by the final performance at deadline time for the same reason that Average Precision is used instead of a fixed Precision vs. Recall point.
 
 \subsubsection{Sequential Execution}
+An ``open-loop'' policy takes actions in a sequence that does not depend on observations received from previous actions.
+The common classifier cascade \cite{Viola2001} is an example.
+In contrast, our goal is to learn a dynamic, or ``closed-loop,'' policy, which would exploit the signal in inter-object and scene context for a maximally efficient path through the actions.
+
 An action $a_i$ that consists of running a classifier $L_i$ returns a real-valued observation $o_i \sim P(O_i)$.
 The state records the fact that $a$ has been taken by adding it to the initially empty set $\mathcal{O}$.
 We refer to the current set of observations as $\mathbf{o} = \{o_i | L_i \in \mathcal{O}\}$.

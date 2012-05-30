@@ -1,5 +1,21 @@
-\section{Related Work}
+\section{Recognition Problems and Related Work}
 
+We deal with a dataset of images $\mathcal{D}$, where each image $\mathcal{I}$ contains at least one, and often multiple, objects.
+Each object is labeled with exactly one category label $k \in \{1, \dots, K\}$.
+
+The multi-class, multi-label \textbf{classification} problem asks whether $\mathcal{I}$ contains at least one object of class $k$.
+We write the ground truth for an image as $\mathbf{C}=\{C_1,\dots,C_K\}$, where $C_k \in \mathbb{B} = \{0,1\}$ is set to $1$ if an object of class $k$ is present.
+
+The \textbf{detection} problem is to output a list of bounding boxes (sub-images defined by four coordinates), each with a real-valued confidence that it encloses a single instance of an object of class $k$, for each $k$.
+The answer for a single class is given by an algorithm $\emph{detect}(\mathcal{I},k)$, which outputs a list of sub-image bounding boxes $B$ and their associated confidences.
+
+The answer is evaluated by plotting precision vs. recall across dataset $\mathcal{D}$ (by progressively lowering the confidence threshold for a positive detection).
+The area under the curve yields the Average Precision (AP) metric, which has become the standard evaluation for recognition performance on challenging datasets in vision \cite{pascal-voc-2010}.
+A common measure of a correct detection is the PASCAL overlap: two bounding boxes are considered to match if they have the same label and the ratio of their intersection to their union is at least $\frac{1}{2}$.
+
+To highlight the hierarchical structure of these problems, we note that (1) the confidences for each sub-image $b \in B$ may be given by $\emph{classify}(b,k)$; (2) correct answer to the detection problem also answers the classification problem.
+
+\subsection{Related Work}
 The literature on object detection is vast.
 Here we briefly summarize detection work that sufficiently contextualizes our contribution in the areas of object classification and detection in context, saliency, multi-class prediction, steering of computation (such as in cascades, any time algorithm) and active classification.
 
