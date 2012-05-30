@@ -8,6 +8,7 @@ Unscheduled
 - running on whole dataset instead of only inside of an image
 - stick VJ face detection in there as a quick person class detector
 - LSPI to learn weights
+- implement and launch run with support vector regression, or a nearest-neighbor approach
 
 Schedule
 ---
@@ -47,9 +48,9 @@ x launch runs with bounds10
 x rework paper
 
 30 May - Wednesday
-- redo all the plots with finer-grained time intervals (output to new files/txt files)
-- launch run with region-based actions
-- implement and launch run with support vector regression, or a nearest-neighbor approach
+- launch bounds=[5,15] run
+- make weights figures
+- make execution trace figure by plotting action_ind vs. time for the manual_1 policy (straight line if action_ind is sorted by P(C_a)) and some of our learned policies.
 - keep reworking paper
   - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
   - rework figure 1 to be more comprehensive and show the whole working of the system
@@ -58,6 +59,8 @@ x rework paper
   - include discussion of learned weights, with pictures
   
 31 May - Thursday
+- launch run with region-based actions
+- redo all the plots with finer-grained time intervals (output to new files/txt files)
 - keep reworking paper
   - tighter story/intro
   - tighter related work, and cite Ashish and recent papers like that cyclic optimization one

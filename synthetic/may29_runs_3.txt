@@ -14,3 +14,9 @@ mpirun -n 20 python run_experiment.py --test_dataset=trainval --suffix=may29 --b
 
 orange5
 mpirun -n 20 python run_experiment.py --test_dataset=trainval --suffix=may29 --config=may_run/gist_csc_greedy_raw_fastinf.json  --inverse_prior &&  mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may29 --config=may_run/gist_csc_greedy_raw_fastinf.json  --inverse_prior
+
+orange4
+mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may29 --config=may_run/gist_csc_manual_1_oracle.json && mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may29 --bounds10 --config=may_run/gist_csc_manual_1_oracle.json
+
+orange3
+mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may29 --config=may_run/gist_csc_manual_1_oracle.json  --inverse_prior && mpirun -n 20 python run_experiment.py --test_dataset=test --suffix=may29 --bounds10 --config=may_run/gist_csc_manual_1_oracle.json  --inverse_prior

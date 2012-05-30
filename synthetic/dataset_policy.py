@@ -683,7 +683,9 @@ class DatasetPolicy:
       # stuff for the sample collection
       sample.det_naive_ap = 0
       sample.det_actual_ap = 0
-      if 'dets' in obs:
+      if not 'dets' in obs:
+        all_detections.append(np.array([]))
+      else:
         det = action.obj
         dets = obs['dets']
         cls_ind = dataset.classes.index(det.cls)
@@ -795,7 +797,10 @@ class DatasetPolicy:
         action = self.actions[action_ind]
         obs = action.obj.get_observations(image)
         b.t += obs['dt']
-        b.update_with_score(action_ind, obs['score'])
+        if action.name=='gist':
+          b.update_with_gist(action_ind, obs['scores'])
+        else:
+          b.update_with_score(action_ind, obs['score'])
         clses = b.get_p_c().tolist() + [img_ind,b.t]
         all_clses.append(clses)
 
