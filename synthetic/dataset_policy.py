@@ -305,7 +305,8 @@ class DatasetPolicy:
       dets,clses,samples = self.run_on_image(images[i],dataset,epsilon=epsilon)
       all_dets.append(dets)
       all_clses.append(clses)
-      all_samples += samples
+      if sample_size>0:
+        all_samples += samples
     safebarrier(comm)
 
     # Aggregate the results
@@ -317,6 +318,7 @@ class DatasetPolicy:
     final_samples = comm.reduce(all_samples, op=MPI.SUM, root=0)
     #if self.inference_mode=='fastinf':
       # all_fm_cache_items = comm.reduce(self.inf_model.cache.items(), op=MPI.SUM, root=0)
+    
     # Save if root
     if comm_rank==0:
       dets_table = Table(cols=self.det_columns)
