@@ -187,7 +187,7 @@ class Evaluation:
             gt = self.dataset.get_det_gt(with_diff=True).copy()
             gt.arr = gt.arr[img_inds,:]
             #ap,_,_ = self.compute_det_pr(dets_to_this_point,gt)
-            ap = self.compute_det_map(dets_to_this_point,gt,det_perspective=True)
+            ap = self.compute_det_map(dets_to_this_point,gt,det_perspective=False)
           else:
             # TODO: fuck it! takes too long
             ap = 0
