@@ -43,7 +43,7 @@ class DatasetPolicy:
       # no_smooth, backoff, fastinf
     'bounds': [0,20], # start and deadline times for the policy
     'weights_mode': 'manual_1',
-    # manual_1, manual_2, manual_3, greedy, rl_half, rl_regression, rl_lspi
+    # manual_1, manual_1_fastinf, manual_2, manual_3, greedy, rl_half, rl_regression, rl_lspi
     'rewards_mode': 'det_actual_ap',
     # det_actual_ap, entropy, auc_ap, auc_entropy
     'values': 'uniform',
@@ -197,6 +197,16 @@ class DatasetPolicy:
       # If gist mode, also set a 1 to 1-t/T, which starts at as 1.
       if self.actions[0].name=='gist':
         weights[0,-1] = 1
+      weights = weights.flatten()
+
+    elif weights_mode == 'manual_1_fastinf':
+      # If gist mode, also set a 1 to 1-t/T, which starts at as 1.
+      start = 0
+      if self.actions[0].name=='gist':
+        start = 1
+        weights[0,-1] = 1
+      # Set weight of 1 on the P(C_i|O) features
+      weights[start:start+num_classes,1:1+num_classes] = np.eye(num_classes)
       weights = weights.flatten()
 
     elif weights_mode in ['manual_2','manual_3']:
