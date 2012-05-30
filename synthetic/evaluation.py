@@ -281,6 +281,7 @@ class Evaluation:
     else:
       assert(len(all_bounds)==len(tables))
     
+    labels = []
     for i,table in enumerate(tables):
       print("Plotting %s"%table.name)
       bounds = all_bounds[i]
@@ -313,6 +314,7 @@ class Evaluation:
       else:
         label = "(%.4f, %.4f) %s"%(auc,high_bound_val,table.name)
       
+      labels.append(label)
       plt.plot(times, vals, style,
           linewidth=2,color=color,label=label)
 
@@ -331,6 +333,11 @@ class Evaluation:
     plt.ylim(0,1)
     plt.xlim(0,20)
     plt.grid(True)
+
+    # save text file with the label information and save the figure
+    txt_filename = os.path.splitext(filename)[0]+'.txt'
+    with open(txt_filename,'w') as f:
+      f.write(str(labels))
     plt.savefig(filename)
 
   def evaluate_detections_whole(self,dets=None,force=False):

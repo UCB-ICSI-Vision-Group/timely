@@ -334,8 +334,6 @@ class DatasetPolicy:
       if False and self.inference_mode=='fastinf':
         self.inf_model.cache = dict(all_fm_cache_items)
         self.inf_model.save_cache()
-    else:
-      print("comm_rank %d reached last safebarrier in run_on_dataset"%comm_rank)
     safebarrier(comm)
 
     # Broadcast results to all workers, because Evaluation splits its work as well.
@@ -373,7 +371,7 @@ class DatasetPolicy:
     epsilons = 0.6*np.exp2(-np.arange(0,max_iterations+1)/2.)
 
     # Collect samples (parallelized)
-    num_samples = 320 # actually this refers to images
+    num_samples = 350 # actually this refers to images
     dets,clses,all_samples = self.run_on_dataset(False,num_samples,epsilon=epsilons[0])
     
     for i in range(0,max_iterations):
@@ -411,8 +409,6 @@ class DatasetPolicy:
           break
 
         print("Now collecting more samples with the updated weights...")
-      else:
-        print("comm_rank %d reached last safebarrier in learn_weights"%comm_rank)
       safebarrier(comm)
       weights = comm.bcast(weights,root=0)
       self.weights = weights
