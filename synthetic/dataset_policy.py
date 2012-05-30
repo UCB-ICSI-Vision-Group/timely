@@ -370,7 +370,7 @@ class DatasetPolicy:
 
     # Loop until max_iterations or the error is below threshold
     error = threshold = 0.001
-    max_iterations = 15
+    max_iterations = 12
 
     # early iterations should explore more than later iterations
     # so do an exponential fall-off, halving every few iterations
