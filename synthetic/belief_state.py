@@ -82,17 +82,16 @@ class BeliefState(object):
   def update_with_score(self,action_ind,score):
     "Update the taken and observations lists, the model, and get the new marginals."
     self.taken[action_ind] = 1
-    obs_ind = action_ind
-    self.observed[obs_ind] = 1
-    self.observations[obs_ind] = score
+    self.observed[action_ind] = 1
+    self.observations[action_ind] = score
     
-    if self.mode=='random':
+    if self.mode in ['random','fixed_order']:
       self.model.update_with_observations(
         self.observed[:len(self.dataset.classes)],
         self.observations[:len(self.dataset.classes)])
     else:
       self.model.update_with_observations(self.observed,self.observations)
-    self.full_feature = self.compute_full_feature()
+    #self.full_feature = self.compute_full_feature()
 
   def update_with_gist(self,action_ind,scores):
     """
@@ -106,12 +105,14 @@ class BeliefState(object):
     self.observations[len(self.dataset.classes):] = scores
     
     if self.mode=='random':
+      None
+    elif self.mode=='fixed_order':
       self.model.update_with_observations(
-        self.observed[:len(self.dataset.classes)],
-        self.observations[:len(self.dataset.classes)])
+        self.observed[len(self.dataset.classes):],
+        self.observations[len(self.dataset.classes):])
     else:
       self.model.update_with_observations(self.observed,self.observations)
-    self.full_feature = self.compute_full_feature()
+    #self.full_feature = self.compute_full_feature()
 
   num_time_blocks = 1
   num_features = num_time_blocks * 47
