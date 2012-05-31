@@ -39,19 +39,38 @@ As shown in Figure~\ref{fig:results_manual}, the random policy results in a roug
 To establish an upper bound on performance, we also plot the Oracle curve, obtained by re-ordering the actions with the hindsight of the results they produced.
 Note that the curves turn downward in this setting: this is due to the different performance levels of the detectors: as the weaker detectors are inevitably run, they introduce more false positives and false negatives than true positives.
 
-
+\begin{figure}[h!]
+\centering
+\subfloat[AP vs. Time curves]{\includegraphics[width=0.47\linewidth]
+    {../figures/final1.png}} \hfill
+\subfloat[Execution traces of different policies]{\includegraphics[draft,width=0.47\linewidth]
+    {../figures/final1.png}}
+  \label{fig:results1}
+\end{figure}
 
 \begin{figure}[h!]
 \centering
-\subfloat[Detection]{\includegraphics[width=0.78\linewidth]
-    {../figures/manual_plots_det_avg.png}} \\
-\subfloat[Classification]{\includegraphics[width=0.78\linewidth]
-    {../figures/manual_plots_cls_whole.png}}
-  \caption{Heuristic value function.}
-  \label{fig:results_manual}
+\includegraphics[width=0.87\linewidth]
+    {../figures/weights.pdf}
+\caption{Weights}
+\label{fig:weights}
 \end{figure}
 
-Figure~\ref{fig:results_manual} also shows the performance of our policy with the heuristic value function and two inference models: the MRF model and a simple fixed-order model that follows the priors.
+\begin{table}[t]
+\caption{Results}
+\label{tab:results}
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|l|}
+\\ \hline \\
+Bounds & Random & Fixed Order & RL w/ MRF & w/ GIST   & Oracle \\ \hline
+(0,10) & 0.1191 & 0.2404      & 0.2664    & 0.2665    & 0.4638 \\ 
+(0,20) & 0.2497 & 0.3421      & 0.3781    & 0.3824    & 0.4878 \\ 
+(5,15) & 0      & 0           & 0         & 0         & 0      \\
+\end{tabular}
+\end{center}
+\end{table}
+
+Figure~\ref{fig:results1} also shows the performance of our policy with the heuristic value function and two inference models: the MRF model and a simple fixed-order model that follows the priors.
 We can see that due to the dataset bias, the fixed-order policy performs well at first (the person class is disproportionately likely to be in the image), but is overtaken by the proper inference model as execution goes on.
 
 A notable difference between the MRF inference model and the fixed-order model was in the weights learned: while the fixed-order model learned weights onto the bias feature only, the MRF inference model learned weights onto a mix of the entropy and probability features

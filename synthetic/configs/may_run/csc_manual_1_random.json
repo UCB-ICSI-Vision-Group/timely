@@ -3,5 +3,6 @@
   "policy_mode": ["random"],
   "weights_mode": ["manual_1"],
   "label": "Random",
-  "line": "--"
+  "color": "black",
+  "line": "-"
 }

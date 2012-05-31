@@ -316,7 +316,7 @@ class Evaluation:
       
       labels.append(label)
       plt.plot(times, vals, style,
-          linewidth=2,color=color,label=label)
+          linewidth=3,color=color,label=label)
 
       # draw vertical lines at bounds, if given
       if bounds:
@@ -330,9 +330,10 @@ class Evaluation:
       plt.setp(ltext, fontsize='small')
     plt.xlabel('Time',size=14)
     plt.ylabel('AP',size=14)
-    plt.ylim(0,1)
+    plt.ylim(0,0.8)
     plt.xlim(0,20)
-    plt.grid(True)
+    plt.grid(True,'major')
+    plt.grid(True,'minor')
 
     # save text file with the label information and save the figure
     txt_filename = os.path.splitext(filename)[0]+'.txt'

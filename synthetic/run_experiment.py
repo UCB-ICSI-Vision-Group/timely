@@ -221,6 +221,9 @@ def main():
     # det avg
     ff = opjoin(dirname, '%s_det_avg.png'%filename)
     ff_nl = opjoin(dirname, '%s_det_avg_nl.png'%filename)
+
+    # make sure directory exists
+    ut.makedirs(os.path.dirname(ff))
     
     Evaluation.plot_ap_vs_t(dets_tables, ff, all_bounds, with_legend=True, force=True, plot_infos=plot_infos)
     Evaluation.plot_ap_vs_t(dets_tables, ff_nl, all_bounds, with_legend=False, force=True, plot_infos=plot_infos)

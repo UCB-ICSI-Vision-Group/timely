@@ -27,18 +27,15 @@ An ``open-loop'' policy takes actions in a sequence that does not depend on obse
 The common classifier cascade \cite{Viola2001} is an example.
 In contrast, our goal is to learn a dynamic, or ``closed-loop,'' policy, which would exploit the signal in inter-object and scene context for a maximally efficient path through the actions.
 
-The basis for the decisions made by the decision process is called the \emph{state}.
-The state, $b$, includes the currently believed distribution over class presence variables $P(\mathbf{C}) = P(C_1, \dots, C_K)$, where we write $P(C_k)$ to mean $P(C_k=1)$
+We refer to the basis for the decisions made by the decision process as the \emph{state} $b$.
+The state includes the currently believed distribution over class presence variables $P(\mathbf{C}) = P(C_1, \dots, C_K)$, where we write $P(C_k)$ to mean $P(C_k=1)$
 
 Additionally, the state records the fact that an action $a_i$ has been taken by adding it to the initially empty set $\mathcal{O}$ and recording the resulting observations $o_i$.
 We refer to the current set of observations as $\mathbf{o} = \{o_i | a_i \in \mathcal{O}\}$.
-The state also includes the time into episode $t$, and the setup and deadline times $T_s,T_d$.
+The state also keeps track of the time into episode $t$, and the setup and deadline times $T_s,T_d$.
 
 A recognition \emph{episode} takes an image $\mathcal{I}$ and proceeds from the initial state $b^0$ and action $a^0$ to the next pair $(b^1,a^1)$, and so on until $t$ exceeds $T_d$.
-At that point, the policy is terminated and a new episode begins on a new image.
-
-The policy's performance at time $t$ is determined by the detections that are part of the set of observations $\mathbf{o}$ at the last state $b^j$ before $t$.
-Detection results of unobserved classes are an empty set.
+At that point, the policy is terminated, and a new episode can begin on a new image.
 
 \begin{table}[h!]
 \centering
@@ -73,47 +70,44 @@ This formulation can represent a closed-loop policy if the observations $\mathbf
 
 Before proceeding, we note that that although the action space $\mathcal{A}$ is quite manageable, consisting of the detectors and classifier we would like to run on the image, the space of possible states $B$ is infinite.
 Therefore we cannot learn a tabular representation of $V(b,a)$, and so use function approximation to represent it \cite{Sutton1998}.
-We featurize the state-action pair and assume linear structure: $V^\pi(b,a) = \theta_\pi^\top  \phi(b,a_i)$.
-
-Rembmer that at each time step, our system is evaluated by properties of the state $b$ (the list of detections and the classification outputs).
-The final evaluation metric is a function of the history of execution $h^0=b^0,b^1,\dots,b^J$, with $J$ being the last step of the process with $t \le T_d$.
-
-\todo{rework the below from the persepctive of individual action rewards, not reward of whole history}
-Ideally, the value function for a point in the decision process $b^j$ should give the expected value of the final evaluation metric, over all possible histories starting at point $j$:
+We featurize the state-action pair and assume linear structure:
 \begin{align}
-V(b^j,a_i) = \mathbb{E}_{h^j \sim P(h^j|b,a_i)}[R(h^j)]
+V^\pi(b,a_i) = \theta_\pi^\top  \phi(b,a_i)
 \end{align}
 
-The reward function $R(h^j)$ assigns a real-valued score to a history.
-We have considerable flexibility in defining $R$; it does not necessarily have to be directly tied to the final evaluation.
+The policy's performance at time $t$ is determined by the detections that are part of the set of observations $\mathbf{o}$ at the last state $b^j$ before $t$.
+Detection results of unobserved classes are an empty set.
+Therefore, the final AP vs. Time evaluation of the episode is a function of the history of execution $h^0=b^0,b^1,\dots,b^J$, where $J$ is the last step of the process with $t \le T_d$.
+We call the final evaluation function $eval(h^0,T_s,T_d)$, and it is precisely the area under the AP vs. Time curve (normalized by total possible area) between $T_s$ and $T_d$, as determined by the detections in $\mathbf{o^j}$ for all steps $j$ in the episode $h$.
 
-One feature we want the reward function to have is additivity.
-Let's say that given deadline $T_d$ and some image, the policy had time to take $J$ actions.
-The total reward of a policy $\pi$ starting at state $b^j$ is then defined as the sum of rewards
-\begin{equation}
-R(h^j) = \sum_{j'=j}^J R(b_j',a^{j'})
-\end{equation}
-
-\subsubsection{Reward: area under the AP vs. Time curve}
-\begin{figure}[htb]
+\begin{figure}[h!]
   \centering
   \includegraphics[width=0.56\linewidth]{../figures/apvst_expl.pdf}
   \caption{A per-action greedy value function that corresponds to the maximization of our objective function is the area of the horizontal slice under the curve due to the action. The figure shows this analysis for the action highlighted in orange.}
   \label{fig:rewards}
 \end{figure}
 
-The final evaluation of a policy consists of the area under the performance vs. time curve (normalized by the total area).
-Accordingly, we formulate per-action rewards such that their addition results in this quantity.
+As shown in \autoref{fig:rewards}, the evaluation function is additive per action, as each action can generate detections that either raise or lower the AP of all detections so far: ($\Delta ap$), and takes a certain time: $t$.
+From these, we can find the area under the curve that was contributed by the action.
 
-Specifically, as shown in Figure~\ref{fig:rewards}, we define the reward of an action as
-\begin{equation}\label{eq:advanced}
+Specifically, as shown in Figure~\ref{fig:rewards}, we define the \emph{reward} of an action as
+\begin{align}\label{eq:advanced}
 R(b^j,a_i) = \frac{\Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)}{(1-\text{ap}^j)t_T^j}
-\end{equation}
+\end{align}
 where $t_T^j$ and $\text{ap}^j$ are the time left until deadline and the AP at state $b^j$, and $\Delta t_i$ and $\Delta \text{ap}_i$ are the time taken and AP change produced by the action $a_i$.
 
-The reward is $1$ if the policy takes an action that obtains the maximum possible area under the curve at that point, and $0$ if no area under the curve is captured.
-
 \todo{discuss the raw vs. the normalized area, saying we'll try both}
+
+We can then represent the final evaluation in terms of individual rewards:
+\begin{align}
+eval(h^0) = \sum_{j=0}^J R(b_j,a^{j})
+\end{align}
+
+And we can represent the expected value of the final evaluation recursively in terms of the value function:
+\begin{align} \label{eq:recursive_value}
+V(b^j,a_i) = \mathbb{E}_{b^{j+1}} [R(b^j,a_i) + \gamma V(b^{j+1},\pi(b^{j+1}))]
+\end{align}
+where $\gamma \in [0,1]$ is a \emph{discount} value that can mitigate the effects of increasing state-transition uncertainty over long episodes.
 
 \subsection{Feature representation and learning the policy}
 \todo{write out current approach}
@@ -149,11 +143,9 @@ We cross-validate for both values.
 \subsection{Updating probabilities}
 \begin{figure}[h!]
 \centering
-\includegraphics[width=0.56\linewidth]{../figures/inf_model_mrf_1.pdf}
+\includegraphics[width=0.56\linewidth]{../figures/mrf_w_gist.pdf}
 \caption{
-The MRF inference model used in our system.
-We show a point in the middle of the decision process for 3 classes; one action has already been taken.
-\comment{Some classifiers have already been observed.}
+The MRF inference model used in our system. The shaded nodes represent two actions that have already been taken; their observations have been recorded.
 }
 \label{fig:model}
 \end{figure}
@@ -176,4 +168,3 @@ The responses are discretized per variable based on the distribution of the scor
 The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
 Accordingly, the graph edge weights are learned with L1 regularization, which obtains the desired sparse structure \cite{Lee2006}.
  is implemented with an open-source graphical model package \cite{Jaimovich2010}.
- 
