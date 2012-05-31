@@ -663,6 +663,7 @@ class DatasetPolicy:
       sample.state = b.compute_full_feature()
       sample.action_ind = action_ind
 
+      # TODO: this is incorrect, and results in samples at t=0 to already have detections
       sample.t = b.t
 
       # prepare for AUC reward stuff
@@ -719,7 +720,12 @@ class DatasetPolicy:
         # Compure detector AUC reward
         # If the action took longer than we have time, benefit is 0 (which is already set above)
         if dt <= time_to_deadline:
-          auc_ap = time_to_deadline * ap_diff - ap_diff * dt / 2.
+          midway_point = b.t+dt/2.
+          if midway_point > self.bounds[0]:
+            length = max(0, self.bounds[1]-midway_point)
+          else:
+            length = self.bounds[1]-self.bounds[0]
+          auc_ap = 1.*ap_diff * length
           sample.auc_ap_raw = auc_ap
 
           # Now divide by the potential gain to compute the "normalized" reward
@@ -762,6 +768,7 @@ class DatasetPolicy:
 
       entropy_prev = entropy
 
+      # TODO: the below line of code should occur before the state is stored in the sample
       b.t += dt
       sample.dt = dt
       samples.append(sample)

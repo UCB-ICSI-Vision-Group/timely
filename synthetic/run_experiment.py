@@ -117,6 +117,9 @@ def main():
 
   parser.add_argument('--bounds10', action='store_true', 
     default=False, help='set bounds to [0,10]')
+  
+  parser.add_argument('--bounds515', action='store_true', 
+    default=False, help='set bounds to [5,15]')
 
   parser.add_argument('--force', action='store_true', 
     default=False, help='force overwrite')
@@ -179,6 +182,9 @@ def main():
       config_f['suffix'] = args.suffix
     if args.bounds10:
       config_f['bounds'] = [0,10]
+    if args.bounds515:
+      config_f['bounds'] = [5,15]
+    assert(not (args.bounds10 and args.bounds515))
     if args.inverse_prior:
       config_f['suffix'] += '_inverse_prior'
       config_f['values'] = 'inverse_prior'
