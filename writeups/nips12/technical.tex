@@ -145,31 +145,34 @@ Jumping ahead, we visualize the learned weights on these features in \autoref{fi
 \label{fig:weights}
 \end{figure}
 
-\subsection{Updating with observations}
+\subsection{Updating with observations} \label{sec:updating}
 \begin{figure}[h!]
 \centering
 \includegraphics[width=0.56\linewidth]{../figures/mrf_w_gist.pdf}
 \caption{
+\todo{get rid of this figure?}
 The MRF inference model used in our system. The shaded nodes represent two actions that have already been taken; their observations have been recorded.
 }
 \label{fig:model}
 \end{figure}
 
-\todo{Rework from the persepctive of two potential ways of updating the beliefs with observations: just putting them in directly vs. going through MRF. De-emphasize the need for the model, treat it as an extra oomph.}
+The bulk of our feature representation is formed by probability of individual class occurrence, conditioned on the observations so far: $P(C_0|\mathbf{o}) \ldots P(C_1|\mathbf{o})$.
+This allows the action-value function to learn correlations between presence of different classes, and so the policy can look for the most probable classes given the observations.
 
-The quantities that may be useful to us for selecting which actions to deploy are the probabilities and entropies of the class presence variables $C_k$.
-These allow us to look for the most probable classes given the observations.
-When the policy starts, the model should present the prior distributions $P(C_k)$; as observations are accrued, the model should present the updated conditionals $P(C_k|\mathbf{o})$.
+However, higher-order co-occurrences are not well represented in this form.
+Additionally, updating $P(C_i|\mathbf{o})$ presents choices regarding independence assumptions between the classes.
 
-We employ a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:model}.
-All parameters of the model are trained on fully-observed data.
-Exact inference is generally intractable in this model.
-Instead, we use Loopy Belief Propagation, which does not provide general convergence guarantees but has been shown to work well empirically on similar tasks \cite{Desai2009}.
+We evaluate two ways of updating probabilities: \emph{direct} and \emph{MRF}.
+In the \emph{direct} way, $P(C_i|\mathbf{o}) = score(C_i)$ if $\mathbf{o}$ includes the observations for class $C_i$ and $P(C_i|\mathbf{o}) = P(C_i)$ otherwise.
 
+In the \emph{MRF} way, we employ a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:model}, with the observation nodes set to $score(C_i)$ appropriately, or considered unobserved.
+
+The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
+Accordingly, the graph edge weights are learned with $L_1$ regularization, which obtains the desired sparse structure \cite{Lee2006}.
+All parameters of the model are trained on fully-observed data, and inference is implemented with an open-source graphical model package \cite{Jaimovich2010}.
+As exact inference is generally intractable in this model, we use Loopy Belief Propagation; although it does not provide general convergence guarantees, it has been shown to work well empirically on similar tasks \cite{Desai2009}.
+
+\todo{rework the below, and also explain how GIST works}
 The $L_i$ variables are discretized from real-valued responses of a classifier on the detections output by the deformable part-model detector we employ (see Section~\ref{sec:tech}).
 The classifier is a linear SVM on the top two max detection scores in the list of detections.
 The responses are discretized per variable based on the distribution of the scores on the training dataset.
-
-The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
-Accordingly, the graph edge weights are learned with L1 regularization, which obtains the desired sparse structure \cite{Lee2006}.
- is implemented with an open-source graphical model package \cite{Jaimovich2010}.
