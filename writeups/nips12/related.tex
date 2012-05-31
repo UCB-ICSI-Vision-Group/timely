@@ -19,39 +19,50 @@ Multi-class performance is evaluated by averaging the individual per-class AP va
 Since our use case is motivated by a potential advertising system, we generalize this metric to a weighted average, with the weights set by the \emph{values} of the classes.
 
 \subsection{Related Work}
-The literature on object detection is vast.
-Here we briefly summarize detection work that sufficiently contextualizes our contribution in the areas of object classification and detection in context, saliency, multi-class prediction, steering of computation (such as in cascades, any time algorithm) and active classification.
+The literature on object recognition is vast.
+Here we briefly summarize work that sufficiently contextualizes our contribution.
+
+\paragraph{Single-class detection}
+The best recent performance has come from detectors that use gradient-based features to represent objects as either a collection of local patches or as object-sized windows \cite{Dalal2005,Lowe2004}.
+Classifiers are then used to distinguish between featurizations of a given class and all other possible contents of an image window.
+
+Window proposal is often done exhaustively over the image space, as a ``sliding window''.
+Using ``jump windows'' (window hypotheses voted on by local features) as region proposals is another common idea~\cite{Vedaldi2009,Vijayanarasimhan2011}.
+For local feature-based approaches, a bounded search over the space of all possible windows works reasonably well~\cite{Lampert2008b}.
+
+None of the best-performing systems treat window proposal and evaluation as a closed-loop system, with feedback from evaluation to proposal.
+Some work has been done on this topic, mostly inspired by ideas from biological vision and attention research~\cite{Butko2009,Vogel2008,Paletta2005}.
+
+A state-of-the-art detector builds upon a linear classifier on a gradient-based image representation, sped up with cascaded evaluation (see relevant paragraph further down) \cite{Felzenszwalb2010b}.
+Our system employs these detectors.
 
 \paragraph{Context}
-Context of course has a long history in vision.
-One source of context is the scene or non-detector cues; for the PASCAL VOC, these are quantitatively considered in~\cite{Divvala2009}. 
-Another source is inter-object context, used for detection in a random field setting in~\cite{Torralba2004}. These  statistics interlink individual object detection tasks as well as image classification. Exploiting this information has shown to improve classification as well as detection tasks (e.g. \cite{Torralba, visual phrases}).
-A critical summary of the main approaches to using context for object detection is given in \cite{Galleguillos2010}.
+Context has a long history in vision.
+One source of context is the scene or other non-detector cues; for the commonly used PASCAL dataset, these are quantitatively explored in~\cite{Divvala2009}. 
+The most common scene-level feature is the GIST \cite{Oliva2001a} of the image; it provides reasonable information for scene classification \cite{Xiao2010a}.
+
+Another source is inter-object context, used for detection in a random field setting in~\cite{Torralba2004}.
+Exploiting this information has shown to improve classification as well as detection tasks.
+A critical summary of the main approaches to using context for object and scene recognition is given in \cite{Galleguillos2010}.
 
 \paragraph{Multi-Class Detection}
-Inherently multi-class detection has its own line of work, focusing largely on making detection time sublinear in the number of classes through sharing features~\cite{Torralba2007,Fan2005,Razavi2011}.
-A recent post-processing extension to detection systems uses structured prediction to incorporate multi-class context as a principled replacement for the common post-processing step of non-maximum suppression~\cite{Desai2009}. Most critically, theses methods don't use intermediate results in order to maximize the joint detection performance.
+Inherently multi-class detection has its own line of work, which focuses largely on making detection time sublinear in the number of classes, through sharing features~\cite{Torralba2007,Fan2005,Razavi2011}.
+A proposed post-processing extension to detection systems uses structured prediction to incorporate multi-class context as a principled replacement for the common post-processing step of non-maximum suppression~\cite{Desai2009}.
 
-\paragraph{Attention and Steering of Computation}
-An early success in efficient object detection used simple Haar features to build up a \emph{cascade} of classifiers, which then considered image regions in a sliding window regime~\cite{Viola2001}.
+\paragraph{Cascades}
+An early success in efficient object detection used simple, fast features to build up a \emph{cascade} of classifiers, which then considered image regions in a sliding window regime~\cite{Viola2001}.
 Although the simple features and classifiers of this method have been surpassed by more complex detectors, the idea of cascading classifier evaluations is still often used.
+Most recently, cyclic optimization has been applied to optimize cascades with respect to feature computation cost as well as classifier performance \cite{Chen2012}.
 
-The best recent performance has come from detectors that use gradient-based features to represent objects as either a collection of local patches or as object-sized windows \cite{Dalal2005,Lowe2004}.
-Usually, SVM classifiers are used to learn separating hyperplanes in such feature spaces between objects of a given class and all other possible contents of an image window. One of the state of the art classifiers available to us today builds upon a linear classifier on gradient representation which is sped up with a cascaded evaluation scheme \cite{DPM-cascade}[
+However, cascades are not dynamic policies---they cannot change the order of execution based on observations obtained during execution, which is our goal.
 
-Window proposal is often done exhaustively over the image space, in a ``sliding window'' fashion.
-Using ``jump windows'' (window hypotheses voted on by local features) as region proposals is another common idea~\cite{Chum2007b,Vedaldi2009,Vijayanarasimhan2011}.
-For local feature-based approaches, a bounded search over the space of all possible windows works reasonably well~\cite{Lampert2008b}---however, the method has not been able to obtain state-of-the-art performance.
-
-Although none of the best-performing systems treat window proposal and evaluation as a closed-loop system, with feedback from evaluation to proposal, some work has been done in the area, mostly inspired by ideas from biological vision and attention research~\cite{Butko2009,Vogel2008,Paletta2005}.
-
-\paragraph{Anytime Algorithms}
+\paragraph{Anytime Algorithms and Active Classification}
 Although an important concept, anytime performance in vision systems is a surprisingly little-explored idea \cite{Shlomo Zilberstein}.
 A recent application to the problem of visual detection picks features with maximum value of information in a Hough-voting framework, and explicitly evaluates performance vs. time \cite{Vijayanarasimhan2010}. 
-Also recent work on greedy methods and submodular formulations propose strategies for classifier/sensor evaluations in order to maximize information gain. Due to the aforementioned interlink between image classification and detection problems, anytime algorithms and greedy strategies seem counter intuitive and we therefore seek a "detection on a budget" formulation. In this fashion we can explore policies that don't yield any immediate reward.
 
-\paragraph{Active Classification}
-While most of the referenced work followed a rigid classification strategy at test time, there has been work on active classification \cite{Active Classification based on Value of Classifier}
- and active sensing  \cite{active sensing} which considers intermediate results in order to schedule the execution of further classification step. We provide a treatment of this topic for object detection that can be simply learned from traces of the system and can therefore also be easily be adapted to different loss functions.
+There has also been work on active classification \cite{Gao2011} and active sensing \cite{Yu2009}, in which intermediate results are considered in order to decide on the next classification step.
+This line of work is closest to our approach.
+Most commonly, the scheduling is greedy with respect to some quantity such as expected information gain.
 
-
+In contrast, we are able to learn policies that take actions without any immediate such reward.
+We aim for a general system that can take black-box detectors and classifiers, and learn its policy from its own trial execution traces, and can be adapted to different loss functions.
