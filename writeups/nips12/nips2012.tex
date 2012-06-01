@@ -15,6 +15,8 @@
 \newcommand{\cut}[1]{\textcolor{light-gray}{#1}}
 \newcommand{\comment}[1]{}
 
+\newcommand{\myparagraph}[1]{\vspace{-0.1cm}{\bf #1}}
+
 \title{Timely Object Recognition}
 
 \author{
@@ -37,9 +39,10 @@ In a large visual multi-class detection framework, the problem of timeliness of 
 We are motivated by situations where running all detectors would take an unacceptably long time, and the best answer must be given by some deadline.
 Our method for multi-class detection aims to give the best possible performance at any single point after a start time; it is terminated at a deadline time.
 Toward this goal, we formulate a dynamic, \emph{closed-loop} policy guided by inference of the contents of the image in order to decide which detector to deploy next.
+In contrast to previous work, our method significantly diverts from the predominant greedy strategies and therefore learns to employ actions without any immediate reward for the goal of detection.
 We evaluate our method with respect to performance in the novel Average Precision (AP) vs. Time evaluation on the widely used PASCAL VOC object detection dataset.
 With our method, if execution is stopped when only half the detectors have been run, our method obtains $66\%$ better AP than a random ordering, and $14\%$ better performance than an intelligent baseline.
-Overall, our method obtains at least $11\%$ better performance on the AP vs. Time evaluation.
+Overall, our method obtains at least $11\%$ better performance on the AP vs. Time evaluation. At time of publication we will make our code available, which is easily extendible to new detectors, classifiers, tasks and reward functions due to the modular nature of our formulation.
 \end{abstract}
 
 \input{introduction.tex} % includes Evaluation section
