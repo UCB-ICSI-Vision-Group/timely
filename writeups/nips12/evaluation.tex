@@ -42,7 +42,7 @@ These operating points show how our method would behave when deployed in differe
     {../figures/final1_515.png}} \hfill
 \subfloat[Execution traces of different policies]{\includegraphics[draft,width=0.47\linewidth]
     {../figures/final1.png}}
-  \label{fig:results1}
+ \label{fig:results1}
 \end{figure}
 
 We establish the first baseline for our system by selecting actions randomly at each step.
@@ -57,7 +57,7 @@ We refer to this as \textbf{Fixed Order}.
 Then there are our proposed systems, which the previous section thoroughly described: \textbf{RL w/ Direct} and \textbf{RL w/ MRF}.
 In experiments, the two were not exceedingly different in performance, with the MRF model consistently performing slightly better.
 
-In \autoref{fig:results1}, we can see that due to the dataset bias, the fixed-order policy performs well at first (as can be seen in \autoref{fig:dataset_stats}, the person class is disproportionately likely to be in the image), but is significantly overtaken by our model as execution goes on.
+In Figure \autoref{fig:results1}, we can see that due to the dataset bias, the fixed-order policy performs well at first (as can be seen in \autoref{fig:dataset_stats}, the person class is disproportionately likely to be in the image), but is significantly overtaken by our model as execution goes on.
 
 Lastly, we also evaluate the system that includes a GIST action; this always uses the MRF model to properly update the class probabilities with GIST observations.
 This brings another boost in performance.
@@ -65,7 +65,7 @@ All results are shown in \autoref{tab:results}.
 
 Additionally, we evaluated different settings of the discount parameter $\gamma$, and found that a mid-range value works best.
 We only report results for that value on the test set.
-\autoref{fig:weights} shows how changing $\gamma$ affects the learned weights: the GIST action is learned to never be taken in the greedy setting, because it does not nring any immediate detections results.
+\autoref{fig:weights} shows how changing $\gamma$ affects the learned weights: the GIST action is learned to never be taken in the greedy setting, because it does not bring any immediate detections results.
 In the reinforcement learning setting, however (higher $\gamma$), GIST is learned to be taken for its value in quickly refining the class presence probabilities.
 
 \begin{table}[t]
@@ -73,11 +73,12 @@ In the reinforcement learning setting, however (higher $\gamma$), GIST is learne
 \label{tab:results}
 \begin{center}
 \begin{tabular}{|l|l|l|l|l|l|}
-\\ \hline \\
+%\\ \hline \\
+\hline
 Bounds & Random & Fixed Order & RL w/ MRF & w/ GIST  & Oracle \\ \hline
 (0,10) & 0.119  & 0.240       & 0.266     & \textbf{0.267}    & 0.464 \\ 
 (0,20) & 0.250  & 0.342       & 0.378     & 0.382    & 0.488 \\ 
-(5,15) & 0.257  & 0.362       & 0.418     & 0.420    & 0.530 \\
+(5,15) & 0.257  & 0.362       & 0.418     & 0.420    & 0.530 \\ \hline
 \end{tabular}
 \end{center}
 \end{table}
