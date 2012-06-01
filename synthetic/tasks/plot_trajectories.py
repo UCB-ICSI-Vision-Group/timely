@@ -35,7 +35,7 @@ def plot_order(samples,name,filename):
     ax.plot(t,a,'.-',alpha=0.05,color='orange')
     ax.scatter(t,a,size,alpha=0.2)
   plt.show(fig)
-  fig.savefig(filename)
+  fig.savefig(filename,dpi=300)
 
 dirname = '/Users/sergeyk/work/timely/data/results/evals/full_pascal_test_120/'
 samples = np.load(dirname+'fixed_order_csc_default_0-20_manual_1_det_actual_ap_may29/cached_dets.npy_samples.npy')

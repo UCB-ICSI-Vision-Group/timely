@@ -51,13 +51,6 @@ Therefore, the final AP vs. Time evaluation of an episode is a function of the h
 
 We refer to the final evaluation function as $eval(h,T_s,T_d)$, and it is precisely the area under the AP vs. Time curve between $T_s$ and $T_d$ (normalized by total possible area), as determined by the detections in $\mathbf{o}^j$ for all steps $j$ in the episode.
 
-\begin{figure}[h!]
-  \centering
-  \includegraphics[width=0.56\linewidth]{../figures/apvst_expl.pdf}
-  \caption{\todo{what text here?} A per-action greedy value function that corresponds to the maximization of our objective function is the area of the horizontal slice under the curve due to the action. The figure shows this analysis for the action highlighted in orange.}
-  \label{fig:rewards}
-\end{figure}
-
 As shown in \autoref{fig:rewards}, this evaluation function is additive per action, as each action can generate detections that either raise or lower the AP of all detections so far ($\Delta ap$) and takes a certain time ($\Delta t$).
 From these and $T_s$ and $T_d$, we can find the area under the curve that was contributed by the action.
 
@@ -122,23 +115,14 @@ The featurization for the $a_{gist}$ scene-context action, which concerns all cl
 
 \begin{figure}[h!]
 \centering
-\subfigure[Greedy]{\includegraphics[width=0.49\linewidth]{../figures/weights_greedy}}
-\subfigure[RL]{\includegraphics[width=0.49\linewidth]{../figures/weights_rl}}
+\subfloat[Greedy]{\includegraphics[width=0.49\linewidth]{../figures/weights_greedy}}
+\subfloat[RL]{\includegraphics[width=0.49\linewidth]{../figures/weights_rl}}
 % \includegraphics[width=0.87\linewidth]{../figures/weights.pdf}
 \caption{Weights \todo{describe. can talk about the person-class weights, the role of the time weights. how you can see the co-occurrence matrix in the weights}}
 \label{fig:weights}
 \end{figure}
 
 \subsection{Updating with observations} \label{sec:updating}
-% \begin{figure}[h!]
-% \centering
-% \includegraphics[width=0.56\linewidth]{../figures/mrf_w_gist.pdf}
-% \caption{
-% \todo{get rid of this figure?}
-% The MRF inference model used in our system. The shaded nodes represent two actions that have already been taken; their observations have been recorded.
-% }
-% \label{fig:model}
-% \end{figure}
 
 The bulk of our feature representation is formed by probability of individual class occurrence, conditioned on the observations so far: $P(C_0|\mathbf{o}) \ldots P(C_K|\mathbf{o})$.
 This allows the action-value function to learn correlations between presence of different classes, and so the policy can look for the most probable classes given the observations.
@@ -146,7 +130,7 @@ This allows the action-value function to learn correlations between presence of 
 However, higher-order co-occurrences are not well represented in this form.
 Additionally, updating $P(C_i|\mathbf{o})$ presents choices regarding independence assumptions between the classes.
 
-We evaluate two approaches of updating probabilities: \emph{direct} and \emph{MRF}.
+We evaluate two approaches for updating probabilities: \emph{direct} and \emph{MRF}.
 In the \emph{direct} method, $P(C_i|\mathbf{o}) = score(C_i)$ if $\mathbf{o}$ includes the observations for class $C_i$ and $P(C_i|\mathbf{o}) = P(C_i)$ otherwise.
 This means that an observation of class $i$ does not influence the estimated probability of any class but $C_i$.
 $score(C_i)$ for $a_{{det}_i}$ is obtained by training a probabilistic classifier on the detections output.

@@ -24,25 +24,12 @@ These operating points show how our method would behave when deployed in differe
 
 \begin{figure}[h!]
 \centering
-\subfloat[Occurence of a class with another]{\includegraphics[]
-    {../figures/full_pascal_trainval_stats/cooccur_trim.png}} \hfill
-\subfloat[Occurence of a class with two others]{\includegraphics[]
-    {../figures/full_pascal_trainval_stats/cooccur_second_order_trim.png}}
-  \caption{
-  Co-occurrence statistics on the training portion of the PASCAL VOC 2007 dataset.
-  In the first plot, a (row,column) cell shows the probability that an image that contains an object of the row class also contains an object of the column class.
-  Accordingly, in the second plot, the probability that an image containing objects of the two classes listed in the row also contains an object of the column class.
-  }
-  \label{fig:dataset_stats}
-\end{figure}
-
-\begin{figure}[h!]
-\centering
-\subfloat[AP vs. Time curves for Random, Oracle, the Fixed Order baseline, and our best-performing policy, with start time of 5 seconds and deadline of 15 seconds.]{\includegraphics[width=0.47\linewidth]
-    {../figures/final1_515.png}} \hfill
-\subfloat[Execution traces of different policies]{\includegraphics[draft,width=0.47\linewidth]
-    {../figures/final1.png}}
- \label{fig:results1}
+\subfloat[AP vs. Time curves for Random, Oracle, the Fixed Order baseline, and our best-performing policy, with start time of 5 seconds and deadline of 15 seconds.]{
+\includegraphics[width=0.47\linewidth]
+    {../figures/final1_515.png}\label{fig:results1}} \hfill
+\subfloat[Reward function explanation]{
+\includegraphics[width=0.47\linewidth]
+    {../figures/apvst_expl.pdf}\label{fig:rewards}}
 \end{figure}
 
 We establish the first baseline for our system by selecting actions randomly at each step.
@@ -62,6 +49,13 @@ In Figure \autoref{fig:results1}, we can see that due to the dataset bias, the f
 Lastly, we also evaluate the system that includes a GIST action; this always uses the MRF model to properly update the class probabilities with GIST observations.
 This brings another boost in performance.
 All results are shown in \autoref{tab:results}.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.86\linewidth]{../figures/trajectories.pdf}
+  \caption{\todo{trajectories}}
+  \label{fig:trajectories}
+\end{figure}
 
 Additionally, we evaluated different settings of the discount parameter $\gamma$, and found that a mid-range value works best.
 We only report results for that value on the test set.
