@@ -336,6 +336,7 @@ def run_fastinf_different_settings(d, ms, rs, suffixs, num_bins = 5):
       
       bounds, discr_table_region = discretize_table(orig_table_region, num_bins)
       table = np.hstack((table_gt_region, discr_table_region))
+      embed()
       
     elif suffix == 'GIST_CSC':
       filename_csc = os.path.join(config.get_ext_dets_foldname(d),'table')

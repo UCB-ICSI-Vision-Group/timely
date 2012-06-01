@@ -146,6 +146,7 @@ def log2(x):
   "Base-2 log that returns 0 if x==0."
   y = np.atleast_1d(np.copy(x))
   y[y==0]=1
+  print y
   return np.log2(y)
 
 def mean_squared_error(y_true,y_pred):

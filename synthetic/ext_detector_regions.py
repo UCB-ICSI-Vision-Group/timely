@@ -88,7 +88,7 @@ class ExternalDetectorRegions(ExternalDetector):
   '''
   External Detector that also tests for specific regions.
   '''
-  def __init__(self, dataset, train_dataset, cls, dets, detname, rtype, args):
+  def __init__(self, dataset, train_dataset, cls, dets, detname, region_id, rtype, args):
     '''
     Also pass in the region-type as rtype and the according arguments as args
     '''
@@ -96,6 +96,7 @@ class ExternalDetectorRegions(ExternalDetector):
     self.region_model = RegionModel(rtype, args)
     if self.classif.svm == None:
       raise RuntimeError('SVM in External Detector Regions is None')
+    self.region_id = region_id
     
   def convert_wh2scale(self, img, x, y, w, h):
     W, _ = img.size    
@@ -124,7 +125,7 @@ class ExternalDetectorRegions(ExternalDetector):
       new_dets_arr = np.vstack(new_dets_arr)
     dets.arr = new_dets_arr     
   
-  def detect(self, image, region_id, astable=False):
+  def detect(self, image, astable=False):
     """
     Return the detections that match that image index in cached dets for a 
     specific region in the image that is determined by the region_id.
@@ -133,10 +134,10 @@ class ExternalDetectorRegions(ExternalDetector):
     """
     img_ind = self.dataset.get_img_ind(image)
     dets = self.dets.filter_on_column('img_ind',img_ind,omit=True) # This function already creates a copy
-    self.filter_dets_for_reg_id(image, dets, region_id) # At this position choose only the detections that fall into the desired region
+    self.filter_dets_for_reg_id(image, dets, self.region_id) # At this position choose only the detections that fall into the desired region
     return super(ExternalDetectorRegions, self).detect(image, astable, dets) # Now call the regular external detector with just those detections
   
-  def compute_score(self, image, region_id, oracle=False):
+  def compute_score(self, image, oracle=False):
     """
     Return the 0/1 decision of whether the cls of this detector is present in
     the image, given the detections table for a given region id.
@@ -144,7 +145,7 @@ class ExternalDetectorRegions(ExternalDetector):
     """
     img_ind = self.dataset.get_img_ind(image)
     dets = self.dets.filter_on_column('img_ind',img_ind,omit=True)
-    self.filter_dets_for_reg_id(image, dets, region_id) # At this position choose only the detections that fall into the desired region
+    self.filter_dets_for_reg_id(image, dets, self.region_id) # At this position choose only the detections that fall into the desired region
     return super(ExternalDetectorRegions, self).compute_score(image, oracle, dets) # Now call the regular external detector with just those detections 
   
   def get_number_regions(self):

@@ -8,7 +8,7 @@ from synthetic.ngram_model import InferenceModel
 from synthetic.fastInf import FastinfDiscretizer
 
 class FastinfModel(InferenceModel):
-  def __init__(self,dataset,model_name,num_obs_vars,m='0',r1='1', lbp_iters=3000):
+  def __init__(self,dataset,model_name,num_obs_vars,m='0',r1='1', lbp_iters=3000, num_regions=1):
     # TODO: experiment with different values of fastinf
 
     self.dataset = dataset
@@ -31,6 +31,7 @@ class FastinfModel(InferenceModel):
     self.tt = ut.TicToc().tic()
     self.process = pexpect.spawn(self.cmd)
     self.blacklist = []
+    self.num_regions = num_regions
   
     marginals = self.get_marginals()
     print("FastinfModel: Computed initial marginals in %.3f sec"%self.tt.qtoc())
@@ -51,21 +52,21 @@ class FastinfModel(InferenceModel):
       print("comm_rank %d: Skipping blacklisted evidence!"%comm_rank)
       # don't do anything, we don't want to get stuck with another timeout
       return
-    try:
-      marginals = self.get_marginals(evidence)
-    except Exception as e:
-      print("comm_rank %d: something went wrong in fastinf:get_marginals!!!"%
-        comm_rank)
-      print evidence
-      print e
-      # blacklist this evidence and restart process
-      self.blacklist.append(evidence)
-      try:
-        self.process.close(force=True)
-      except Exception as e2:
-        print("comm_rank %d: can't close process!"%comm_rank)
-      self.process = pexpect.spawn(self.cmd)
-      self.get_marginals()
+#    try:
+    marginals = self.get_marginals(evidence)
+#    except Exception as e:
+#      print("comm_rank %d: something went wrong in fastinf:get_marginals!!!"%
+#        comm_rank)
+#      print evidence
+#      print e
+#      # blacklist this evidence and restart process
+#      self.blacklist.append(evidence)
+#      try:
+#        self.process.close(force=True)
+#      except Exception as e2:
+#        print("comm_rank %d: can't close process!"%comm_rank)
+#      self.process = pexpect.spawn(self.cmd)
+#      self.get_marginals()
     
     # TODO: hack to set the actual classifier score here!
     # GIST is hard-coded as second half of observations!
@@ -96,7 +97,7 @@ class FastinfModel(InferenceModel):
       if evidence in self.cache:
         print "Fetching cached marginals"
         marginals = self.cache[evidence]
-        self.p_c = np.array([m[1] for m in marginals[:self.dataset.num_classes()]])
+        self.p_c = np.hstack([[m[1]]*self.num_regions for m in marginals[:self.dataset.num_classes()]])
         return marginals
       else:
         self.process.sendline(evidence)
@@ -105,7 +106,7 @@ class FastinfModel(InferenceModel):
     marginals = FastinfModel.extract_marginals(output)
     # Don't cache anything!
     #self.cache[evidence] = marginals
-    self.p_c = np.array([m[1] for m in marginals[:self.dataset.num_classes()]])
+    self.p_c = np.hstack([[m[1]]*self.num_regions for m in marginals[:self.dataset.num_classes()]])
     return marginals
 
   @classmethod

@@ -172,11 +172,12 @@ class DatasetPolicy:
       elif detector == 'csc_regions':
         all_dets = self.load_ext_detections(dataset, detector)
         for cls in dataset.classes:
-          cls_ind = dataset.get_ind(cls)
-          all_dets_for_cls = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
-          det = ExternalDetectorRegions(
-            dataset, self.train_dataset, cls, all_dets_for_cls, detector, '1big_2small', 0.5)
-          actions.append(ImageAction('%s_%s'%(detector,cls), det))
+          for region in range(3):
+            cls_ind = dataset.get_ind(cls)
+            all_dets_for_cls = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
+            det = ExternalDetectorRegions(
+              dataset, self.train_dataset, cls, all_dets_for_cls, detector, region, '1big_2small', 0.5)
+            actions.append(ImageAction('%s_%s_%d'%(detector,cls, region), det))
 
       else:
         raise RuntimeError("Unknown mode in detectors: %s"%self.detectors)
@@ -652,12 +653,15 @@ class DatasetPolicy:
 
     # If we have previously run_on_image(), then we already have a reference to an inf_model
     # Otherwise, we make a new one and store a reference to it, to keep it alive
+    regions = 1
+    if self.fastinf_model_name == 'CSC_regions': 
+      regions = self.actions[0].obj.get_number_regions()
     if hasattr(self,'inf_model'):
       b = BeliefState(self.train_dataset, self.actions, self.inference_mode,
         self.bounds, self.inf_model, self.fastinf_model_name)
     else:
       b = BeliefState(self.train_dataset, self.actions, self.inference_mode,
-        self.bounds, fastinf_model_name=self.fastinf_model_name)
+        self.bounds, fastinf_model_name=self.fastinf_model_name, num_regions=regions)
       self.b = b
       self.inf_model = b.model
 

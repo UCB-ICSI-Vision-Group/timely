@@ -15,7 +15,7 @@ class BeliefState(object):
   ngram_modes = ['no_smooth','backoff']
   accepted_modes = ngram_modes+['random','fixed_order','fastinf']
 
-  def __init__(self,dataset,actions,mode='fixed_order',bounds=None,model=None,fastinf_model_name='perfect'):
+  def __init__(self,dataset,actions,mode='fixed_order',bounds=None,model=None,fastinf_model_name='perfect',num_regions=1):
     assert(mode in self.accepted_modes)
     self.mode = mode
     self.dataset = dataset
@@ -53,9 +53,12 @@ class BeliefState(object):
         assert(isinstance(model,FastinfModel))
         self.model = model
       else:
-        self.model = FastinfModel(dataset, self.fastinf_model_name, self.num_obs_vars)
+        self.model = FastinfModel(dataset, self.fastinf_model_name, self.num_obs_vars, num_regions=num_regions)
     else:
       raise RuntimeError("Unknown mode")
+    if not self.model.num_regions == 3:
+      raise RuntimeError('region number isnt correct')
+    
     self.reset()
     self.orig_p_c = self.get_p_c()
 
@@ -115,7 +118,7 @@ class BeliefState(object):
     #self.full_feature = self.compute_full_feature()
 
   num_time_blocks = 1
-  num_features = num_time_blocks * 47
+  num_features = num_time_blocks * 127
   # [P(C) [P(C_i|O) for all i] [H(C_i|O) for all i] mean_entropy max_entropy t/S (1-t/S) t/T (1-t/T)]
   def compute_full_feature(self):
     """
@@ -153,7 +156,6 @@ class BeliefState(object):
         time_ratio*np.ones(len(self.actions)),
         1.-time_ratio*np.ones(len(self.actions))
       )).T
-
     feat = np.hstack((
         np.atleast_2d(orig_p_c).T, p_c, h_c, rest))
 
@@ -162,6 +164,7 @@ class BeliefState(object):
     # all the time, without worrying about actions that have been taken:
     # the best it will be able to do for those is 0
     feat[np.flatnonzero(self.taken),:] = 0
+    self.num_features = feat.shape[1]
     return feat
 
   def block_out_action(self, full_feature, action_ind=-1):
