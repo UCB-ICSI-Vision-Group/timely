@@ -349,7 +349,7 @@ class DatasetPolicy:
         np.save(det_filename,dets_table)
         np.save(cls_filename,clses_table)
         # TODO: TEMP
-        np.save(det_filename+'_samples.npy',all_samples)
+        np.save(det_filename+'_samples.npy',final_samples)
 
       # Save the fastinf cache
       # TODO: turning this off for now
