@@ -32,9 +32,8 @@ class CSCClassifier(Classifier):
   def create_vector_from_scores(self, scores):
     "scores should be filtered for the index of the image"
     scores = self.normalize_dpm_scores(scores)
-    
     vect = np.ones((1,3))
-    if scores.shape[0] == 0:
+    if scores.size == 0:
       vect[0,:2] = 0
     elif scores.shape[0] == 1:
       vect[0,:2] = [np.max(scores), 0]
