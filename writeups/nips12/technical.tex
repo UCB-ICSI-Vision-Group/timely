@@ -70,6 +70,9 @@ While we can't directly compute the expectation in \eqref{eq:recursive_value}, w
 Learning the policy is then a problem of repeatedly gathering samples with the current policy, minimizing the error between the discounted reward to the end of the episode as predicted by our current $Q(s^j,a_i)$ and the actual values gathered, and updating the policy with the resulting weights.
 This is fitted Q-iteration, a variant of generalized policy iteration \cite{Ernst2005,Sutton1998}.
 
+To ensure sufficient exploration of the state space, we implement $\epsilon$-greedy action selection during training: with a probability that decreases with each training iteration, a random action is selected instead of following the policy.
+During test time, $\epsilon$ is set to $0.05$.
+
 We use $L_2$-regularized regression to minimize the error.
 We run $15$ iterations of accumulating samples by running $350$ episodes, starting with a baseline policy which will be described in \autoref{sec:evaluation}, and cross-validating the regularization parameter at each iteration; samples are not thrown away between iterations.
 
