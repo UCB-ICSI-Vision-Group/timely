@@ -18,9 +18,9 @@ To highlight the hierarchical structure of these problems, we note that (1) the 
 Multi-class performance is evaluated by averaging the individual per-class AP values.
 Since our use case is motivated by a potential advertising system, we generalize this metric to a weighted average, with the weights set by the \emph{values} of the classes.
 
-\subsection{Related Work}
+%\subsection{Related Work}
 The literature on object recognition is vast.
-Here we briefly summarize work that sufficiently contextualizes our contribution.
+Here we briefly summarize work that sufficiently contextualizes our contribution:
 
 \myparagraph{Single-class detection}
 The best recent performance has come from detectors that use gradient-based features to represent objects as either a collection of local patches or as object-sized windows \cite{Dalal2005,Lowe2004}.
@@ -37,7 +37,7 @@ Some work has been done on this topic, mostly inspired by ideas from biological 
 Context has a foundational role in vision.
 One source of context is the scene or other non-detector cues; the most common scene-level feature is the GIST \cite{Oliva2001a} of the image.
 For the commonly used PASCAL VOC dataset \cite{pascal-voc-2010}, GIST and other sources of context are quantitatively explored in~\cite{Divvala2009}. 
-
+%
 Another source is inter-object context, shown to be useful for improving detection \cite{Torralba2004}.
 A critical summary of the main approaches to using context for object and scene recognition is given in \cite{Galleguillos2010}.
 
