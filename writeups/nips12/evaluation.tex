@@ -5,15 +5,13 @@ Each detection episode takes an image and outputs detections with associated tim
 We evaluate on a popular detection challenge task: the PASCAL VOC 2007 dataset \cite{pascal-voc-2010}, which exhibits only a rather modest amount of class co-occurrence: the ``person'' class is highly likely to occur, and less than $10\%$ of the images have more than two classes.
 
 We learn weights on the training and validation sets, and run our policy on all images in the testing set.
-The final evaluation pools all detections up to a certain time, and computes their multi-class AP per image, then averaging over all images.
+The final evaluation pools all detections up to a certain time, and computes their multi-class AP per image, averaging over all images.
 This is done for different times to plot the AP vs. Time curve over the whole dataset.
-The evaluation is slightly different that what is usually done (all detections for a class are pooled across the dataset), but has been used before \cite{Desai2009}.
+Our method of averaging per-image performance follows \cite{Desai2009}.
 
 For the detector actions, we use one-vs-all cascaded deformable part-model detectors on a HOG featurization of the image \cite{Felzenszwalb2010b}, with associated linear classification of the detections.
 There are $20$ classes in the PASCAL challenge task, so there are $20$ detector actions.
 Running a detector on a PASCAL image takes about $1$ second.
-Additionally, we use a classifier from the scene-level GIST feature to class presence, for each class.
-This is considered one action, and takes about $0.3$ seconds.
 
 We test three different settings of the start and deadline times.
 In the first one, the start time is immediate and execution is cut off at $20$ seconds, which is enough time to run basically all actions.
@@ -42,12 +40,14 @@ To establish an upper bound on performance, we plot the \textbf{Oracle} policy, 
 We consider another baseline: selecting actions in a fixed order based on the value they bring to the AP vs. Time evaluation, which is roughly proportional to their occurrence probability.
 We refer to this as \textbf{Fixed Order}.
 
-Then there are our proposed systems, which the previous section thoroughly described: \textbf{RL w/ Direct} and \textbf{RL w/ MRF}.
+Then there are our proposed systems, described in the previous section : \textbf{RL w/ Direct} and \textbf{RL w/ MRF}.
 In experiments, the two were not exceedingly different in performance, with the MRF model consistently performing slightly better.
 
 In Figure~\autoref{fig:results1}, we can see that due to the dataset bias, the fixed-order policy performs well at first, as the person class is disproportionately likely to be in the image, but is significantly overtaken by our model as execution goes on and more rare classes have to be detected.
 
-Lastly, we also evaluate the system that includes a GIST action; this always uses the MRF model to properly update the class probabilities with GIST observations.
+Lastly, we include an additional scene-level GIST feature that updates the posterior probabilities of all classes.
+This is considered one action, and takes about $0.3$ seconds.
+This setting always uses the MRF model to properly update the class probabilities with GIST observations.
 This brings another boost in performance.
 All results are shown in \autoref{tab:results}.
 
@@ -69,8 +69,12 @@ We only report results for that value on the test set.
 \autoref{fig:weights} shows how changing $\gamma$ affects the learned weights: the GIST action is learned to never be taken in the greedy setting, because it does not bring any immediate detections results.
 In the reinforcement learning setting, however (higher $\gamma$), GIST is learned to be taken for its value in quickly refining the class presence probabilities.
 
+\autoref{fig:trajectories} illustrates the action trajectories of different policies.
+
 \begin{table}[t]
-\caption{Results}
+\caption{
+The areas under the AP vs. Time curve for different experimental conditions.
+Our method reliably beats the intelligent static baseline; including the GIST action further boosts performance.}
 \label{tab:results}
 \begin{center}
 \begin{tabular}{|l|l|l|l|l|l|}
@@ -82,5 +86,3 @@ Bounds & Random & Fixed Order & RL w/ MRF & w/ GIST         & Oracle \\ \hline
 \end{tabular}
 \end{center}
 \end{table}
-
-%\todo{something about setting values?}

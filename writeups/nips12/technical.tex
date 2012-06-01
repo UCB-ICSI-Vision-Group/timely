@@ -12,7 +12,7 @@ We take the empirical approach: every executed action advances $t$, the \emph{ti
 
 As shown in Figure~\ref{fig:figure1}, the system is given two times: the setup time $T_s$ and deadline $T_d$.
 From the setup time to the deadline, we want to obtain the best possible answer if stopped at any given time.
-A single-number metric that corresponds to this objective is the area captured under the curve between the start and deadline bounds, normalized by the total area possible.
+A single-number metric that corresponds to this objective is the area captured under the curve between the start and deadline bounds, normalized by the total area.
 We evaluate policies by this more robust metric and not simply by the final performance at deadline time for the same reason that Average Precision is used instead of a fixed Precision vs. Recall point in the conventional evaluations.
 
 \subsection{Sequential Execution}
@@ -21,9 +21,9 @@ The common classifier cascade is an example \cite{Viola2001}.
 In contrast, our goal is to learn a dynamic, or \emph{closed-loop}, policy, which would exploit the signal in scene and inter-object context for a maximally efficient path through the actions.
 
 We refer to the basis for the decisions made by the decision process as the \emph{state} $s$.
-The state includes the currently believed distribution over class presence variables $P(\mathbf{C}) = P(C_1, \dots, C_K)$, where we write $P(C_k)$ to mean $P(C_k=1)$
+The state includes the currently believed distribution over class presence variables $P(\mathbf{C}) = P(C_1, \dots, C_K)$, where we write $P(C_k)$ to mean $P(C_k=1)$.
 
-Additionally, the state records the fact that an action $a_i$ has been taken by adding it to the initially empty set $\mathcal{O}$ and recording the resulting observations $o_i$.
+Additionally, the state records that an action $a_i$ has been taken by adding it to the initially empty set $\mathcal{O}$ and recording the resulting observations $o_i$.
 We refer to the current set of observations as $\mathbf{o} = \{o_i | a_i \in \mathcal{O}\}$.
 The state also keeps track of the time into episode $t$, and the setup and deadline times $T_s,T_d$.
 
@@ -33,7 +33,7 @@ At that point, the policy is terminated, and a new episode can begin on a new im
 The specific actions we consider in the following exposition are detector actions $a_{{det}_i}$, where ${det}_i$ is a detector class $C_i$, and a scene-level context action $a_{gist}$, which updates the probabilities of all classes.
 
 \subsection{Selecting actions} \label{sec:value}
-As our goal is to pick actions dynamically, we want a function $Q(s,a): S \times \mathcal{A} \mapsto \mathbb{R}$, where $S$ is the space of all possible states, to assign a value to a potential action, given the current state of the decision process.
+As our goal is to pick actions dynamically, we want a function $Q(s,a): S \times \mathcal{A} \mapsto \mathbb{R}$, where $S$ is the space of all possible states, to assign a value to a potential action given the current state of the decision process.
 We can then define the desired policy $\pi$ as simply taking the (untaken) action with the maximum value:
 \begin{align}
 \pi(s) = \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} Q(s,a_i)
@@ -44,12 +44,12 @@ Therefore we cannot learn a tabular representation of $Q(s,a)$, and must use fun
 We featurize the state-action pair and assume linear structure: $Q^\pi(s,a_i) = \theta_\pi^\top  \phi(s,a_i)$.
 
 The policy's performance at time $t$ is determined by the detections that are part of the set of observations $\mathbf{o}^j$ at the last state $s^j$ before $t$.
-Therefore, the final AP vs. Time evaluation of an episode is a function of the history of execution $h=s^0,s^1,\dots,s^J$.
-
-We refer to the final evaluation function as $eval(h,T_s,T_d)$, and it is precisely the area under the AP vs. Time curve between $T_s$ and $T_d$ (normalized by total possible area), as determined by the detections in $\mathbf{o}^j$ for all steps $j$ in the episode.
+Therefore, the final AP vs. Time evaluation of an episode is a function $eval(h,T_s,T_d)$ of the history of execution $h=s^0,s^1,\dots,s^J$.
+It is precisely the normalized area under the AP vs. Time curve between $T_s$ and $T_d$, as determined by the detections in $\mathbf{o}^j$ for all steps $j$ in the episode.
 
 As shown in \autoref{fig:rewards}, this evaluation function is additive per action, as each action can generate detections that either raise or lower the AP of all detections so far ($\Delta ap$) and takes a certain time ($\Delta t$).
 From these and $T_s$ and $T_d$, we can find the area under the curve that was contributed by the action.
+So, we can then represent the final evaluation $eval(h,T_s,T_d)$ in terms of individual rewards: $\sum_{j=0}^J R(s^j,a^j)$.
 
 Specifically, as shown in Figure~\ref{fig:rewards}, we define the \emph{reward} of an action as
 \begin{align}\label{eq:advanced}
@@ -58,15 +58,13 @@ R(s^j,a_i) = \Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)
 where $t_T^j$ and $\text{ap}^j$ are the time left until deadline and the AP at state $s^j$, and $\Delta t_i$ and $\Delta \text{ap}_i$ are the time taken and AP change produced by the action $a_i$.
 (For clarity of exposition, we do not account for $T_s$ here.)
 
-We can then represent the final evaluation $eval(h,T_s,T_d)$ in terms of individual rewards: $\sum_{j=0}^J R(s^j,a^j)$.
-
-And we can represent the expected value of the final evaluation recursively in terms of the value function:
+\subsection{Learning the policy}
+The expected value of the final evaluation can be written recursively in terms of the value function:
 \begin{align} \label{eq:recursive_value}
 Q^\pi(s^j,a_i) = \mathbb{E}_{s^{j+1}} [R(s^j,a_i) + \gamma Q\pi(s^{j+1},\pi(s^{j+1}))]
 \end{align}
 where $\gamma \in [0,1]$ is a \emph{discount} value that can mitigate the effects of increasing state-transition uncertainty over long episodes.
 
-\subsection{Learning the policy}
 While we can't directly compute the expectation in \eqref{eq:recursive_value}, we can sample it by running actual episodes to gather $<s,a,r,s'>$ samples, where $r$ is the reward obtained by taking action $a$ in state $s$, and $s'$ is the following state.
 
 Learning the policy is then a problem of repeatedly gathering samples with the current policy, minimizing the error between the discounted reward to the end of the episode as predicted by our current $Q(s^j,a_i)$ and the actual values gathered, and updating the policy with the resulting weights.
@@ -94,7 +92,7 @@ We include the following quantities as features $\phi(s,a)$:
 \item[$H(C_0|\mathbf{o}) \ldots H(C_K|\mathbf{o})$] The entropies of all classes, conditioned on the current set of observations.
 \end{description}
 
-Additionally, we include the mean and maximum entropies of all classes, the expected time (cost) of the action, and time features that represent the times until start and deadline, for a total of $F$ features.
+Additionally, we include the mean and maximum entropies of all classes, the expected time of the action $c(a)$, and time features that represent the times until start and deadline, for a total of $F$ features.
 
 We note that this setup is commonly used to solve Markov Decision Processes \cite{Sutton1998}.
 There are two related limitations of MDPs when it comes to most systems of interesting complexity, however: the state has to be functionally approximated instead of exhaustively enumerated; and some aspects of the state are not observed, making the problem a Partially Observed MDP (POMDP), for which exact solution methods are intractable for all but rather small problems \cite{Roy2002}.
