@@ -35,14 +35,17 @@ Trevor Darrell
 \maketitle
 
 \begin{abstract}
-In a large visual multi-class detection framework, the problem of timeliness of results is crucial.
+In a large visual multi-class detection framework, the timeliness of results can be crucial.
 We are motivated by situations where running all detectors would take an unacceptably long time, and the best answer must be given by some deadline.
-Our method for multi-class detection aims to give the best possible performance at any single point after a start time; it is terminated at a deadline time.
+Our method for \emph{timely multi-class detection} aims to give the best possible performance at any single point after a start time; it is terminated at a deadline time.
 Toward this goal, we formulate a dynamic, \emph{closed-loop} policy guided by inference of the contents of the image in order to decide which detector to deploy next.
-In contrast to previous work, our method significantly diverts from the predominant greedy strategies and therefore learns to employ actions without any immediate reward for the goal of detection.
-We evaluate our method with respect to performance in the novel Average Precision (AP) vs. Time evaluation on the widely used PASCAL VOC object detection dataset.
+In contrast to previous work, our method significantly diverts from the predominant greedy strategies, and is able to learn to employ actions with deferred value.
+We evaluate our method with respect to performance on a novel \emph{timeliness} measure, computed as the area under an Average Precision (AP) vs. Time
+curve.
+We conduct experiments on the widely used PASCAL VOC object detection dataset.
 With our method, if execution is stopped when only half the detectors have been run, our method obtains $66\%$ better AP than a random ordering, and $14\%$ better performance than an intelligent baseline.
-Overall, our method obtains at least $11\%$ better performance on the AP vs. Time evaluation. At time of publication we will make our code available, which is easily extendible to new detectors, classifiers, tasks and reward functions due to the modular nature of our formulation.
+Overall, our method obtains at least $11\%$ better performance on the AP vs. Time evaluation on PASCAL VOC.
+% At time of publication we will make our code available, which is easily extendible to new detectors, classifiers, tasks and reward functions due to the modular nature of our formulation.
 \end{abstract}
 
 \input{introduction.tex} % includes Evaluation section
