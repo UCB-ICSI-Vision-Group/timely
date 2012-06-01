@@ -94,6 +94,8 @@ class ExternalDetectorRegions(ExternalDetector):
     '''
     ExternalDetector.__init__(self, dataset, train_dataset, cls, dets, detname)
     self.region_model = RegionModel(rtype, args)
+    if self.classif.svm == None:
+      raise RuntimeError('SVM in External Detector Regions is None')
     
   def convert_wh2scale(self, img, x, y, w, h):
     W, _ = img.size    
@@ -132,7 +134,7 @@ class ExternalDetectorRegions(ExternalDetector):
     img_ind = self.dataset.get_img_ind(image)
     dets = self.dets.filter_on_column('img_ind',img_ind,omit=True) # This function already creates a copy
     self.filter_dets_for_reg_id(image, dets, region_id) # At this position choose only the detections that fall into the desired region
-    return ExternalDetector.detect(self, image, astable, dets) # Now call the regular external detector with just those detections
+    return super(ExternalDetectorRegions, self).detect(image, astable, dets) # Now call the regular external detector with just those detections
   
   def compute_score(self, image, region_id, oracle=False):
     """
@@ -142,8 +144,8 @@ class ExternalDetectorRegions(ExternalDetector):
     """
     img_ind = self.dataset.get_img_ind(image)
     dets = self.dets.filter_on_column('img_ind',img_ind,omit=True)
-    self.filter_dets_for_reg_id(image, dets, region_id) # At this position choose only the detections that fall into the desired region    
-    return ExternalDetector.compute_score(self, image, oracle, dets) # Now call the regular external detector with just those detections 
+    self.filter_dets_for_reg_id(image, dets, region_id) # At this position choose only the detections that fall into the desired region
+    return super(ExternalDetectorRegions, self).compute_score(image, oracle, dets) # Now call the regular external detector with just those detections 
   
   def get_number_regions(self):
     return self.region_model.get_number_regions()
@@ -162,6 +164,7 @@ def run():
   dets = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)  
   ext_det = ExternalDetectorRegions(dataset, train_dataset, cls, dets, detector, rtype, args)
   img = dataset.images[13]  # Just some random image...where did the get_image_by_name go?
+  embed()
   print img.size
   print ext_det.detect(img, 0)
   print ext_det.detect(img, 1)

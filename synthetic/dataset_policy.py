@@ -16,6 +16,7 @@ from synthetic.bounding_box import BoundingBox
 from synthetic.belief_state import BeliefState
 from synthetic.fastinf_model import FastinfModel
 import matplotlib.pyplot as plt
+from synthetic.ext_detector_regions import ExternalDetectorRegions
 
 class ImageAction:
   def __init__(self, name, obj):
@@ -119,7 +120,7 @@ class DatasetPolicy:
         self.fastinf_model_name='GIST'
       elif self.detectors == ['gist','csc_default']:
         self.fastinf_model_name='GIST_CSC'
-      elif self.detectos == ['csc_regions']:
+      elif self.detectors == ['csc_regions']:
         self.fastinf_model_name='CSC_regions'
       else:
         raise RuntimeError("""
@@ -167,6 +168,14 @@ class DatasetPolicy:
           all_dets_for_cls = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
           det = ExternalDetector(
             dataset, self.train_dataset, cls, all_dets_for_cls, detector)
+          actions.append(ImageAction('%s_%s'%(detector,cls), det))
+      elif detector == 'csc_regions':
+        all_dets = self.load_ext_detections(dataset, detector)
+        for cls in dataset.classes:
+          cls_ind = dataset.get_ind(cls)
+          all_dets_for_cls = all_dets.filter_on_column('cls_ind',cls_ind,omit=True)
+          det = ExternalDetectorRegions(
+            dataset, self.train_dataset, cls, all_dets_for_cls, detector, '1big_2small', 0.5)
           actions.append(ImageAction('%s_%s'%(detector,cls), det))
 
       else:

@@ -46,14 +46,14 @@ class Detector(object):
     if detector_config:
       self.config.update(detector_config)
 
-  def get_observations(self,image):
+  def get_observations(self,image, *args):
     """
     Return a dict of
     - dets
     - score
     """
-    dets, dt_dets = self.detect(image)
-    score, dt_score = self.compute_score(image)
+    dets, dt_dets = self.detect(image, *args)
+    score, dt_score = self.compute_score(image, *args)
     dt = dt_dets+dt_score
     return {'dets': dets, 'dt_dets': dt_dets,
             'score': score, 'dt_score': dt_score,
