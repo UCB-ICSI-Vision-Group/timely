@@ -1,3 +1,4 @@
+
 \section{Multi-class Recognition Policy} \label{sec:tech}
 
 Our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs a list of multi-class detection results by running detector and other \emph{actions} sequentially.
@@ -145,13 +146,13 @@ This allows the action-value function to learn correlations between presence of 
 However, higher-order co-occurrences are not well represented in this form.
 Additionally, updating $P(C_i|\mathbf{o})$ presents choices regarding independence assumptions between the classes.
 
-We evaluate two ways of updating probabilities: \emph{direct} and \emph{MRF}.
-In the \emph{direct} way, $P(C_i|\mathbf{o}) = score(C_i)$ if $\mathbf{o}$ includes the observations for class $C_i$ and $P(C_i|\mathbf{o}) = P(C_i)$ otherwise.
+We evaluate two approaches of updating probabilities: \emph{direct} and \emph{MRF}.
+In the \emph{direct} method, $P(C_i|\mathbf{o}) = score(C_i)$ if $\mathbf{o}$ includes the observations for class $C_i$ and $P(C_i|\mathbf{o}) = P(C_i)$ otherwise.
 This means that an observation of class $i$ does not influence the estimated probability of any class but $C_i$.
 $score(C_i)$ for $a_{{det}_i}$ is obtained by training a probabilistic classifier on the detections output.
 $score(C_i)$ for $a_{gist}$ is obtained by training probabilistic classifiers on the GIST feature, for all classes.
 
-In the \emph{MRF} way, we employ a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:figure1}, with the observation nodes set to $score(C_i)$ appropriately, or considered unobserved.
+The \emph{MRF} approach employs a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:figure1}, with the observation nodes set to $score(C_i)$ appropriately, or considered unobserved.
 
 The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
 Accordingly, the graph edge weights are learned with $L_1$ regularization, which obtains the desired sparse structure \cite{Lee2006}.
