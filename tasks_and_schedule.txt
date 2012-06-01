@@ -55,17 +55,18 @@ x make weights figures
 - make execution trace figure by plotting action_ind vs. time for the manual_1 policy (straight line if action_ind is sorted by P(C_a)) and some of our learned policies.
   
 31 May - Thursday
-- launch run with region-based actions @tobi
-- keep reworking paper
+x keep reworking paper
   x tighter story/intro
   x tighter related work, and cite Ashish and recent papers like that cyclic optimization one
-  - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
+  x put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
   x rework figure 1 to be more comprehensive and show the whole working of the system
   x replace results figures
   x include discussion of learned weights, with pictures
 
 1 Jun - Friday
-
+- launch run with region-based actions @tobi
+- execution trace figure
+- polish paper
 
 Tasks
 ---

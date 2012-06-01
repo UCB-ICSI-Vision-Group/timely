@@ -315,8 +315,10 @@ class DatasetPolicy:
       dets,clses,samples = self.run_on_image(images[i],dataset,epsilon=epsilon)
       all_dets.append(dets)
       all_clses.append(clses)
-      if sample_size>0:
-        all_samples += samples
+      #if sample_size>0:
+      #  all_samples += samples
+      # TODO: TEMP
+      all_samples += samples
     safebarrier(comm)
 
     # Aggregate the results
@@ -346,6 +348,8 @@ class DatasetPolicy:
       if not sample_size > 0:
         np.save(det_filename,dets_table)
         np.save(cls_filename,clses_table)
+        # TODO: TEMP
+        np.save(det_filename+'_samples.npy',all_samples)
 
       # Save the fastinf cache
       # TODO: turning this off for now
