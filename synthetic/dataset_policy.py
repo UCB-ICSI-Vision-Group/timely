@@ -119,6 +119,8 @@ class DatasetPolicy:
         self.fastinf_model_name='GIST'
       elif self.detectors == ['gist','csc_default']:
         self.fastinf_model_name='GIST_CSC'
+      elif self.detectos == ['csc_regions']:
+        self.fastinf_model_name='CSC_regions'
       else:
         raise RuntimeError("""
           We don't have Fastinf models for the detector combination you
