@@ -1,7 +1,7 @@
 
 \section{Multi-class Recognition Policy} \label{sec:tech}
 
-Our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs a list of multi-class detection results by running detector and other \emph{actions} sequentially.
+Our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs a list of multi-class detection results by running detector and global scene \emph{actions} sequentially.
 
 The policy repeatedly selects an action $a_i \in \mathcal{A}$, executes it, receiving observations $o_i$, and then selects the next action.
 The set of actions $\mathcal{A}$ can include both classifiers and detectors: anything that would be useful for inferring the contents of the image.
@@ -20,8 +20,8 @@ An \emph{open-loop} policy takes actions in a sequence that does not depend on o
 The common classifier cascade is an example \cite{Viola2001}.
 In contrast, our goal is to learn a dynamic, or \emph{closed-loop}, policy, which would exploit the signal in scene and inter-object context for a maximally efficient path through the actions.
 
-We refer to the basis for the decisions made by the decision process as the \emph{state} $s$.
-The state includes the currently believed distribution over class presence variables $P(\mathbf{C}) = P(C_1, \dots, C_K)$, where we write $P(C_k)$ to mean $P(C_k=1)$.
+We refer to the information available to the decision process as the \emph{state} $s$.
+The state includes the currently believed distribution over class presence variables $P(\mathbf{C}) = \{P(C_0), \ldots, P(C_K)\}$, where we write $P(C_k)$ to mean $P(C_k=1)$.
 
 Additionally, the state records that an action $a_i$ has been taken by adding it to the initially empty set $\mathcal{O}$ and recording the resulting observations $o_i$.
 We refer to the current set of observations as $\mathbf{o} = \{o_i | a_i \in \mathcal{O}\}$.
@@ -33,13 +33,13 @@ At that point, the policy is terminated, and a new episode can begin on a new im
 The specific actions we consider in the following exposition are detector actions $a_{{det}_i}$, where ${det}_i$ is a detector class $C_i$, and a scene-level context action $a_{gist}$, which updates the probabilities of all classes.
 
 \subsection{Selecting actions} \label{sec:value}
-As our goal is to pick actions dynamically, we want a function $Q(s,a): S \times \mathcal{A} \mapsto \mathbb{R}$, where $S$ is the space of all possible states, to assign a value to a potential action given the current state of the decision process.
+As our goal is to pick actions dynamically, we want a function $Q(s,a): S \times \mathcal{A} \mapsto \mathbb{R}$, where $S$ is the space of all possible states, to assign a value to a potential action $a \in \mathcal{A}$ given the current state $s$ of the decision process.
 We can then define the desired policy $\pi$ as simply taking the (untaken) action with the maximum value:
 \begin{align}
 \pi(s) = \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} Q(s,a_i)
 \end{align}
 
-Although the action space $\mathcal{A}$ is quite manageable, consisting of the detectors and classifier we would like to run on the image, the space of possible states $S$ is infinite.
+Although the action space $\mathcal{A}$ is quite manageable, consisting of the detectors and global classifier we would like to run on the image, the space of possible states $S$ is intractable.
 Therefore we cannot learn a tabular representation of $Q(s,a)$, and must use function approximation to represent it \cite{Sutton1998}.
 We featurize the state-action pair and assume linear structure: $Q^\pi(s,a_i) = \theta_\pi^\top  \phi(s,a_i)$.
 
@@ -47,7 +47,7 @@ The policy's performance at time $t$ is determined by the detections that are pa
 Therefore, the final AP vs. Time evaluation of an episode is a function $eval(h,T_s,T_d)$ of the history of execution $h=s^0,s^1,\dots,s^J$.
 It is precisely the normalized area under the AP vs. Time curve between $T_s$ and $T_d$, as determined by the detections in $\mathbf{o}^j$ for all steps $j$ in the episode.
 
-As shown in \autoref{fig:rewards}, this evaluation function is additive per action, as each action can generate detections that either raise or lower the AP of all detections so far ($\Delta ap$) and takes a certain time ($\Delta t$).
+As shown in \autoref{fig:rewards}, this evaluation function is additive per action, as each action can generate detections that either raise or lower the mean AP of the results so far ($\Delta ap$) and takes a certain time ($\Delta t$).
 From these and $T_s$ and $T_d$, we can find the area under the curve that was contributed by the action.
 So, we can then represent the final evaluation $eval(h,T_s,T_d)$ in terms of individual rewards: $\sum_{j=0}^J R(s^j,a^j)$.
 
@@ -55,13 +55,13 @@ Specifically, as shown in Figure~\ref{fig:rewards}, we define the \emph{reward} 
 \begin{align}\label{eq:advanced}
 R(s^j,a_i) = \Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)
 \end{align}
-where $t_T^j$ and $\text{ap}^j$ are the time left until deadline and the AP at state $s^j$, and $\Delta t_i$ and $\Delta \text{ap}_i$ are the time taken and AP change produced by the action $a_i$.
+where $t_T^j$ and $\text{ap}^j$ are the time left until the deadline and the AP at state $s^j$, and $\Delta t_i$ and $\Delta \text{ap}_i$ are the time taken and AP change produced by the action $a_i$.
 (For clarity of exposition, we do not account for $T_s$ here.)
 
 \subsection{Learning the policy}
 The expected value of the final evaluation can be written recursively in terms of the value function:
 \begin{align} \label{eq:recursive_value}
-Q^\pi(s^j,a_i) = \mathbb{E}_{s^{j+1}} [R(s^j,a_i) + \gamma Q\pi(s^{j+1},\pi(s^{j+1}))]
+Q^\pi(s^j,a_i) = \mathbb{E}_{s^{j+1}} [R(s^j,a_i) + \gamma Q^\pi(s^{j+1},\pi(s^{j+1}))]
 \end{align}
 where $\gamma \in [0,1]$ is a \emph{discount} value that can mitigate the effects of increasing state-transition uncertainty over long episodes.
 

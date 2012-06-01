@@ -36,11 +36,10 @@ Trevor Darrell
 
 \begin{abstract}
 In a large visual multi-class detection framework, the timeliness of results can be crucial.
-%We are motivated by situations where running all detectors would take an unacceptably long time, and the best answer must be given by some deadline.
 Our method for \emph{timely} multi-class detection aims to give the best possible performance at any single point after a start time; it is terminated at a deadline time.
 Toward this goal, we formulate a dynamic, \emph{closed-loop} policy that infers the contents of the image in order to decide which detector to deploy next.
-In contrast to previous work, our method significantly diverts from the predominant greedy strategies, and is able to learn to take actions with deferred values.
-We evaluate our method with a novel \emph{timeliness} measure, computed as the area under an Average Precision (AP) vs. Time curve.
+In contrast to previous work, our method significantly diverges from the predominant greedy strategies, and is able to learn to take actions with deferred values.
+We evaluate our method with a novel \emph{timeliness} measure, computed as the area under an Average Precision vs. Time curve.
 Experiments are conducted on the eminent PASCAL VOC object detection dataset.
 If execution is stopped when only half the detectors have been run, our method obtains $66\%$ better AP than a random ordering, and $14\%$ better performance than an intelligent baseline.
 On the timeliness measure, our method obtains at least $11\%$ better performance.
