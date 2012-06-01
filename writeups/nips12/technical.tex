@@ -31,28 +31,6 @@ At that point, the policy is terminated, and a new episode can begin on a new im
 
 The specific actions we consider in the following exposition are detector actions $a_{{det}_i}$, where ${det}_i$ is a detector class $C_i$, and a scene-level context action $a_{gist}$, which updates the probabilities of all classes.
 
-% \begin{table}[h!]
-% \centering
-% \caption{Summary of the notation.}
-% \label{tab:notation}
-% \begin{tabular}{|l|l|}
-%   \hline
-%   $\mathcal{I}$ & image \\
-%   $C_k$         & presence of class $k \in \{1,\dots,K\}$ \\ 
-%   $t$           & time into episode \\ 
-%   $T_s$, $T_d$  & start and deadline times \\ 
-%   $s^j$         & belief state at step $j$ \\ 
-%   $\pi$         & policy function, $b \mapsto a \in \mathcal{A}$ \\
-%   $\mathcal{A}$ & set of actions $a$\\ 
-%   \comment{$\mathcal{F}$ & set of featurization actions \\}
-%   \comment{$\mathcal{L}$ & set of classification actions\\}
-%   $o_i$         & a real-valued observation upon executing $a_i \in \mathcal{A}$\\
-%   $\mathcal{O}$ & set of executed actions\\
-%   $\mathbf{o}$  & set of observations $\{o_i | a_i \in \mathcal{O}\}$\\
-%   $c(a_i)$        & cost of executing $a_i$, in units of $t$\\
-%   \hline
-% \end{tabular}\end{table}
-
 \subsection{Selecting actions} \label{sec:value}
 As our goal is to pick actions dynamically, we want a function $Q(s,a): S \times \mathcal{A} \mapsto \mathbb{R}$, where $S$ is the space of all possible states, to assign a value to a potential action, given the current state of the decision process.
 We can then define the desired policy $\pi$ as simply taking the (untaken) action with the maximum value:
@@ -124,8 +102,8 @@ Since we want to be able to learn a dynamic policy, the observations $\mathbf{o}
 We include the following quantities as features $\phi(s,a)$:
 \begin{description}
 \item[$P(C_a)$] The prior probability of the class that corresponds to the detector of action $a$
-\item[$P(C_0|\mathbf{o}) \ldots P(C_1|\mathbf{o})$] The probabilities of all classes, conditioned on the current set of observations.
-\item[$H(C_0|\mathbf{o}) \ldots H(C_1|\mathbf{o})$] The entropies of all classes, conditioned on the current set of observations.
+\item[$P(C_0|\mathbf{o}) \ldots P(C_K|\mathbf{o})$] The probabilities of all classes, conditioned on the current set of observations.
+\item[$H(C_0|\mathbf{o}) \ldots H(C_K|\mathbf{o})$] The entropies of all classes, conditioned on the current set of observations.
 \end{description}
 
 Additionally, we include the mean and maximum entropies of all classes, time features that represent the times until start and deadline, and the expected time (cost) of the action, for a total of $F$ features.
@@ -161,7 +139,7 @@ The featurization for the $a_{gist}$ scene-context action, which concerns all cl
 % \label{fig:model}
 % \end{figure}
 
-The bulk of our feature representation is formed by probability of individual class occurrence, conditioned on the observations so far: $P(C_0|\mathbf{o}) \ldots P(C_1|\mathbf{o})$.
+The bulk of our feature representation is formed by probability of individual class occurrence, conditioned on the observations so far: $P(C_0|\mathbf{o}) \ldots P(C_K|\mathbf{o})$.
 This allows the action-value function to learn correlations between presence of different classes, and so the policy can look for the most probable classes given the observations.
 
 However, higher-order co-occurrences are not well represented in this form.
