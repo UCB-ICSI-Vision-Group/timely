@@ -2,8 +2,7 @@
 
 We evaluate our system on the multi-class, multi-label detection task as previously described.
 Each detection episode takes an image and outputs detections with associated times, based on the order of actions taken.
-We evaluate on a popular detection challenge task: the PASCAL VOC 2007 dataset \cite{pascal-voc-2010}.
-As shown in \autoref{fig:dataset_stats}, the dataset exhibits a rather modest amount of class co-occurrence.
+We evaluate on a popular detection challenge task: the PASCAL VOC 2007 dataset \cite{pascal-voc-2010}, which exhibits only a rather modest amount of class co-occurrence: the ``person'' class is highly likely to occur, and less than $10\%$ of the images have more than two classes.
 
 We learn weights on the training and validation sets, and run our policy on all images in the testing set.
 The final evaluation pools all detections up to a certain time, and computes their multi-class AP per image, then averaging over all images.
@@ -17,10 +16,11 @@ Additionally, we use a classifier from the scene-level GIST feature to class pre
 This is considered one action, and takes about $0.3$ seconds.
 
 We test three different settings of the start and deadline times.
-In the first one, the start time is immediate and execution is cut off at 20 seconds, which is enough time to run basically all actions.
-In the second one, execution is cut off after only 10 seconds.
-Lastly, we measure performance between 5 seconds and 15 seconds.
-These operating points show how our method would behave when deployed in different conditions.
+In the first one, the start time is immediate and execution is cut off at $20$ seconds, which is enough time to run basically all actions.
+In the second one, execution is cut off after only $10$ seconds.
+Lastly, we measure performance between $5$ seconds and $15$ seconds.
+These operating points show how our method behaves when deployed in different conditions.
+The results are given in rows of \autoref{tab:results}.
 
 \begin{figure}[h!]
 \centering
@@ -30,6 +30,7 @@ These operating points show how our method would behave when deployed in differe
 \subfloat[Reward function explanation]{
 \includegraphics[width=0.47\linewidth]
     {../figures/apvst_expl.pdf}\label{fig:rewards}}
+\caption{}
 \end{figure}
 
 We establish the first baseline for our system by selecting actions randomly at each step.
@@ -44,7 +45,7 @@ We refer to this as \textbf{Fixed Order}.
 Then there are our proposed systems, which the previous section thoroughly described: \textbf{RL w/ Direct} and \textbf{RL w/ MRF}.
 In experiments, the two were not exceedingly different in performance, with the MRF model consistently performing slightly better.
 
-In Figure \autoref{fig:results1}, we can see that due to the dataset bias, the fixed-order policy performs well at first (as can be seen in \autoref{fig:dataset_stats}, the person class is disproportionately likely to be in the image), but is significantly overtaken by our model as execution goes on.
+In Figure~\autoref{fig:results1}, we can see that due to the dataset bias, the fixed-order policy performs well at first, as the person class is disproportionately likely to be in the image, but is significantly overtaken by our model as execution goes on and more rare classes have to be detected.
 
 Lastly, we also evaluate the system that includes a GIST action; this always uses the MRF model to properly update the class probabilities with GIST observations.
 This brings another boost in performance.
@@ -53,7 +54,13 @@ All results are shown in \autoref{tab:results}.
 \begin{figure}[h!]
   \centering
   \includegraphics[width=0.86\linewidth]{../figures/trajectories.pdf}
-  \caption{\todo{trajectories}}
+  \caption{
+Visualizing the action trajectories of different policies.
+The orange lines show the action selections over many episodes; the size of the blue circles correspond to the $\Delta ap$ obtained by the action.
+We see that the \textbf{Random} policy selects actions and obtains rewards randomly, while the \textbf{Oracle} policy obtains all rewards in the first few actions.
+The \textbf{Fixed Order} policy selects actions in a static optimal order.
+Our policy does not stick a static order but selects actions dynamically to maximize the rewards obtained early on.
+}
   \label{fig:trajectories}
 \end{figure}
 
@@ -67,14 +74,13 @@ In the reinforcement learning setting, however (higher $\gamma$), GIST is learne
 \label{tab:results}
 \begin{center}
 \begin{tabular}{|l|l|l|l|l|l|}
-%\\ \hline \\
 \hline
-Bounds & Random & Fixed Order & RL w/ MRF & w/ GIST  & Oracle \\ \hline
-(0,10) & 0.119  & 0.240       & 0.266     & \textbf{0.267}    & 0.464 \\ 
-(0,20) & 0.250  & 0.342       & 0.378     & 0.382    & 0.488 \\ 
-(5,15) & 0.257  & 0.362       & 0.418     & 0.420    & 0.530 \\ \hline
+Bounds & Random & Fixed Order & RL w/ MRF & w/ GIST         & Oracle \\ \hline
+(0,20) & 0.250  & 0.342       & 0.378     & \textbf{0.382}  & 0.488 \\ 
+(0,10) & 0.119  & 0.240       & 0.266     & \textbf{0.267}  & 0.464 \\ 
+(5,15) & 0.257  & 0.362       & 0.418     & \textbf{0.420}  & 0.530 \\ \hline
 \end{tabular}
 \end{center}
 \end{table}
 
-\todo{something about setting values?}
+%\todo{something about setting values?}

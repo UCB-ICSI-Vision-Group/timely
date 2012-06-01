@@ -41,10 +41,7 @@ We can then define the desired policy $\pi$ as simply taking the (untaken) actio
 
 Although the action space $\mathcal{A}$ is quite manageable, consisting of the detectors and classifier we would like to run on the image, the space of possible states $S$ is infinite.
 Therefore we cannot learn a tabular representation of $Q(s,a)$, and must use function approximation to represent it \cite{Sutton1998}.
-We featurize the state-action pair and assume linear structure:
-\begin{align}
-Q^\pi(s,a_i) = \theta_\pi^\top  \phi(s,a_i)
-\end{align}
+We featurize the state-action pair and assume linear structure: $Q^\pi(s,a_i) = \theta_\pi^\top  \phi(s,a_i)$.
 
 The policy's performance at time $t$ is determined by the detections that are part of the set of observations $\mathbf{o}^j$ at the last state $s^j$ before $t$.
 Therefore, the final AP vs. Time evaluation of an episode is a function of the history of execution $h=s^0,s^1,\dots,s^J$.
@@ -61,10 +58,7 @@ R(s^j,a_i) = \Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)
 where $t_T^j$ and $\text{ap}^j$ are the time left until deadline and the AP at state $s^j$, and $\Delta t_i$ and $\Delta \text{ap}_i$ are the time taken and AP change produced by the action $a_i$.
 (For clarity of exposition, we do not account for $T_s$ here.)
 
-We can then represent the final evaluation in terms of individual rewards:
-\begin{align}
-eval(h) = \sum_{j=0}^J R(s^j,a^j)
-\end{align}
+We can then represent the final evaluation $eval(h,T_s,T_d)$ in terms of individual rewards: $\sum_{j=0}^J R(s^j,a^j)$.
 
 And we can represent the expected value of the final evaluation recursively in terms of the value function:
 \begin{align} \label{eq:recursive_value}
@@ -100,7 +94,7 @@ We include the following quantities as features $\phi(s,a)$:
 \item[$H(C_0|\mathbf{o}) \ldots H(C_K|\mathbf{o})$] The entropies of all classes, conditioned on the current set of observations.
 \end{description}
 
-Additionally, we include the mean and maximum entropies of all classes, time features that represent the times until start and deadline, and the expected time (cost) of the action, for a total of $F$ features.
+Additionally, we include the mean and maximum entropies of all classes, the expected time (cost) of the action, and time features that represent the times until start and deadline, for a total of $F$ features.
 
 We note that this setup is commonly used to solve Markov Decision Processes \cite{Sutton1998}.
 There are two related limitations of MDPs when it comes to most systems of interesting complexity, however: the state has to be functionally approximated instead of exhaustively enumerated; and some aspects of the state are not observed, making the problem a Partially Observed MDP (POMDP), for which exact solution methods are intractable for all but rather small problems \cite{Roy2002}.
@@ -118,7 +112,11 @@ The featurization for the $a_{gist}$ scene-context action, which concerns all cl
 \subfloat[Greedy]{\includegraphics[width=0.49\linewidth]{../figures/weights_greedy}}
 \subfloat[RL]{\includegraphics[width=0.49\linewidth]{../figures/weights_rl}}
 % \includegraphics[width=0.87\linewidth]{../figures/weights.pdf}
-\caption{Weights \todo{describe. can talk about the person-class weights, the role of the time weights. how you can see the co-occurrence matrix in the weights}}
+\caption{
+Learned policy weights $\theta_\pi$ (best viewed in color: red corresponds to positive, blue to negative values).
+The first row corresponds to the scene-level action, which does not generate detections itself but only helps reduce uncertainty about the contents of the image.
+Note that in the greedy learning case, this action is learned to never be taken---whereas it is shown to be useful in the reinforcement learning case.
+}
 \label{fig:weights}
 \end{figure}
 
@@ -138,7 +136,7 @@ $score(C_i)$ for $a_{gist}$ is obtained by training probabilistic classifiers on
 
 The \emph{MRF} approach employs a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:figure1}, with the observation nodes set to $score(C_i)$ appropriately, or considered unobserved.
 
-The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
+The graphical model structure is set as fully-connected, but some classes are overwhelmingly unlikely to co-occurr in our dataset.
 Accordingly, the graph edge weights are learned with $L_1$ regularization, which obtains the desired sparse structure \cite{Lee2006}.
-All parameters of the model are trained on fully-observed data, and inference is implemented with an open-source graphical model package \cite{Jaimovich2010}.
-As exact inference is generally intractable in this model, we use Loopy Belief Propagation; although it does not provide general convergence guarantees, it has been shown to work well empirically on similar tasks \cite{Desai2009}.
+All parameters of the model are trained on fully-observed data, and Loopy Belief Propagation inference is implemented with an open-source graphical model package \cite{Jaimovich2010}.
+% As exact inference is generally intractable in this model, we use Loopy Belief Propagation; although it does not provide general convergence guarantees, it has been shown to work well empirically on similar tasks \cite{Desai2009}.
