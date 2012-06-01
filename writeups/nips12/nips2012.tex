@@ -33,17 +33,28 @@ Trevor Darrell
 \maketitle
 
 \begin{abstract}
-In a large visual multi-class detection system, the problem of timeliness of results is crucial.
-We are motivated by situations where running all detectors would take an unacceptably long time, and that the best answer must be given by some deadline.
-Our system for multi-class detection aims to give the best possible results at any single point after a start time; it is terminated at a deadline time.
-Toward this goal, we formulate a dynamic policy guided by inference of the contents of the image to decide which detector to deploy next.
-We evaluate with respect to performance in the novel AP vs. Time evaluation on the PASCAL VOC object detection dataset.
+In a large visual multi-class detection framework, the problem of timeliness of results is crucial.
+We are motivated by situations where running all detectors would take an unacceptably long time, and the best answer must be given by some deadline.
+Our method for multi-class detection aims to give the best possible performance at any single point after a start time; it is terminated at a deadline time.
+Toward this goal, we formulate a dynamic, \emph{closed-loop} policy guided by inference of the contents of the image in order to decide which detector to deploy next.
+We evaluate our method with respect to performance in the novel Average Precision (AP) vs. Time evaluation on the widely used PASCAL VOC object detection dataset.
+With our method, if execution is stopped when only half the detectors have been run, our method obtains $66\%$ better AP than a random ordering, and $14\%$ better performance than an intelligent baseline.
+Overall, our method obtains at least $11\%$ better performance on the AP vs. Time evaluation.
 \end{abstract}
 
 \input{introduction.tex} % includes Evaluation section
 \input{related.tex}
 \input{technical.tex}
 \input{evaluation.tex}
+
+\section{Conclusion}
+We presented a method for learning ``closed-loop'' policies for multi-class object recognition, given existing object detectors and classifiers and a metric to optimize.
+The method learns the optimal policy using reinforcement learning, by observing execution traces in training.
+If detection on an image is cut off after only half the detectors have been run, our method does $66\%$ better than random, and $14\%$ better than an intelligent baseline.
+
+As always with reinforcement learning problems, the setting of the reward function requires some manual work.
+Here, we derive it for the novel detection AP vs. Time evaluation that we suggest is most useful for evaluating efficiency in recognition.
+Although computation devoted to scheduling actions is much less significant than the computation due to running the actions, an interesting future research direction is to explicitly consider this decision-making cost.
 
 % \subsubsection*{Acknowledgments}
 % Use unnumbered third level headings for the acknowledgments. All

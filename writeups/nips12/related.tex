@@ -1,6 +1,6 @@
 \section{Recognition Problems and Related Work}
 
-We deal with a dataset of images $\mathcal{D}$, where each image $\mathcal{I}$ contains at least one, and often multiple, objects.
+We deal with a dataset of images $\mathcal{D}$, where each image $\mathcal{I}$ contains zero or more objects.
 Each object is labeled with exactly one category label $k \in \{1, \dots, K\}$.
 
 The multi-class, multi-label \textbf{classification} problem asks whether $\mathcal{I}$ contains at least one object of class $k$.
@@ -28,41 +28,36 @@ Classifiers are then used to distinguish between featurizations of a given class
 
 Window proposal is often done exhaustively over the image space, as a ``sliding window''.
 Using ``jump windows'' (window hypotheses voted on by local features) as region proposals is another common idea~\cite{Vedaldi2009,Vijayanarasimhan2011}.
-For local feature-based approaches, a bounded search over the space of all possible windows works reasonably well~\cite{Lampert2008b}.
+For local feature-based approaches, a bounded search over the space of all possible windows works reasonably well~\cite{Lampert2008a}.
 
 None of the best-performing systems treat window proposal and evaluation as a closed-loop system, with feedback from evaluation to proposal.
 Some work has been done on this topic, mostly inspired by ideas from biological vision and attention research~\cite{Butko2009,Vogel2008,Paletta2005}.
 
-A state-of-the-art detector builds upon a linear classifier on a gradient-based image representation, sped up with cascaded evaluation (see relevant paragraph further down) \cite{Felzenszwalb2010b}.
-Our system employs these detectors.
-
 \paragraph{Context}
-Context has a long history in vision.
-One source of context is the scene or other non-detector cues; for the commonly used PASCAL dataset, these are quantitatively explored in~\cite{Divvala2009}. 
-The most common scene-level feature is the GIST \cite{Oliva2001a} of the image; it provides reasonable information for scene classification \cite{Xiao2010a}.
+Context has a foundational role in vision.
+One source of context is the scene or other non-detector cues; the most common scene-level feature is the GIST \cite{Oliva2001a} of the image.
+For the commonly used PASCAL VOC dataset \cite{pascal-voc-2010}, GIST and other sources of context are quantitatively explored in~\cite{Divvala2009}. 
 
-Another source is inter-object context, used for detection in a random field setting in~\cite{Torralba2004}.
-Exploiting this information has shown to improve classification as well as detection tasks.
+Another source is inter-object context, shown to be useful for improving detection \cite{Torralba2004}.
 A critical summary of the main approaches to using context for object and scene recognition is given in \cite{Galleguillos2010}.
 
 \paragraph{Multi-Class Detection}
-Inherently multi-class detection has its own line of work, which focuses largely on making detection time sublinear in the number of classes, through sharing features~\cite{Torralba2007,Fan2005,Razavi2011}.
-A proposed post-processing extension to detection systems uses structured prediction to incorporate multi-class context as a principled replacement for the common post-processing step of non-maximum suppression~\cite{Desai2009}.
+Work on inherently multi-class detection focuses largely on making detection time sublinear in the number of classes through sharing features \cite{Torralba2007,Fan2005,Razavi2011}.
+A proposed post-processing extension to detection systems uses structured prediction to incorporate multi-class context as a principled replacement for the common post-processing step of non-maximum suppression \cite{Desai2009}.
 
 \paragraph{Cascades}
-An early success in efficient object detection used simple, fast features to build up a \emph{cascade} of classifiers, which then considered image regions in a sliding window regime~\cite{Viola2001}.
+An early success in efficient object detection used simple, fast features to build up a \emph{cascade} of classifiers, which then considered image regions in a sliding window regime \cite{Viola2001}.
 Although the simple features and classifiers of this method have been surpassed by more complex detectors, the idea of cascading classifier evaluations is still often used.
 Most recently, cyclic optimization has been applied to optimize cascades with respect to feature computation cost as well as classifier performance \cite{Chen2012}.
 
 However, cascades are not dynamic policies---they cannot change the order of execution based on observations obtained during execution, which is our goal.
 
 \paragraph{Anytime Algorithms and Active Classification}
-Although an important concept, anytime performance in vision systems is a surprisingly little-explored idea \cite{Shlomo Zilberstein}.
+Anytime performance in vision systems is a surprisingly little-explored idea.
 A recent application to the problem of visual detection picks features with maximum value of information in a Hough-voting framework, and explicitly evaluates performance vs. time \cite{Vijayanarasimhan2010}. 
 
 There has also been work on active classification \cite{Gao2011} and active sensing \cite{Yu2009}, in which intermediate results are considered in order to decide on the next classification step.
 This line of work is closest to our approach.
-Most commonly, the scheduling is greedy with respect to some quantity such as expected information gain.
+Most commonly, the scheduling in these approaches is greedy with respect to some quantity such as expected information gain.
 
-In contrast, we are able to learn policies that take actions without any immediate such reward.
-We aim for a general system that can take black-box detectors and classifiers, and learn its policy from its own trial execution traces, and can be adapted to different loss functions.
+In contrast, we are able to learn policies that take actions without any immediate reward.

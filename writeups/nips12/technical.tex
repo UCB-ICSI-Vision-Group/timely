@@ -1,4 +1,5 @@
 \section{Multi-class Recognition Policy} \label{sec:tech}
+
 Our goal is a multi-class recognition policy $\pi$ that takes an image $\mathcal{I}$ and outputs a list of multi-class detection results by running detector and other \emph{actions} sequentially.
 
 The policy repeatedly selects an action $a_i \in \mathcal{A}$, executes it, receiving observations $o_i$, and then selects the next action.
@@ -8,17 +9,15 @@ Each action $a_i$ has an expected cost $c(a_i)$ of execution.
 Depending on the setting, the cost can be defined in terms of algorithmic runtime analysis, an idealized property such as number of \emph{flops}, or simply the empirical runtime on specific hardware.
 We take the empirical approach: every executed action advances $t$, the \emph{time into episode}, by its empirical runtime.
 
-As shown in Figure~\ref{fig:evaluation}, the system is given two times: the setup time $T_s$ and deadline $T_d$.
+As shown in Figure~\ref{fig:figure1}, the system is given two times: the setup time $T_s$ and deadline $T_d$.
 From the setup time to the deadline, we want to obtain the best possible answer if stopped at any given time.
-This corresponds to the general notion of \emph{Anytime} algorithms, and is motivated by desired flexibility in the system.
-
-A single-number metric that corresponds to this objective is simply the ratio of the area captured under the curve to the total area between the start and deadline bounds.
-We evaluate policies by this more robust metric and not simply by the final performance at deadline time for the same reason that Average Precision is used instead of a fixed Precision vs. Recall point.
+A single-number metric that corresponds to this objective is the area captured under the curve between the start and deadline bounds, normalized by the total area possible.
+We evaluate policies by this more robust metric and not simply by the final performance at deadline time for the same reason that Average Precision is used instead of a fixed Precision vs. Recall point in the conventional evaluations.
 
 \subsection{Sequential Execution}
-An ``open-loop'' policy takes actions in a sequence that does not depend on observations received from previous actions.
-The common classifier cascade \cite{Viola2001} is an example.
-In contrast, our goal is to learn a dynamic, or ``closed-loop,'' policy, which would exploit the signal in inter-object and scene context for a maximally efficient path through the actions.
+An \emph{open-loop} policy takes actions in a sequence that does not depend on observations received from previous actions.
+The common classifier cascade is an example \cite{Viola2001}.
+In contrast, our goal is to learn a dynamic, or \emph{closed-loop}, policy, which would exploit the signal in scene and inter-object context for a maximally efficient path through the actions.
 
 We refer to the basis for the decisions made by the decision process as the \emph{state} $s$.
 The state includes the currently believed distribution over class presence variables $P(\mathbf{C}) = P(C_1, \dots, C_K)$, where we write $P(C_k)$ to mean $P(C_k=1)$
@@ -27,104 +26,101 @@ Additionally, the state records the fact that an action $a_i$ has been taken by 
 We refer to the current set of observations as $\mathbf{o} = \{o_i | a_i \in \mathcal{O}\}$.
 The state also keeps track of the time into episode $t$, and the setup and deadline times $T_s,T_d$.
 
-A recognition \emph{episode} takes an image $\mathcal{I}$ and proceeds from the initial state $s^0$ and action $a^0$ to the next pair $(s^1,a^1)$, and so on until $t$ exceeds $T_d$.
+A recognition \emph{episode} takes an image $\mathcal{I}$ and proceeds from the initial state $s^0$ and action $a^0$ to the next pair $(s^1,a^1)$, and so on until $(s^J,a^J)$, where $J$ is the last step of the process with $t \le T_d$.
 At that point, the policy is terminated, and a new episode can begin on a new image.
 
-\begin{table}[h!]
-\centering
-\caption{Summary of the notation.}
-\label{tab:notation}
-\begin{tabular}{|l|l|}
-  \hline
-  $\mathcal{I}$ & image \\
-  $C_k$         & presence of class $k \in \{1,\dots,K\}$ \\ 
-  $t$           & time into episode \\ 
-  $T_s$, $T_d$  & start and deadline times \\ 
-  $s^j$         & belief state at step $j$ \\ 
-  $\pi$         & policy function, $b \mapsto a \in \mathcal{A}$ \\
-  $\mathcal{A}$ & set of actions $a$\\ 
-  \comment{$\mathcal{F}$ & set of featurization actions \\}
-  \comment{$\mathcal{L}$ & set of classification actions\\}
-  $o_i$         & a real-valued observation upon executing $a_i \in \mathcal{A}$\\
-  $\mathcal{O}$ & set of executed actions\\
-  $\mathbf{o}$  & set of observations $\{o_i | a_i \in \mathcal{O}\}$\\
-  $c(a_i)$        & cost of executing $a_i$, in units of $t$\\
-  \hline
-\end{tabular}\end{table}
+The specific actions we consider in the following exposition are detector actions $a_{{det}_i}$, where ${det}_i$ is a detector class $C_i$, and a scene-level context action $a_{gist}$, which updates the probabilities of all classes.
 
-\subsection{Selecting actions based on expected reward} \label{sec:value}
+% \begin{table}[h!]
+% \centering
+% \caption{Summary of the notation.}
+% \label{tab:notation}
+% \begin{tabular}{|l|l|}
+%   \hline
+%   $\mathcal{I}$ & image \\
+%   $C_k$         & presence of class $k \in \{1,\dots,K\}$ \\ 
+%   $t$           & time into episode \\ 
+%   $T_s$, $T_d$  & start and deadline times \\ 
+%   $s^j$         & belief state at step $j$ \\ 
+%   $\pi$         & policy function, $b \mapsto a \in \mathcal{A}$ \\
+%   $\mathcal{A}$ & set of actions $a$\\ 
+%   \comment{$\mathcal{F}$ & set of featurization actions \\}
+%   \comment{$\mathcal{L}$ & set of classification actions\\}
+%   $o_i$         & a real-valued observation upon executing $a_i \in \mathcal{A}$\\
+%   $\mathcal{O}$ & set of executed actions\\
+%   $\mathbf{o}$  & set of observations $\{o_i | a_i \in \mathcal{O}\}$\\
+%   $c(a_i)$        & cost of executing $a_i$, in units of $t$\\
+%   \hline
+% \end{tabular}\end{table}
+
+\subsection{Selecting actions} \label{sec:value}
 As our goal is to pick actions dynamically, we want a function $Q(s,a): S \times \mathcal{A} \mapsto \mathbb{R}$, where $S$ is the space of all possible states, to assign a value to a potential action, given the current state of the decision process.
 We can then define the desired policy $\pi$ as simply taking the (untaken) action with the maximum value:
 \begin{align}
 \pi(s) = \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} Q(s,a_i)
 \end{align}
 
-Although the action space $\mathcal{A}$ is quite manageable, consisting of the detectors and classifier we would like to run on the image, the space of possible states $B$ is infinite.
-Therefore we cannot learn a tabular representation of $Q(s,a)$, and so use function approximation to represent it \cite{Sutton1998}.
+Although the action space $\mathcal{A}$ is quite manageable, consisting of the detectors and classifier we would like to run on the image, the space of possible states $S$ is infinite.
+Therefore we cannot learn a tabular representation of $Q(s,a)$, and must use function approximation to represent it \cite{Sutton1998}.
 We featurize the state-action pair and assume linear structure:
 \begin{align}
 Q^\pi(s,a_i) = \theta_\pi^\top  \phi(s,a_i)
 \end{align}
 
-The policy's performance at time $t$ is determined by the detections that are part of the set of observations $\mathbf{o}$ at the last state $s^j$ before $t$.
-Detection results of unobserved classes are an empty set.
-Therefore, the final AP vs. Time evaluation of the episode is a function of the history of execution $h^0=s^0,s^1,\dots,s^J$, where $J$ is the last step of the process with $t \le T_d$.
-We call the final evaluation function $eval(h^0,T_s,T_d)$, and it is precisely the area under the AP vs. Time curve (normalized by total possible area) between $T_s$ and $T_d$, as determined by the detections in $\mathbf{o^j}$ for all steps $j$ in the episode $h$.
+The policy's performance at time $t$ is determined by the detections that are part of the set of observations $\mathbf{o}^j$ at the last state $s^j$ before $t$.
+Therefore, the final AP vs. Time evaluation of an episode is a function of the history of execution $h=s^0,s^1,\dots,s^J$.
+
+We refer to the final evaluation function as $eval(h,T_s,T_d)$, and it is precisely the area under the AP vs. Time curve between $T_s$ and $T_d$ (normalized by total possible area), as determined by the detections in $\mathbf{o}^j$ for all steps $j$ in the episode.
 
 \begin{figure}[h!]
   \centering
   \includegraphics[width=0.56\linewidth]{../figures/apvst_expl.pdf}
-  \caption{A per-action greedy value function that corresponds to the maximization of our objective function is the area of the horizontal slice under the curve due to the action. The figure shows this analysis for the action highlighted in orange.}
+  \caption{\todo{what text here?} A per-action greedy value function that corresponds to the maximization of our objective function is the area of the horizontal slice under the curve due to the action. The figure shows this analysis for the action highlighted in orange.}
   \label{fig:rewards}
 \end{figure}
 
-As shown in \autoref{fig:rewards}, the evaluation function is additive per action, as each action can generate detections that either raise or lower the AP of all detections so far: ($\Delta ap$), and takes a certain time: $t$.
-From these, we can find the area under the curve that was contributed by the action.
+As shown in \autoref{fig:rewards}, this evaluation function is additive per action, as each action can generate detections that either raise or lower the AP of all detections so far ($\Delta ap$) and takes a certain time ($\Delta t$).
+From these and $T_s$ and $T_d$, we can find the area under the curve that was contributed by the action.
 
 Specifically, as shown in Figure~\ref{fig:rewards}, we define the \emph{reward} of an action as
 \begin{align}\label{eq:advanced}
-R(s^j,a_i) = \frac{\Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)}{(1-\text{ap}^j)t_T^j}
+R(s^j,a_i) = \Delta \text{ap}_i (t_T^j-\frac{1}{2}\Delta t_i)
 \end{align}
 where $t_T^j$ and $\text{ap}^j$ are the time left until deadline and the AP at state $s^j$, and $\Delta t_i$ and $\Delta \text{ap}_i$ are the time taken and AP change produced by the action $a_i$.
-
-\todo{discuss the raw vs. the normalized area, saying we'll try both}
+(For clarity of exposition, we do not account for $T_s$ here.)
 
 We can then represent the final evaluation in terms of individual rewards:
 \begin{align}
-eval(h^0) = \sum_{j=0}^J R(s_j,a^{j})
+eval(h) = \sum_{j=0}^J R(s^j,a^j)
 \end{align}
 
 And we can represent the expected value of the final evaluation recursively in terms of the value function:
 \begin{align} \label{eq:recursive_value}
-Q(s^j,a_i) = \mathbb{E}_{s^{j+1}} [R(s^j,a_i) + \gamma Q(s^{j+1},\pi(s^{j+1}))]
+Q^\pi(s^j,a_i) = \mathbb{E}_{s^{j+1}} [R(s^j,a_i) + \gamma Q\pi(s^{j+1},\pi(s^{j+1}))]
 \end{align}
 where $\gamma \in [0,1]$ is a \emph{discount} value that can mitigate the effects of increasing state-transition uncertainty over long episodes.
 
 \subsection{Learning the policy}
 While we can't directly compute the expectation in \eqref{eq:recursive_value}, we can sample it by running actual episodes to gather $<s,a,r,s'>$ samples, where $r$ is the reward obtained by taking action $a$ in state $s$, and $s'$ is the following state.
 
-\comment{
-Specifically, we collect such samples to the end of the episode, and are thus able to compute the actual discounted sum of rewards for $Q(s^j,a_i)$:
-\begin{align}
-Q(s^j,a_i) = \theta_\pi^\top \phi(s,a_i) = \sum_{i=0}^{J-j} \lambda^i R(b_{j+i},a^{j+i})
-\end{align}
-}
-
 Learning the policy is then a problem of repeatedly gathering samples with the current policy, minimizing the error between the discounted reward to the end of the episode as predicted by our current $Q(s^j,a_i)$ and the actual values gathered, and updating the policy with the resulting weights.
-This is standard generalized policy iteration, or more specifically fitted Q-iteration \cite{Sutton1998,Ernst2005}.
+This is fitted Q-iteration, a variant of generalized policy iteration \cite{Ernst2005,Sutton1998}.
 
 We use $L_2$-regularized regression to minimize the error.
 We run $15$ iterations of accumulating samples by running $350$ episodes, starting with a baseline policy which will be described in \autoref{sec:evaluation}, and cross-validating the regularization parameter at each iteration; samples are not thrown away between iterations.
 
-One meta-parameter of the approach is the discount $\gamma$.
-With $\gamma=0$, the value function is determined entirely by the immediate reward; learning in this case can only result in completely greedy policies.
-With $\gamma=1$, the value function is determined by the expected rewards to the end of the episode, which is an approximation to the final evaluation metric.
-However, the highest value for $\gamma$ is not necessarily best, due to the interplay between the expressive power of the value function and the actual state transition behavior of the world.
-We experiment with several values of $\gamma$, and find a mid-level value of $0.4$ to work best.
+A meta-parameter of the approach is the discount $\gamma$.
+With $\gamma=0$, the value function is determined entirely by the immediate reward.
+Learning in this case can only result in completely greedy policies.
+
+With $\gamma=1$, the value function is determined by the expected rewards to the end of the episode, and so should be a close approximation to the final evaluation metric.
+However, the highest value for $\gamma$ is not necessarily best if the action-value function is not expressive enough to represent the actual state transition behavior of the world.
+We experiment with several values of $\gamma$, and find a mid-level value ($0.4$) to work best.
 
 \subsection{Feature representation}
 Our policy is at its base determined by a linear function of the features of the state: $\pi(s) = \argmax_{a_i \in \mathcal{A} \setminus \mathcal{O}} \theta_\pi^\top \phi(s,a_i)$.
 Since we want to be able to learn a dynamic policy, the observations $\mathbf{o}$ that are part of the state $s$ should play a role in determining the value of a potential action.
+
 We include the following quantities as features $\phi(s,a)$:
 \begin{description}
 \item[$P(C_a)$] The prior probability of the class that corresponds to the detector of action $a$
@@ -132,29 +128,36 @@ We include the following quantities as features $\phi(s,a)$:
 \item[$H(C_0|\mathbf{o}) \ldots H(C_1|\mathbf{o})$] The entropies of all classes, conditioned on the current set of observations.
 \end{description}
 
-Additionally, we include the mean and maximum entropies of all classes, and time features that represent the times until start and deadline.
-To formulate learning the policy as a single regression problem, we represent the features in block form, where $\phi(s,a_i)$ is a vector of size $F|\mathcal{A}|$, with $F=47$ for $20$ classes and the features as described, with all values set to $0$ except for the block corresponding to $a_i$.
+Additionally, we include the mean and maximum entropies of all classes, time features that represent the times until start and deadline, and the expected time (cost) of the action, for a total of $F$ features.
 
-Jumping ahead, we visualize the learned weights on these features in \autoref{fig:weights}, reshaped to a matrix of size $|\mathcal{A}| \times F$.
+We note that this setup is commonly used to solve Markov Decision Processes \cite{Sutton1998}.
+There are two related limitations of MDPs when it comes to most systems of interesting complexity, however: the state has to be functionally approximated instead of exhaustively enumerated; and some aspects of the state are not observed, making the problem a Partially Observed MDP (POMDP), for which exact solution methods are intractable for all but rather small problems \cite{Roy2002}.
+
+There isn't much to do about the necessity of approximating the state but design good features.
+Our initial solution to the partial observability problem is to include uncertainty features into the feature representation to \emph{augment} the MDP \cite{Kwok2004}.
+
+To formulate learning the policy as a single regression problem, we represent the features in block form, where $\phi(s,a_i)$ is a vector of size $F|\mathcal{A}|$, with all values set to $0$ except for the block corresponding to $a_i$.
+
+As an illustration, we visualize the learned weights on these features in \autoref{fig:weights}, reshaped such that each row shows the weights learned for an action, in order.
+The featurization for the $a_{gist}$ scene-context action, which concerns all classes, omits the first $P(C_a)$ feature.
 
 \begin{figure}[h!]
 \centering
-\includegraphics[width=0.87\linewidth]
-    {../figures/weights.pdf}
-\caption{Weights \todo{describe}}
+\includegraphics[width=0.87\linewidth]{../figures/weights.pdf}
+\caption{Weights \todo{describe. can talk about the person-class weights, the role of the time weights. how you can see the co-occurrence matrix in the weights}}
 \label{fig:weights}
 \end{figure}
 
-\subsection{Updating with observations} \label{sec:updating}
-\begin{figure}[h!]
-\centering
-\includegraphics[width=0.56\linewidth]{../figures/mrf_w_gist.pdf}
-\caption{
-\todo{get rid of this figure?}
-The MRF inference model used in our system. The shaded nodes represent two actions that have already been taken; their observations have been recorded.
-}
-\label{fig:model}
-\end{figure}
+% \subsection{Updating with observations} \label{sec:updating}
+% \begin{figure}[h!]
+% \centering
+% \includegraphics[width=0.56\linewidth]{../figures/mrf_w_gist.pdf}
+% \caption{
+% \todo{get rid of this figure?}
+% The MRF inference model used in our system. The shaded nodes represent two actions that have already been taken; their observations have been recorded.
+% }
+% \label{fig:model}
+% \end{figure}
 
 The bulk of our feature representation is formed by probability of individual class occurrence, conditioned on the observations so far: $P(C_0|\mathbf{o}) \ldots P(C_1|\mathbf{o})$.
 This allows the action-value function to learn correlations between presence of different classes, and so the policy can look for the most probable classes given the observations.
@@ -164,15 +167,13 @@ Additionally, updating $P(C_i|\mathbf{o})$ presents choices regarding independen
 
 We evaluate two ways of updating probabilities: \emph{direct} and \emph{MRF}.
 In the \emph{direct} way, $P(C_i|\mathbf{o}) = score(C_i)$ if $\mathbf{o}$ includes the observations for class $C_i$ and $P(C_i|\mathbf{o}) = P(C_i)$ otherwise.
+This means that an observation of class $i$ does not influence the estimated probability of any class but $C_i$.
+$score(C_i)$ for $a_{{det}_i}$ is obtained by training a probabilistic classifier on the detections output.
+$score(C_i)$ for $a_{gist}$ is obtained by training probabilistic classifiers on the GIST feature, for all classes.
 
-In the \emph{MRF} way, we employ a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:model}, with the observation nodes set to $score(C_i)$ appropriately, or considered unobserved.
+In the \emph{MRF} way, we employ a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:figure1}, with the observation nodes set to $score(C_i)$ appropriately, or considered unobserved.
 
 The graphical model structure is set as fully-connected, but as shown in \autoref{fig:dataset_stats}, some classes are overwhelmingly unlikely to co-occurr.
 Accordingly, the graph edge weights are learned with $L_1$ regularization, which obtains the desired sparse structure \cite{Lee2006}.
 All parameters of the model are trained on fully-observed data, and inference is implemented with an open-source graphical model package \cite{Jaimovich2010}.
 As exact inference is generally intractable in this model, we use Loopy Belief Propagation; although it does not provide general convergence guarantees, it has been shown to work well empirically on similar tasks \cite{Desai2009}.
-
-\todo{rework the below, and also explain how GIST works}
-The $L_i$ variables are discretized from real-valued responses of a classifier on the detections output by the deformable part-model detector we employ (see Section~\ref{sec:tech}).
-The classifier is a linear SVM on the top two max detection scores in the list of detections.
-The responses are discretized per variable based on the distribution of the scores on the training dataset.

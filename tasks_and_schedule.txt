@@ -9,6 +9,8 @@ Unscheduled
 - stick VJ face detection in there as a quick person class detector
 - LSPI to learn weights
 - implement and launch run with support vector regression, or a nearest-neighbor approach
+- redo all the plots with finer-grained time intervals (output to new files/txt files)
+- discussion of inference time and tradeoffs: mention cross-validation for the parameters
 
 Schedule
 ---
@@ -48,24 +50,22 @@ x launch runs with bounds10
 x rework paper
 
 30 May - Wednesday
-- launch bounds=[5,15] run
-- make weights figures
+x launch bounds=[5,15] run
+x make weights figures
 - make execution trace figure by plotting action_ind vs. time for the manual_1 policy (straight line if action_ind is sorted by P(C_a)) and some of our learned policies.
-- keep reworking paper
-  - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
-  - rework figure 1 to be more comprehensive and show the whole working of the system
-  - replace results figures
-  - discussion of inference time and tradeoffs: mention cross-validation for the parameters
-  - include discussion of learned weights, with pictures
   
 31 May - Thursday
-- launch run with region-based actions
-- redo all the plots with finer-grained time intervals (output to new files/txt files)
+- launch run with region-based actions @tobi
 - keep reworking paper
-  - tighter story/intro
-  - tighter related work, and cite Ashish and recent papers like that cyclic optimization one
+  x tighter story/intro
+  x tighter related work, and cite Ashish and recent papers like that cyclic optimization one
+  - put in discussion of augmented MDPs and POMDPs to address reviewer1 concern
+  x rework figure 1 to be more comprehensive and show the whole working of the system
+  x replace results figures
+  x include discussion of learned weights, with pictures
 
 1 Jun - Friday
+
 
 Tasks
 ---
@@ -80,10 +80,7 @@ Tasks
 
 ### assorted
 - check code with pylint and pyflakes
-- include values for object classes (reference some paper by Ashish if can find) @sergey
-- code up LSPI @sergey
 - code up 'ranking svm policy'
-- include scene context action
 
 #### window proposals
 - speed up: profile code to see where the speed bottlenecks are. how can they be resolved?
