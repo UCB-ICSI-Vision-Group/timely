@@ -2,12 +2,12 @@ Edit Notes
 ---
 
 - significantly clarified Figure 1 caption
-
+- presented advertising system case study in more detail and moved earlier in intro
 
 Edit Tasks
 ---
 
-In priority order
+- [] MRF doesn't actually contribute much to results: should mention that
 
 - [] Make it clear what an intermediate state of the system consists of: per-class detections, or per-region detections?
   - but mention that other forms of incompleteness can be incorporated into framework

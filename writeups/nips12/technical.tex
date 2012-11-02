@@ -8,7 +8,7 @@ The set of actions $\mathcal{A}$ can include both classifiers and detectors: any
 
 Each action $a_i$ has an expected cost $c(a_i)$ of execution.
 Depending on the setting, the cost can be defined in terms of algorithmic runtime analysis, an idealized property such as number of \emph{flops}, or simply the empirical runtime on specific hardware.
-We take the empirical approach: every executed action advances $t$, the \emph{time into episode}, by its empirical runtime.
+We take the empirical approach: every executed action advances $t$, the \emph{time into episode}, by its runtime.
 
 As shown in Figure~\ref{fig:figure1}, the system is given two times: the setup time $T_s$ and deadline $T_d$.
 From the setup time to the deadline, we want to obtain the best possible answer if stopped at any given time.
