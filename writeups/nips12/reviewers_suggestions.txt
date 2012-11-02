@@ -1,15 +1,22 @@
+Edit Notes
+---
+
+- significantly clarified Figure 1 caption
+
+
 Edit Tasks
 ---
 
 In priority order
 
-- [] Make it clear what an intermediate state of the system consists of: per-class detections, or per-region detctions?
+- [] Make it clear what an intermediate state of the system consists of: per-class detections, or per-region detections?
   - but mention that other forms of incompleteness can be incorporated into framework
 
 - [] Make it clear what the input and output of the system is before related work section, or more related work to end
   - [] Why are there works using context in related work?
 
 - [] Clarify the reward function definition:
+  - the actual reward of an action is the expected *final* AP vs. Time evaluation. But delaying the reward until the end of the episode would result in less stable learning, so we formulate a way to calculate piecewise rewards per action. Maybe mention reward scaling from Russell and Ng (although I don't think it applies).
   - it's fine if it decreases (see rebuttal)
   - it does depend on deadline, because of the specific case of the red line: ref. figure
   - [] Correct ap^j in equation (2)
