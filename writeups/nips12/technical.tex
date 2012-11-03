@@ -102,7 +102,7 @@ $P(C_0|\mathbf{o}) \ldots P(C_K|\mathbf{o})$ & The probabilities for all classes
 $H(C_0|\mathbf{o}) \ldots H(C_K|\mathbf{o})$ & The entropies for all classes, conditioned on the current set of observations. \\
 \end{tabularx}
 
-Additionally, we include the mean and maximum entropy of class presence and time features that represent the times until start and deadline, for a total of $F = 1+|K|*2+6$ features.
+Additionally, we include the mean and maximum entropy of class presence and time features that represent the times until start and deadline, for a total of $F = 1+2K+6$ features.
 
 We note that this setup is commonly used to solve Markov Decision Processes \cite{Sutton1998}.
 There are two related limitations of MDPs when it comes to most systems of interesting complexity, however: the state has to be functionally approximated instead of exhaustively enumerated; and some aspects of the state are not observed, making the problem a Partially Observed MDP (POMDP), for which exact solution methods are intractable for all but rather small problems \cite{Roy2002}.
