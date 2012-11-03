@@ -31,4 +31,6 @@ We argue that the key to tackling problems of dynamic recognition resource alloc
 
 Taking the task of object detection, we propose a new \emph{timeliness} measure of performance vs. time (shown in Figure~\ref{fig:figure1}).
 We present a method that treats different detectors and classifiers as black boxes, and uses reinforcement learning to learn a dynamic policy for selecting actions to achieve the highest performance under this evaluation.
+
+Specifically, we run scene context and object class detectors over the whole image sequentially, using the results of detection obtained so far to select the next actions.
 Evaluating on the PASCAL VOC dataset and evaluation regime, we are able to obtain better performance than all baselines when there is less time available than is needed to exhaustively run all detectors.

@@ -1,44 +1,29 @@
-Edit Notes
----
-
-- significantly clarified Figure 1 caption
-- presented advertising system case study in more detail and moved earlier in intro
-
 Edit Tasks
 ---
 
-- [] MRF doesn't actually contribute much to results: should mention that
+- [x] add time arrow to figure 1x
 
-- [] Make it clear what an intermediate state of the system consists of: per-class detections, or per-region detections?
-  - but mention that other forms of incompleteness can be incorporated into framework
+- [x] Make it clear what an intermediate state of the system consists of: per-class detections, or per-region detections?
+  - [] but mention that other forms of incompleteness can be incorporated into framework
 
-- [] Make it clear what the input and output of the system is before related work section, or more related work to end
-  - [] Why are there works using context in related work?
-
-- [] Clarify the reward function definition:
+- Clarify the reward function definition:
   - the actual reward of an action is the expected *final* AP vs. Time evaluation. But delaying the reward until the end of the episode would result in less stable learning, so we formulate a way to calculate piecewise rewards per action. Maybe mention reward scaling from Russell and Ng (although I don't think it applies).
-  - it's fine if it decreases (see rebuttal)
-  - it does depend on deadline, because of the specific case of the red line: ref. figure
-  - [] Correct ap^j in equation (2)
+  - [] it's fine if it decreases (see rebuttal), and it does depend on deadline, because of the specific case of the red line: ref. figure
+  - [x] Correct ap^j in equation (2)
 
-- [] clarify what is meant by the entropy feature: that classes are not mutually exclusive, and this is entropy per class
+- [x] Make the RL formalism more accessible to a non-RL person
+  - [x] clarify what is meant by discount
 
-- [] Clarify what "values of classes" could correspond to in a "real system" in the intro
+- [-] clarify what is meant by the entropy feature: that classes are not mutually exclusive, and this is entropy per class
 
-- [] talk about training time of the system
+- [x] Clarify what "values of classes" could correspond to in a "real system" in the intro
 
-- [] talk about the action costs: GIST and cascaded DPM version are about 0.25 and 1 respectively.
+- [x] talk about training time of the system
 
-- [] Make the RL formalism more accessible to a non-RL person
-  - [] clarify what is meant by discount
-  - [] maybe explicitly link to POMDP and Augmented MDP
+- [] MRF doesn't actually contribute much to results: should mention that?
 
 - [] Mention caching of frequent cases for inference for extra speed
   - probably bad idea because draws attention to cost of inference, which we don't discuss elsewhere
-
-- Fix typo on line 173.5 $a_i \in O$ -> $o_i \in O$. 
-
-- Draw clear distinction with [18]
 
 Code Tasks
 ---

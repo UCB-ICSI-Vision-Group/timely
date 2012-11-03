@@ -5,6 +5,8 @@
 \usepackage{color}
 \usepackage{subfig}
 \usepackage{natbib}
+\usepackage{array}
+\usepackage{tabularx}
 \usepackage[pagebackref=true,breaklinks=true,colorlinks,bookmarks=false]{hyperref}
 
 \newcommand{\argmax}{\operatornamewithlimits{argmax}}
@@ -20,14 +22,14 @@
 \title{Timely Object Recognition}
 
 \author{
-Sergey Karayev\thanks{ Code available at http://sergeykarayev.com/work/timely/ } \\
+Sergey Karayev \\
 UC Berkeley
 \And
 Tobias Baumgartner \\
 Affiliation
 \And
 Mario Fritz \\
-Address
+MPI Saarbr\"{u}cken
 \And
 Trevor Darrell \\
 UC Berkeley
@@ -50,7 +52,7 @@ We evaluate our method with a novel \emph{timeliness} measure, computed as the a
 Experiments are conducted on the eminent PASCAL VOC object detection dataset.
 If execution is stopped when only half the detectors have been run, our method obtains $66\%$ better AP than a random ordering, and $14\%$ better performance than an intelligent baseline.
 On the timeliness measure, our method obtains at least $11\%$ better performance.
-Our code, to be made available upon publication, is easily extensible as it treats detectors and classifiers as black boxes and learns from execution traces using reinforcement learning.
+Our method is easily extensible, as it treats detectors and classifiers as black boxes and learns from execution traces using reinforcement learning.
 \end{abstract}
 
 \input{introduction.tex}
@@ -61,18 +63,16 @@ Our code, to be made available upon publication, is easily extensible as it trea
 \section{Conclusion}
 We presented a method for learning ``closed-loop'' policies for multi-class object recognition, given existing object detectors and classifiers and a metric to optimize.
 The method learns the optimal policy using reinforcement learning, by observing execution traces in training.
-If detection on an image is cut off after only half the detectors have been run, our method does $66\%$ better than random, and $14\%$ better than an intelligent baseline. In particular, our method learns to take action with no intermediate reward in order to improve the overall performance of the system.
+If detection on an image is cut off after only half the detectors have been run, our method does $66\%$ better than a random ordering, and $14\%$ better than an intelligent baseline.
+In particular, our method learns to take action with no intermediate reward in order to improve the overall performance of the system.
 
 As always with reinforcement learning problems, defining the reward function requires some manual work.
-Here, we derive it for the novel detection AP vs. Time evaluation that we suggest is most useful for evaluating efficiency in recognition.
-Although computation devoted to scheduling actions is much less significant than the computation due to running the actions, an interesting future research direction is to explicitly consider this decision-making cost.
-At time of publication, we will release the code of our modular framework, that allows for easy incorporation of other classifiers and detectors on different tasks and rewards.
+Here, we derive it for the novel detection AP vs. Time evaluation that we suggest is useful for evaluating efficiency in recognition.
+Although computation devoted to scheduling actions is less significant than the computation due to running the actions, an interesting future research direction is to explicitly consider this decision-making cost; the same goes for feature computation costs.
+The code for our method is available\footnote{\url{http://sergeykarayev.com/work/timely/}}.
 
-% \subsubsection*{Acknowledgments}
-% Use unnumbered third level headings for the acknowledgments. All
-% acknowledgments go at the end of the paper. Do not include 
-% acknowledgments in the anonymized submission, only in the 
-% final paper. 
+\subsubsection*{Acknowledgments}
+This research was made with Government support under and awarded by DoD, Air Force Office of Scientific Research, National Defense Science and Engineering Graduate (NDSEG) Fellowship, 32 CFR 168a.
 
 \renewcommand\bibsection{\subsubsection*{\refname}}
 \bibliographystyle{unsrt}
