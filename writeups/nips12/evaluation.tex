@@ -44,7 +44,7 @@ We consider another baseline: selecting actions in a fixed order based on the va
 We refer to this as \textbf{Fixed Order}.
 
 Then there are instantiations of our method, as described in the previous section : \textbf{RL w/ Direct} inference and \textbf{RL w/ MRF} inference.
-In experiments, the two were not exceedingly different in performance, with the \textbf{MRF} model consistently outperforming \textbf{Direct}.
+As the \textbf{MRF} model consistently outperformed \textbf{Direct} by a small margin, we report results for that model only.
 
 In Figure~\autoref{fig:results1}, we can see that due to the dataset bias, the fixed-order policy performs well at first, as the person class is disproportionately likely to be in the image, but is significantly overtaken by our model as execution goes on and more rare classes have to be detected.
 
@@ -62,7 +62,7 @@ It is additionally informative to consider the action trajectories of different 
   \includegraphics[width=0.9\linewidth]{../figures/trajectories.pdf}
   \caption{
 Visualizing the action trajectories of different policies.
-Action selection traces are plotted in orange over many episodes; the size of the blue circles correspond to the $\Delta ap$ obtained by the action.
+Action selection traces are plotted in orange over many episodes; the size of the blue circles correspond to the increase in AP obtained by the action.
 We see that the \textbf{Random} policy selects actions and obtains rewards randomly, while the \textbf{Oracle} policy obtains all rewards in the first few actions.
 The \textbf{Fixed Order} policy selects actions in a static optimal order.
 Our policy does not stick a static order but selects actions dynamically to maximize the rewards obtained early on.
@@ -74,9 +74,9 @@ Our policy does not stick a static order but selects actions dynamically to maxi
 \caption{The areas under the AP vs. Time curve for different experimental conditions.}
 \label{tab:results}
 \begin{center}
-\begin{tabular}{|l|l|l|l|l|l|}
+\begin{tabular}{|c|c|c|c|c|c|}
 \hline
-Bounds & Random & Fixed Order & RL w/ MRF & w/ GIST         & Oracle \\ \hline
+Bounds & Random & Fixed Order & RL        & RL w/ GIST         & Oracle \\ \hline
 (0,20) & 0.250  & 0.342       & 0.378     & \textbf{0.382}  & 0.488 \\ 
 (0,10) & 0.119  & 0.240       & 0.266     & \textbf{0.267}  & 0.464 \\ 
 (5,15) & 0.257  & 0.362       & 0.418     & \textbf{0.420}  & 0.530 \\ \hline

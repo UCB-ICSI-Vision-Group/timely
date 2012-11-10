@@ -26,10 +26,10 @@ Sergey Karayev \\
 UC Berkeley
 \And
 Tobias Baumgartner \\
-Affiliation
+RWTH Aachen University
 \And
 Mario Fritz \\
-MPI Saarbr\"{u}cken
+MPI for Informatics 
 \And
 Trevor Darrell \\
 UC Berkeley
@@ -46,10 +46,10 @@ UC Berkeley
 \begin{abstract}
 In a large visual multi-class detection framework, the timeliness of results can be crucial.
 Our method for \emph{timely} multi-class detection aims to give the best possible performance at any single point after a start time; it is terminated at a deadline time.
-Toward this goal, we formulate a dynamic, \emph{closed-loop} policy that infers the contents of the image in order to decide which detector to deploy next.
+Toward this goal, we formulate a dynamic, closed-loop policy that infers the contents of the image in order to decide which detector to deploy next.
 In contrast to previous work, our method significantly diverges from the predominant greedy strategies, and is able to learn to take actions with deferred values.
 We evaluate our method with a novel \emph{timeliness} measure, computed as the area under an Average Precision vs. Time curve.
-Experiments are conducted on the eminent PASCAL VOC object detection dataset.
+Experiments are conducted on the PASCAL VOC object detection dataset.
 If execution is stopped when only half the detectors have been run, our method obtains $66\%$ better AP than a random ordering, and $14\%$ better performance than an intelligent baseline.
 On the timeliness measure, our method obtains at least $11\%$ better performance.
 Our method is easily extensible, as it treats detectors and classifiers as black boxes and learns from execution traces using reinforcement learning.
@@ -68,7 +68,8 @@ In particular, our method learns to take action with no intermediate reward in o
 
 As always with reinforcement learning problems, defining the reward function requires some manual work.
 Here, we derive it for the novel detection AP vs. Time evaluation that we suggest is useful for evaluating efficiency in recognition.
-Although computation devoted to scheduling actions is less significant than the computation due to running the actions, an interesting future research direction is to explicitly consider this decision-making cost; the same goes for feature computation costs.
+Although computation devoted to scheduling actions is less significant than the computation due to running the actions, the next research direction is to explicitly consider this decision-making cost; the same goes for feature computation costs.
+Additionally, it is interesting to consider actions defined not just by object category but also by spatial region.
 The code for our method is available\footnote{\url{http://sergeykarayev.com/work/timely/}}.
 
 \subsubsection*{Acknowledgments}

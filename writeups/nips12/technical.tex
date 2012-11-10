@@ -50,7 +50,7 @@ Recall that detector actions returns lists of detection hypotheses.
 Therefore, the final AP vs. Time evaluation of an episode is a function $eval(h,T_s,T_d)$ of the history of execution $h=s^0,s^1,\dots,s^J$.
 It is precisely the normalized area under the AP vs. Time curve between $T_s$ and $T_d$, as determined by the detections in $\mathbf{o}^j$ for all steps $j$ in the episode.
 
-Note from~\autoref{fig:rewards} that this evaluation function is additive per action, as each action $a$ generates observations that may raise or lower the mean AP of the results so far ($\Delta ap$) and takes a certain time ($\Delta t$).
+Note from Figure~\ref{fig:rewards} that this evaluation function is additive per action, as each action $a$ generates observations that may raise or lower the mean AP of the results so far ($\Delta ap$) and takes a certain time ($\Delta t$).
 We can accordingly represent the final evaluation $eval(h,T_s,T_d)$ in terms of individual action rewards: $\sum_{j=0}^J R(s^j,a^j)$.
 
 Specifically, as shown in Figure~\ref{fig:rewards}, we define the \emph{reward} of an action $a$ as
@@ -102,7 +102,7 @@ $P(C_0|\mathbf{o}) \ldots P(C_K|\mathbf{o})$ & The probabilities for all classes
 $H(C_0|\mathbf{o}) \ldots H(C_K|\mathbf{o})$ & The entropies for all classes, conditioned on the current set of observations. \\
 \end{tabularx}
 
-Additionally, we include the mean and maximum entropy of class presence and time features that represent the times until start and deadline, for a total of $F = 1+2K+6$ features.
+Additionally, we include the mean and maximum of $[H(C_0|\mathbf{o}) \ldots H(C_K|\mathbf{o})]$, and $4$ time features that represent the times until start and deadline, for a total of $F = 1+2K+6$ features.
 
 We note that this setup is commonly used to solve Markov Decision Processes \cite{Sutton1998}.
 There are two related limitations of MDPs when it comes to most systems of interesting complexity, however: the state has to be functionally approximated instead of exhaustively enumerated; and some aspects of the state are not observed, making the problem a Partially Observed MDP (POMDP), for which exact solution methods are intractable for all but rather small problems \cite{Roy2002}.
@@ -115,12 +115,12 @@ As an illustration, we visualize the learned weights on these features in \autor
 \begin{figure}[h!]
 \centering
 \subfloat[Greedy]{\includegraphics[width=0.49\linewidth]{../figures/weights_greedy}}
-\subfloat[RL]{\includegraphics[width=0.49\linewidth]{../figures/weights_rl}}
+\subfloat[Reinforcement Learning]{\includegraphics[width=0.49\linewidth]{../figures/weights_rl}}
 % \includegraphics[width=0.87\linewidth]{../figures/weights.pdf}
 \caption{
 Learned policy weights $\theta_\pi$ (best viewed in color: red corresponds to positive, blue to negative values).
 The first row corresponds to the scene-level action, which does not generate detections itself but only helps reduce uncertainty about the contents of the image.
-Note that in the greedy learning case, this action is learned to never be taken---whereas it is shown to be useful in the reinforcement learning case.
+Note that in the greedy learning case, this action is learned to never be taken, but it is shown to be useful in the reinforcement learning case.
 }
 \label{fig:weights}
 \end{figure}
@@ -135,7 +135,7 @@ Additionally, updating $P(C_i|\mathbf{o})$ presents choices regarding independen
 We evaluate two approaches for updating probabilities: \emph{direct} and \emph{MRF}.
 
 In the \emph{direct} method, $P(C_i|\mathbf{o}) = score(C_i)$ if $\mathbf{o}$ includes the observations for class $C_i$ and $P(C_i|\mathbf{o}) = P(C_i)$ otherwise.
-This means that an observation of class $i$ does not influence the estimated probability of any class but $C_i$.
+This means that an observation of class $i$ does not directly influence the estimated probability of any class but $C_i$.
 
 The \emph{MRF} approach employs a pairwise fully-connected Markov Random Field (MRF), as shown in Figure~\ref{fig:figure1}, with the observation nodes set to $score(C_i)$ appropriately, or considered unobserved.
 
