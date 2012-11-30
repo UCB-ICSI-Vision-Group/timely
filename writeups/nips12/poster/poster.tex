@@ -26,7 +26,7 @@
 % Boolean variable: whether or not we want to show grid lines
 \newif\ifusegrid
 \usegridtrue
-\usegridfalse
+%\usegridfalse
 
 % You can define any rgb colors you want for the background.  The
 % first two lines define a blue to cream fade.  See how they are used
@@ -114,7 +114,8 @@
     % between changing these numbers and changing
     % ``title-left-margin'' if you are not happy with the defaults.
     \setcounter{title-left-margin}{0} % This specifies the additional padding to the right and left of the title.  Can be negative.
-    \setcounter{title-top}{\arabic{total-height}-3} % Places the top of the title 3 cm from the top of the poster.
+    %% TODO: CAN GET 1CM AT TOP HERE  (when the number is -2)
+    \setcounter{title-top}{\arabic{total-height}-2} % Places the top of the title 3 cm from the top of the poster.
     \setcounter{title-width}{\arabic{width}-2*\arabic{title-left-margin} - 2*2 - 4} % Automatically calculates the width of the title based on the margin.
     \setcounter{title-left}{\arabic{title-left-margin} + 2} % Automatically places the title 2m from the left edge of the poster + the user specified margin.
     \setcounter{title-box-width}{\arabic{width} - 30}
@@ -124,21 +125,19 @@
         % Three parboxes allow for images on both sides of the title
         % box with the title text in the middle.
         \parbox{10cm} {
-        \includegraphics[width=10cm]{../../figures/berkeley_seal.pdf}
+        \includegraphics[height=9cm]{../../figures/berkeley_seal.pdf}
         }
         \parbox{\arabic{title-box-width}cm} {
           \centering
               {\Huge \bf{Timely Object Recognition} } \\
               \vspace{1cm}
               \begin{tabular}{cccc}
-                {\huge Sergey Karayev$^1$, \hfill} & {\huge Tobias Baumgartner$^2$, \hfill} & {\huge Mario Fritz$^3$, \hfill} & {\huge Trevor Darrell$^1$}\\
-                \multicolumn{4}{c}{\Large $^1$UC Berkeley, $^3$RWTH Aachen, $^3$MPI Informatics}
+                {\huge Sergey Karayev$^1$, \hfill} & {\huge Tobias Baumgartner$^2$, \hfill} & {\huge Mario Fritz$^3$, \hfill} & {\huge Trevor Darrell$^1$}\\\\
+                \multicolumn{4}{c}{\Large $^1$UC Berkeley, \hspace{2cm} $^2$RWTH Aachen, \hspace{2cm} $^3$MPI Informatics}
               \end{tabular}
         }
         \parbox{10cm} {
-          % This is just an empty box to make the actual title centered.
-          % Add another seal or image if you wish.
-          \hspace{1cm}
+          \includegraphics[width=10cm]{../../figures/MPI_logo.png}
         }
 
       \end{center}
@@ -150,7 +149,7 @@
     \begin{itemize}
       \item Our task is multi-class object detection in a setting where there is not enough time to evaluate all detectors.
 
-      \item We use reinforcement learning to learn a \emph{dynamic} policy for selecting detectors and classifiers.
+      \item We use reinforcement learning to learn a \emph{dynamic} policy for selecting detectors and classifiers, and learn to take actions that do not provide immediate reward.
 
       \item We evaluate detection performance vs. time with the novel \emph{timeliness} measure, and test on the PASCAL VOC challenge.
     \end{itemize}
@@ -162,35 +161,44 @@
     % FIGURE 1 WITH EXPLANATION 
     \path (introduction.south west) ++(0cm,-2cm) node(coding) [style=tbox,text width=30cm] {
       \begin{center}
-        \includegraphics[width=26cm]{../../figures/figure1_extended.pdf}
+        \includegraphics[width=24cm]{../../figures/pomdp_annotated.pdf}
       \end{center}
 
       \begin{itemize}
-        \item Potential actions $a \in \mathcal{A}$ are considered according to their predicted \emph{value}.
-        \item The value $Q(s,a)$ depends on the \emph{belief state} of the system as well as the action considered.
-        \item The selected action returns observations (list of detections, or evaluated feature).
+        \item An action $a \in \mathcal{A}$ can run detection for an object class $k$ in the whole image, or classify the scene.
+        \item Potential actions are considered according to their predicted \emph{value} $Q(s,a)$, which also depends on the \emph{belief state} $s$ of the system.
+        \item The selected action returns observations in the form of a list of detections, or simply an evaluated feature.
         \item Observations update the belief state through an inference process.
         \item The final evaluation is the area of the AP vs. Time curve between the start time $T_s$ and end time $T_d$.
-        \item VOCalues are learned with reinforcement learning, using a reward function derived from this evaluation.
       \end{itemize}
+      
+      \begin{center}\line(1,0){350}\end{center}
+
+    \begin{center}\textbf{Policy Trajectories}\end{center}
+
+    \parbox{20cm}{
+    \includegraphics[width=19cm]{../../figures/trajectories.pdf}}%\hfill
+    \parbox{10cm}{
+    Action selection traces are plotted over many episodes; the size of the circles correspond to the increase in AP obtained by the action. Our policy selects actions dynamically to maximize the rewards obtained early on.}
 
     }; \addcenteredtitle{coding}{Sequential Detection}
 
     % ==============================================================================
-    % Learning the Policy
+    % Learning the Policy 
     \path (introduction.north east) ++(2cm,0cm) node(model) [style=tbox,text width=34 cm] {
-      % \begin{center}
-      %   \includegraphics[width=20cm]{../../figures/pomdp_annotated.pdf}
-      % \end{center}
+      \begin{center}
+        \includegraphics[width=30cm]{../../figures/figure1_extended_hor.pdf}
+      \end{center}
+
       We define our policy as taking an untaken action with maximum value.
       \begin{align*} \pi(s) = \arg\max_{a_i \in \mathcal{A} \setminus \mathcal{O}} Q(s,a_i) = \theta_\pi^\top \phi(s,a) \end{align*}
-      The Q-function is linearly approximated.
-      \\
 
-      \begin{center}\textbf{Reward Function}\end{center}
+      The value function
+      \begin{align*}Q^\pi(s^j,a) = \mathbb{E} [R \mid s, a, \pi)]\end{align*}
+      where $R = \sum_{i=j}^J \gamma^{i-j} R(s^i,a^i)$ and $J$ is the index of the last action before deadline time $T_d$.
 
       \parbox{20cm}{
-      The final performance evaluation of area under the AP vs. Time curve between $T_s$ and $T_d$ is additive per action.
+      \textbf{Reward Function:} The final performance evaluation of area under the AP vs. Time curve between $T_s$ and $T_d$ is additive per action.
       We define the reward function as
       \begin{align*} R(s^j,a) = \Delta \text{ap} (t_T^j-\frac{1}{2}\Delta t) \end{align*}}
       \parbox{14cm}{
@@ -200,7 +208,7 @@
       \\
 
       \begin{center}\textbf{Reinforcement Learning}\end{center}
-      To compute $Q^\pi(s^j,a) = \mathbb{E} [R \mid s, a, \pi)]$, where $R = \sum_{i=j}^J \gamma^{i-j} R(s^i,a^i)$ and $J$ is the index of the last action before deadline time $T_d$, we run Monte Carlo policy iteration.
+      To compute , we run Monte Carlo policy iteration.
       We evaluate full episodes of the detection task on several thousand images, with a decreasing $\epsilon$-greedy policy.
       Policy weights $\theta$ are updated with $L_2$ regularization.
 
@@ -209,7 +217,18 @@
       We find $\gamma = 0.4$ to work best in cross-validation.
       \\
 
-      \begin{center}\textbf{Feature Representation}\end{center}
+    }; \addcenteredtitle{model}{Learning to Detect on a Budget}
+
+    % ==============================================================================
+    % RESULTS
+    \path (model.north east) ++(2cm,0cm) node(results) [style=tbox,text width=30cm] {
+    We evaluated on the PASCAL VOC 2007 detection task, with 20 Deformable Part Model detectors (one per class), and an additional
+    scene context action (GIST feature).
+    \\
+
+    We compared against a random baseline, an optimal static ordering, and an oracle ordering.
+
+    \begin{center}\textbf{Feature Representation}\end{center}
       The features $\phi(s, a)$ are composed of\\
 
       {\small
@@ -228,27 +247,10 @@
       Observations $\mathbf{o}$ of detector for class $k$ update $P(C_k|\mathbf{o})$ either \emph{directly} (using a probability estimated by a classifier trained on the detector output) or through an \emph{MRF}.
       The MRF is learned with $L_1$-regularization and inference is done with loopy belief propagation.
 
-    }; \addcenteredtitle{model}{Learning the Policy}
-
-    % ==============================================================================
-    % RESULTS
-    \path (model.north east) ++(2cm,0cm) node(results) [style=tbox,text width=30cm] {
-    We evaluated on the PASCAL VOC 2007 detection task, with 20 Deformable Part Model detectors (one per class), and an additional
-    scene context action (GIST feature).
-    \\
-
-    We compared against a random baseline, an optimal static ordering, and an oracle ordering.
-
     \parbox{12cm}{
     \textbf{Weights} Learning with a higher $\gamma$ results in policies more relient on the global scene feature, for example.}%
     \parbox{18cm}{\hfill
     \includegraphics[width=17cm]{../../figures/weights.pdf}}
-    \\
-
-    \parbox{18cm}{
-    \includegraphics[width=17cm]{../../figures/trajectories.pdf}}%\hfill
-    \parbox{12cm}{
-    \textbf{Trajectories} Action selection traces are plotted in orange over many episodes; the size of the blue circles correspond to the increase in AP obtained by the action. Our policy does not stick a static order but selects actions dynamically to maximize the rewards obtained early on.}
     \\\\
 
     \parbox{18cm}{
