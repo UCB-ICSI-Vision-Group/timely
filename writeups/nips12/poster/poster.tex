@@ -12,6 +12,8 @@
 
 % Custom variables
 
+\newcommand{\argmax}[1]{\underset{#1}{\operatorname{arg}\operatorname{max}}\;}
+
 % How much length we want to add to the poster while editing.  Note
 % that these are just integer variables.  There is probably a better
 % way to do this...
@@ -125,15 +127,15 @@
         % Three parboxes allow for images on both sides of the title
         % box with the title text in the middle.
         \parbox{10cm} {
-        \includegraphics[height=9cm]{../../figures/berkeley_seal.pdf}
+        \includegraphics[height=8cm]{../../figures/berkeley_seal.pdf}
         }
         \parbox{\arabic{title-box-width}cm} {
           \centering
               {\Huge \bf{Timely Object Recognition} } \\
               \vspace{1cm}
               \begin{tabular}{cccc}
-                {\huge Sergey Karayev$^1$, \hfill} & {\huge Tobias Baumgartner$^2$, \hfill} & {\huge Mario Fritz$^3$, \hfill} & {\huge Trevor Darrell$^1$}\\\\
-                \multicolumn{4}{c}{\Large $^1$UC Berkeley, \hspace{2cm} $^2$RWTH Aachen, \hspace{2cm} $^3$MPI Informatics}
+                {\Large Sergey Karayev$^1$, \hfill} & {\Large Tobias Baumgartner$^2$, \hfill} & {\Large Mario Fritz$^3$, \hfill} & {\Large Trevor Darrell$^1$}\\\\
+                \multicolumn{4}{c}{\large $^1$UC Berkeley, \hspace{2cm} $^2$RWTH Aachen, \hspace{2cm} $^3$MPI Informatics}
               \end{tabular}
         }
         \parbox{10cm} {
@@ -143,139 +145,127 @@
       \end{center}
     };
     
-    % ==============================================================================
-    % ABSTRACT
-    \path (title.south west) ++(0cm,-2cm) + (-\arabic{title-left-margin}cm,0cm) node(introduction) [style=tbox,text width=30cm] {
+    %%% MOTIVATION
+    \path (title.south west) ++(0cm,-2cm) + (-\arabic{title-left-margin}cm,0cm) node(motivation) [style=tbox,text width=28cm] {
+    \textbf{\textsc{Problem}}
     \begin{itemize}
-      \item Our task is multi-class object detection in a setting where there is not enough time to evaluate all detectors.
-
-      \item We use reinforcement learning to learn a \emph{dynamic} policy for selecting detectors and classifiers, and learn to take actions that do not provide immediate reward.
-
-      \item We evaluate detection performance vs. time with the novel \emph{timeliness} measure, and test on the PASCAL VOC challenge.
+      \item Want to detect objects of many classes in an image.
+      \item Detectors and classifiers already exist, but there is \textbf{not enough time to run all detectors}.
     \end{itemize}
 
-    }; \addcenteredtitle{introduction}{Abstract} 
-    % The above line adds the title ``Introduction'' to the box named ``introduction''.
+    \textbf{\textsc{Approach}}
+    \begin{itemize}
+      \item Formulate \textbf{timeliness} evaluation of detection performance vs. time.
+      \item Treat detectors and classifiers as ``black boxes''; use reinforcement learning to find a \textbf{dynamic} policy for deploying them.
+    \end{itemize}
+
+    \textbf{\textsc{Results}}
+    \begin{itemize}
+      \item Learn to take actions that do not provide immediate reward.
+      \item Wrapping per-class detectors in our system and setting a deadline\\\textbf{increases the multi-class Average Precision at deadline and before.}
+    \end{itemize}
+    }; \addcenteredtitle{motivation}{1. Motivation}
     
-    % ==============================================================================
-    % FIGURE 1 WITH EXPLANATION 
-    \path (introduction.south west) ++(0cm,-2cm) node(coding) [style=tbox,text width=30cm] {
-      \begin{center}
-        \includegraphics[width=24cm]{../../figures/pomdp_annotated.pdf}
-      \end{center}
-
+    %%% MODEL & REINFORCEMENT LEARNING
+    \path (motivation.south west) ++(0cm,-2cm) node(implementation) [style=tbox,text width=28cm] {
+      \parbox{16cm}{
+      \textbf{\textsc{AP vs Time and the Reward}}
       \begin{itemize}
-        \item An action $a \in \mathcal{A}$ can run detection for an object class $k$ in the whole image, or classify the scene.
-        \item Potential actions are considered according to their predicted \emph{value} $Q(s,a)$, which also depends on the \emph{belief state} $s$ of the system.
-        \item The selected action returns observations in the form of a list of detections, or simply an evaluated feature.
-        \item Observations update the belief state through an inference process.
-        \item The final evaluation is the area of the AP vs. Time curve between the start time $T_s$ and end time $T_d$.
+        \item The final performance evaluation is the area under the AP vs. Time curve between $T_s$ and $T_d$.
+        \item Because this is additive per action, we define \begin{align*} R(s^j,a) = \Delta \text{ap} (t_T^j-\frac{1}{2}\Delta t) \end{align*}
       \end{itemize}
-      
-      \begin{center}\line(1,0){350}\end{center}
+      }
+      \parbox{12cm}{\hfill\includegraphics[width=11cm]{../../figures/apvst_expl.pdf}}
+      \\
 
-    \begin{center}\textbf{Policy Trajectories}\end{center}
+      \textbf{\textsc{Learning $\pi(s)$}} with fitted Q-iteration iteration.
+      \begin{itemize}
+        \item Gather samples under current $\pi$ by running detection episodes on several thousand images.
+        \item Update policy-defining weights $\theta$ with $L_1$ regularization
+        \item Gradually decrease $\epsilon$-greediness of policy.
+      \end{itemize}
+      \vspace{1cm}
 
-    \parbox{20cm}{
-    \includegraphics[width=19cm]{../../figures/trajectories.pdf}}%\hfill
-    \parbox{10cm}{
-    Action selection traces are plotted over many episodes; the size of the circles correspond to the increase in AP obtained by the action. Our policy selects actions dynamically to maximize the rewards obtained early on.}
+      \textbf{\textsc{Reward discount $\gamma$}}
+      \begin{itemize}
+      \item $\gamma=0$ induces a completely greedy policy, and at $\gamma=1$ is full lookahead.
+      \item $\gamma = 0.4$ performs best in cross-validation on the final evaluation.
+      \end{itemize}
+      \vspace{1cm}
 
-    }; \addcenteredtitle{coding}{Sequential Detection}
+      \textbf{\textsc{The belief state}} posterior $P(C_k|\mathbf{o})$ is updated with observations $\mathbf{o}$ of detector for class $k$.
+      \begin{itemize}
+        \item \emph{Direct} method simply replaces the posterior of the corresponding class(es).
+        \item \emph{MRF} (pictured) method runs loopy BP in an MRF model, updating all posteriors.
+        \item MRF weights are learned with $L_1$-regularization.
+      \end{itemize}
+    }; \addcenteredtitle{implementation}{3. Implementation}
 
-    % ==============================================================================
-    % Learning the Policy 
-    \path (introduction.north east) ++(2cm,0cm) node(model) [style=tbox,text width=34 cm] {
+    %%% FIGURE 1
+    \path (motivation.north east) ++(2cm,0cm) node(figure1) [style=tbox,text width=38cm] {
       \begin{center}
-        \includegraphics[width=30cm]{../../figures/figure1_extended_hor.pdf}
+        \includegraphics[width=38cm]{../../figures/figure1_with_pomdp.pdf}
       \end{center}
+      \begin{itemize}
+        \item Action $a \in \mathcal{A}$ can run detector of object class $k$ on whole image, or classify the scene.
+        \item The selected action returns observations $\mathbf{o}$: a list of detections, or an evaluated feature.
+        \item We define our policy as taking an untaken action with maximum value. \begin{align*} \pi(s) = \argmax{a_i \in \mathcal{A} \setminus \mathcal{O}} Q(s,a_i) = \theta_\pi^\top \phi(s,a) \end{align*}
+        \item Must learn an accurate approximation of the value function \begin{align*}Q^\pi(s^j,a) = \mathbb{E} [R \mid s, a, \pi)]\end{align*} where $R = \sum_{i=j}^J \gamma^{i-j} R(s^i,a^i)$ and $J$ is the index of the last action before deadline time $T_d$.
+      \end{itemize}
+    }; \addcenteredtitle{figure1}{2. Sequential Multi-class Detection}
 
-      We define our policy as taking an untaken action with maximum value.
-      \begin{align*} \pi(s) = \arg\max_{a_i \in \mathcal{A} \setminus \mathcal{O}} Q(s,a_i) = \theta_\pi^\top \phi(s,a) \end{align*}
+%%% FEATURES AND WEIGHTS
+    \path (figure1.south west) ++(0cm,-2cm) node(features) [style=tbox,text width=38cm] {
+      The features $\phi(s, a)$ reflect
+      \begin{itemize}
+        \item the probability that class $C$ is present in the image and its degree of certainty, for all classes.
+        \item time to $T_s$ and to $T_d$, and the expected time of the action.
+      \end{itemize}
+      \vspace{5mm}
 
-      The value function
-      \begin{align*}Q^\pi(s^j,a) = \mathbb{E} [R \mid s, a, \pi)]\end{align*}
-      where $R = \sum_{i=j}^J \gamma^{i-j} R(s^i,a^i)$ and $J$ is the index of the last action before deadline time $T_d$.
+      \parbox{18cm}{\includegraphics[width=17cm]{../../figures/weights_greedy.pdf}\\\centering \small{\textbf{Greedy}}}\hfill%
+      \parbox{18cm}{\includegraphics[width=17cm]{../../figures/weights_rl.pdf}\\\centering \small{\textbf{Reinforcement Learning}}}\\
+      \begin{center}Learning with a higher $\gamma$ results in policies reliant on the global scene feature.\end{center}
+    }; \addcenteredtitle{features}{4. Feature Representation and Policy Weights}
+
+%%% RESULTS
+    \path (figure1.north east) ++(2cm,0cm) node(results) [style=tbox,text width=28cm] {
+      We evaluated on the PASCAL VOC 2007 detection task, with 20 Deformable Part Model detectors (one per class), and an additional
+      scene context action (GIST feature).
+      \\
+
+      We compared against a random baseline, an optimal static ordering, and an oracle ordering.
+
+      \begin{center}\textbf{Policy Trajectories}\end{center}
 
       \parbox{20cm}{
-      \textbf{Reward Function:} The final performance evaluation of area under the AP vs. Time curve between $T_s$ and $T_d$ is additive per action.
-      We define the reward function as
-      \begin{align*} R(s^j,a) = \Delta \text{ap} (t_T^j-\frac{1}{2}\Delta t) \end{align*}}
-      \parbox{14cm}{
+      \includegraphics[width=19cm]{../../figures/trajectories.pdf}}%\hfill
+      \parbox{10cm}{
+      Action selection traces are plotted over many episodes; the size of the circles correspond to the increase in AP obtained by the action. Our policy selects actions dynamically to maximize the rewards obtained early on.}
+
+      \parbox{18cm}{
+      \textbf{Performance vs. Time}\\
+      If execution is stopped when only half the detectors have been run, our method obtains 66\% better AP than a random ordering, and 14\% better performance than an intelligent baseline. On the timeliness measure, our method obtains at least 11\% better performance}
+      \parbox{12cm}{\hfill
+      \includegraphics[width=11cm]{../../figures/final1.png}}%\hfill
+      \\
+
       \begin{center}
-        \includegraphics[height=10cm]{../../figures/apvst_expl.pdf}
-      \end{center}}
-      \\
+      \begin{tabular}{|c|c|c|c|c|c|}
+      \hline
+      Bounds & Random & Fixed Order & RL        & RL w/ GIST         & Oracle \\ \hline
+      (0,20) & 0.250  & 0.342       & 0.378     & \textbf{0.382}  & 0.488 \\ 
+      (0,10) & 0.119  & 0.240       & 0.266     & \textbf{0.267}  & 0.464 \\ 
+      (5,15) & 0.257  & 0.362       & 0.418     & \textbf{0.420}  & 0.530 \\ \hline
+      \end{tabular}
+      \end{center}
+    }; \addcenteredtitle{results}{5. Evaluation}
 
-      \begin{center}\textbf{Reinforcement Learning}\end{center}
-      To compute , we run Monte Carlo policy iteration.
-      We evaluate full episodes of the detection task on several thousand images, with a decreasing $\epsilon$-greedy policy.
-      Policy weights $\theta$ are updated with $L_2$ regularization.
-
-      \paragraph{}
-      We evaluate different values of the reward discount $\gamma$, which at $0$ induces a completely greedy policy, and at $1$ has full lookahead.
-      We find $\gamma = 0.4$ to work best in cross-validation.
-      \\
-
-    }; \addcenteredtitle{model}{Learning to Detect on a Budget}
-
-    % ==============================================================================
-    % RESULTS
-    \path (model.north east) ++(2cm,0cm) node(results) [style=tbox,text width=30cm] {
-    We evaluated on the PASCAL VOC 2007 detection task, with 20 Deformable Part Model detectors (one per class), and an additional
-    scene context action (GIST feature).
-    \\
-
-    We compared against a random baseline, an optimal static ordering, and an oracle ordering.
-
-    \begin{center}\textbf{Feature Representation}\end{center}
-      The features $\phi(s, a)$ are composed of\\
-
-      {\small
-      \begin{tabularx}{0.8\linewidth}{p{0.23\linewidth}p{0.69\linewidth}}
-      $P(C_a)$ & The prior probability of presence of the class that corresponds to the detector of action $a$ (omitted for the scene-context action).\\
-
-      $P(C_0|\mathbf{o}) \ldots P(C_K|\mathbf{o})$ & The presence probabilities for all classes, conditioned on the current set of observations.\\
-
-      $H(C_0|\mathbf{o}) \ldots H(C_K|\mathbf{o})$ & The entropies for all classes, conditioned on the current set of observations. \\
-
-      $t^j_T$ & The time until deadline, and four other time features.\\
-      \end{tabularx}
-      }\\\\
-
-      \begin{center}\textbf{Updating the belief state}\end{center}
-      Observations $\mathbf{o}$ of detector for class $k$ update $P(C_k|\mathbf{o})$ either \emph{directly} (using a probability estimated by a classifier trained on the detector output) or through an \emph{MRF}.
-      The MRF is learned with $L_1$-regularization and inference is done with loopy belief propagation.
-
-    \parbox{12cm}{
-    \textbf{Weights} Learning with a higher $\gamma$ results in policies more relient on the global scene feature, for example.}%
-    \parbox{18cm}{\hfill
-    \includegraphics[width=17cm]{../../figures/weights.pdf}}
-    \\\\
-
-    \parbox{18cm}{
-    \textbf{Performance vs. Time}\\
-    If execution is stopped when only half the detectors have been run, our method obtains 66\% better AP than a random ordering, and 14\% better performance than an intelligent baseline. On the timeliness measure, our method obtains at least 11\% better performance}
-    \parbox{12cm}{\hfill
-    \includegraphics[width=11cm]{../../figures/final1.png}}%\hfill
-    \\
-
-    \begin{center}
-    \begin{tabular}{|c|c|c|c|c|c|}
-    \hline
-    Bounds & Random & Fixed Order & RL        & RL w/ GIST         & Oracle \\ \hline
-    (0,20) & 0.250  & 0.342       & 0.378     & \textbf{0.382}  & 0.488 \\ 
-    (0,10) & 0.119  & 0.240       & 0.266     & \textbf{0.267}  & 0.464 \\ 
-    (5,15) & 0.257  & 0.362       & 0.418     & \textbf{0.420}  & 0.530 \\ \hline
-    \end{tabular}
-    \end{center}
-
-    }; \addcenteredtitle{results}{Results}
+%%% Conclusion
+    \path (results.south west) ++(0cm,-2cm) node(conclusion) [style=tbox,text width=28cm] {
+      Conclusions drawn, future work.
+    }; \addcenteredtitle{conclusion}{6. Conclusion}
     
 \end{tikzpicture}
-
 \end{center}
 \end{document}
-
-
-
