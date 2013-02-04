@@ -22,6 +22,7 @@ These operating points show how our method behaves when deployed in different co
 The results are given in rows of \autoref{tab:results}.
 
 \begin{figure}[h!]
+\vspace{-.15in}
 \centering
 \subfloat[]{
 \includegraphics[width=0.53\linewidth]
@@ -59,7 +60,7 @@ It is additionally informative to consider the action trajectories of different 
 
 \begin{figure}[h!]
   \centering
-  \includegraphics[width=0.9\linewidth]{../figures/trajectories.pdf}
+  \includegraphics[width=0.85\linewidth]{../figures/trajectories.pdf}
   \caption{
 Visualizing the action trajectories of different policies.
 Action selection traces are plotted in orange over many episodes; the size of the blue circles correspond to the increase in AP obtained by the action.
@@ -81,5 +82,6 @@ Bounds & Random & Fixed Order & RL        & RL w/ GIST         & Oracle \\ \hlin
 (0,10) & 0.119  & 0.240       & 0.266     & \textbf{0.267}  & 0.464 \\ 
 (5,15) & 0.257  & 0.362       & 0.418     & \textbf{0.420}  & 0.530 \\ \hline
 \end{tabular}
+\vspace{-.3in}
 \end{center}
 \end{table}

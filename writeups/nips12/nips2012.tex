@@ -60,7 +60,9 @@ Our method is easily extensible, as it treats detectors and classifiers as black
 \input{technical.tex}
 \input{evaluation.tex}
 
+\pagebreak
 \section{Conclusion}
+\vspace{-.1in}
 We presented a method for learning ``closed-loop'' policies for multi-class object recognition, given existing object detectors and classifiers and a metric to optimize.
 The method learns the optimal policy using reinforcement learning, by observing execution traces in training.
 If detection on an image is cut off after only half the detectors have been run, our method does $66\%$ better than a random ordering, and $14\%$ better than an intelligent baseline.
