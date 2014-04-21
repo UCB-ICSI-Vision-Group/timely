@@ -1,15 +1,18 @@
 Timely Object Detection
 ===
 
-Repository for upcoming NIPS 2012 submission on Timely Object Detection.
+This repository contains the working code for the NIPS 2012 submission on Timely Object Detection.
+
+This is a private repository, and is superseded by the [public code release](https://github.com/sergeyk/timely_object_recognition) (with supporting `skvisutils` and `skpyutils` repos) for the paper.
+However, this repo contains some code that was not published, and should be kept for archival purposes.
 
 Files
 ---
 - data/ is not tracked in the repository but should contain
   - results/: external repo for tracking generated results
   - VOC2007/: the 2007 VOC data
-- timely/ is the code directory
-- writeups/ has latex papers, posters, and slides.
+- synthetic/ is the code directory
+- fastInf/ is external inference code
 
 Overview
 ---
